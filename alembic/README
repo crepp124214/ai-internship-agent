@@ -1,0 +1,9 @@
+Alembic 迁移目录
+
+此目录包含所有的数据库迁移脚本。
+
+通用说明：
+- 每次数据库结构变更都应该创建一个新的迁移脚本
+- 使用 `alembic revision --autogenerate -m "描述"` 自动生成迁移脚本
+- 使用 `alembic upgrade head` 应用迁移
+- 使用 `alembic downgrade -1` 回滚上一个迁移

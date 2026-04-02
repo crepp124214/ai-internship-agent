@@ -1,0 +1,123 @@
+- generic [ref=e28]:
+  - complementary [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]: AI 实习求职助手
+        - generic [ref=e33]:
+          - heading "把实习求职流程 像产品一样跑起来。" [level=1] [ref=e34]:
+            - text: 把实习求职流程
+            - text: 像产品一样跑起来。
+          - paragraph [ref=e35]: 一个工作区覆盖简历优化、岗位匹配、面试准备与投递跟进。
+      - navigation [ref=e36]:
+        - link "仪表盘 当前" [ref=e37] [cursor=pointer]:
+          - /url: /dashboard
+          - generic [ref=e38]: 仪表盘
+          - generic [ref=e39]: 当前
+        - link "简历" [ref=e40] [cursor=pointer]:
+          - /url: /resume
+          - generic [ref=e41]: 简历
+        - link "岗位" [ref=e42] [cursor=pointer]:
+          - /url: /jobs
+          - generic [ref=e43]: 岗位
+        - link "面试" [ref=e44] [cursor=pointer]:
+          - /url: /interview
+          - generic [ref=e45]: 面试
+        - link "投递追踪" [ref=e46] [cursor=pointer]:
+          - /url: /tracker
+          - generic [ref=e47]: 投递追踪
+    - generic [ref=e48]:
+      - generic [ref=e49]:
+        - paragraph [ref=e50]: Portfolio Demo User
+        - paragraph [ref=e51]: demo@example.com
+      - button "退出登录" [ref=e52]
+  - generic [ref=e53]:
+    - banner [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - paragraph [ref=e57]: 产品工作区
+          - heading "仪表盘" [level=2] [ref=e58]
+        - generic [ref=e59]:
+          - generic [ref=e60]: 当前登录
+          - generic [ref=e61]: demo
+    - main [ref=e62]:
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - paragraph [ref=e66]: 实习求职 AI 工作台
+            - generic [ref=e67]:
+              - heading "关键信息一眼掌握" [level=1] [ref=e68]
+              - paragraph [ref=e69]: 仪表盘不虚构聚合接口，而是直接汇总现有简历、岗位、面试与投递数据，帮助你快速确认进展和下一步行动。
+          - link "进入简历中心" [ref=e71] [cursor=pointer]:
+            - /url: /resume
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - paragraph [ref=e74]: 简历
+            - paragraph [ref=e75]: "1"
+            - paragraph [ref=e76]: 可用于摘要、优化与匹配的简历数量。
+          - generic [ref=e77]:
+            - paragraph [ref=e78]: 岗位
+            - paragraph [ref=e79]: "1"
+            - paragraph [ref=e80]: 可用于匹配与投递追踪的岗位数量。
+          - generic [ref=e81]:
+            - paragraph [ref=e82]: 面试记录
+            - paragraph [ref=e83]: "1"
+            - paragraph [ref=e84]: 已记录的回答次数，可进行 AI 评分回顾。
+          - generic [ref=e85]:
+            - paragraph [ref=e86]: 投递
+            - paragraph [ref=e87]: "1"
+            - paragraph [ref=e88]: 已跟踪的投递记录，可生成建议与历史。
+        - generic [ref=e89]:
+          - generic [ref=e90]:
+            - generic [ref=e91]:
+              - heading "最新 AI 输出" [level=2] [ref=e92]
+              - paragraph [ref=e93]: 这里展示的是已有结果，不会生成不存在的聚合数据。
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - paragraph [ref=e96]: 简历摘要
+                - paragraph [ref=e97]: 已有保存的简历摘要，可在简历工作区查看。
+                - paragraph [ref=e98]: 模型来源：mock
+              - generic [ref=e99]:
+                - paragraph [ref=e100]: 最新岗位匹配
+                - paragraph [ref=e101]: 该模块已有保存的 AI 结果，可前往对应工作区查看。
+                - paragraph [ref=e102]: 匹配分数：0
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: 面试评估
+                - paragraph [ref=e105]: <short assessment>|I would separate the HTTP layer, business services, and persistence layer, use a provider abstraction for the AI model, store durable job state, and expose status and history through stable API contracts so the workflow remains traceable and recoverable.
+                - paragraph [ref=e106]: 评分：0
+              - generic [ref=e107]:
+                - paragraph [ref=e108]: 投递建议
+                - paragraph [ref=e109]: 该投递已有保存的追踪建议，可在投递追踪工作区查看。
+                - paragraph [ref=e110]: 下一步建议：2 条
+          - generic [ref=e111]:
+            - generic [ref=e112]:
+              - heading "快速开始" [level=2] [ref=e113]
+              - paragraph [ref=e114]: 按照下面顺序补齐数据，即可完成完整演示链路。
+            - generic [ref=e115]:
+              - link "简历 可用 创建简历并编辑内容，生成摘要与优化建议。" [ref=e116] [cursor=pointer]:
+                - /url: /resume
+                - generic [ref=e117]:
+                  - generic [ref=e118]:
+                    - paragraph [ref=e119]: 简历
+                    - generic [ref=e120]: 可用
+                  - paragraph [ref=e121]: 创建简历并编辑内容，生成摘要与优化建议。
+              - link "岗位 可用 创建岗位并选择简历，生成并保存匹配结果。" [ref=e122] [cursor=pointer]:
+                - /url: /jobs
+                - generic [ref=e123]:
+                  - generic [ref=e124]:
+                    - paragraph [ref=e125]: 岗位
+                    - generic [ref=e126]: 可用
+                  - paragraph [ref=e127]: 创建岗位并选择简历，生成并保存匹配结果。
+              - link "面试 可用 生成题目、记录回答，并保存评估结果。" [ref=e128] [cursor=pointer]:
+                - /url: /interview
+                - generic [ref=e129]:
+                  - generic [ref=e130]:
+                    - paragraph [ref=e131]: 面试
+                    - generic [ref=e132]: 可用
+                  - paragraph [ref=e133]: 生成题目、记录回答，并保存评估结果。
+              - link "投递 可用 创建投递记录，生成并保存投递建议。" [ref=e134] [cursor=pointer]:
+                - /url: /tracker
+                - generic [ref=e135]:
+                  - generic [ref=e136]:
+                    - paragraph [ref=e137]: 投递
+                    - generic [ref=e138]: 可用
+                  - paragraph [ref=e139]: 创建投递记录，生成并保存投递建议。

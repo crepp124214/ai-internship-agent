@@ -1,0 +1,23 @@
+- generic [ref=e4]:
+  - generic [ref=e8]:
+    - paragraph [ref=e9]: 求职作品演示
+    - generic [ref=e10]:
+      - heading "面向实习求职的 AI 工作台" [level=1] [ref=e11]
+      - paragraph [ref=e12]: 登录后即可把简历、岗位、面试与投递进度整合到一个可执行的流程里，快速完成演示与实际操作。
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - paragraph [ref=e16]: 账号登录
+      - heading "登录你的工作台" [level=2] [ref=e17]
+      - paragraph [ref=e18]: 当前版本使用 Bearer Token 鉴权。请使用已创建账号登录，或先在后端创建测试账号。
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]: 用户名
+        - textbox "用户名" [ref=e22]:
+          - /placeholder: 请输入用户名
+          - text: demo
+      - generic [ref=e23]:
+        - generic [ref=e24]: 密码
+        - textbox "密码" [ref=e25]:
+          - /placeholder: 请输入密码
+          - text: demo123
+      - button "登录" [ref=e26]

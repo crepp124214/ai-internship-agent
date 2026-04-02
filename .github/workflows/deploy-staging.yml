@@ -1,0 +1,32 @@
+name: Deploy to Staging
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+
+      - name: Deploy staging
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          echo "Deploying $DOCKER_IMAGE_NAME:$GITHUB_SHA to staging host $SSH_HOST"
+          # Actual deployment would look like:
+          # ssh -o StrictHostKeyChecking=no user@$SSH_HOST \
+          #   "cd /opt/internship-agent && \
+          #    docker compose pull && \
+          #    docker compose up -d && \
+          #    docker compose exec -T app python scripts/migrate.py"
+          echo "Deployment command prepared but not executed (no staging server configured)"

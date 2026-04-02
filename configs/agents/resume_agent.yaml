@@ -1,0 +1,36 @@
+# 简历Agent配置
+
+name: "resume_agent"
+description: "负责简历解析与优化的专业Agent"
+enabled: true
+
+# LLM配置
+llm:
+  provider: "openai"
+  model: "gpt-4"
+  temperature: 0.6
+  max_tokens: 2000
+
+# 解析器配置
+parser:
+  supported_formats: ["pdf", "docx", "txt"]
+  max_file_size: 10  # MB
+  extract_images: false
+  language: "zh-CN"
+
+# 优化器配置
+optimizer:
+  enable_optimization: true
+  keyword_extraction: true
+  score_calculation: true
+  industry_terms:
+    - "人工智能"
+    - "机器学习"
+    - "深度学习"
+    - "数据分析"
+    - "软件开发"
+
+# 存储配置
+storage:
+  cache_dir: "./data/processed/resumes"
+  vector_store: "./data/vectors/resumes"

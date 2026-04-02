@@ -1,0 +1,39 @@
+# AI实习求职Agent系统 - 主配置文件
+
+app:
+  name: "AI Internship Agent"
+  env: "development"
+  debug: true
+  host: "0.0.0.0"
+  port: 8000
+
+llm:
+  provider: "openai"  # openai, anthropic
+  default_model: "gpt-4"
+  temperature: 0.7
+  max_tokens: 2000
+
+agents:
+  resume_agent:
+    enabled: true
+    model: "gpt-4"
+  job_agent:
+    enabled: true
+    sources:
+      - bosszhipin
+      - liepin
+      - lagou
+  interview_agent:
+    enabled: true
+    question_bank_path: "./data/interview_questions"
+
+database:
+  postgres:
+    pool_size: 20
+    max_overflow: 10
+  redis:
+    max_connections: 50
+
+logging:
+  level: "INFO"
+  format: "json"  # json or console

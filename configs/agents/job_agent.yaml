@@ -1,0 +1,53 @@
+# 岗位Agent配置
+
+name: "job_agent"
+description: "负责岗位信息爬取与匹配的专业Agent"
+enabled: true
+
+# LLM配置
+llm:
+  provider: "openai"
+  model: "gpt-3.5-turbo"
+  temperature: 0.5
+  max_tokens: 1500
+
+# 数据源配置
+sources:
+  bosszhipin:
+    enabled: true
+    base_url: "https://www.zhipin.com"
+    search_endpoint: "/web/geek/job"
+    interval: 30  # 分钟
+    max_pages: 5
+
+  liepin:
+    enabled: true
+    base_url: "https://www.liepin.com"
+    search_endpoint: "/api/job/search"
+    interval: 45  # 分钟
+    max_pages: 3
+
+  lagou:
+    enabled: true
+    base_url: "https://www.lagou.com"
+    search_endpoint: "/jobs/list.json"
+    interval: 60  # 分钟
+    max_pages: 4
+
+# 匹配算法配置
+matching:
+  algorithm: "cosine"  # cosine, jaccard, hybrid
+  vector_dimension: 1536
+  min_score: 0.6  # 最低匹配分数
+
+# 过滤器配置
+filters:
+  salary: ["5000-8000", "8000-12000", "12000-20000"]
+  experience: ["应届生", "1年以下", "1-3年"]
+  education: ["本科", "硕士"]
+  location: ["北京", "上海", "深圳", "杭州"]
+
+# 存储配置
+storage:
+  cache_dir: "./data/processed/jobs"
+  vector_store: "./data/vectors/jobs"

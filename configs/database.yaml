@@ -1,0 +1,33 @@
+"""
+数据库配置文件
+"""
+
+# PostgreSQL数据库配置
+postgres:
+  host: "localhost"
+  port: 5432
+  database: "internship_agent"
+  user: "user"
+  password: "password"
+  pool_size: 20
+  max_overflow: 10
+  pool_recycle: 3600
+
+# Redis配置
+redis:
+  host: "localhost"
+  port: 6379
+  db: 0
+  password: ""
+  max_connections: 50
+
+# 向量数据库配置
+chroma:
+  persist_directory: "./data/vectors/chroma"
+  collection_name: "internship_agent"
+
+# 数据库迁移配置
+alembic:
+  script_location: "alembic"
+  version_table: "alembic_versions"
+  file_template: "%%(year)d%%(month).2d%%(day).2d_%%(rev)s_%%(slug)s"

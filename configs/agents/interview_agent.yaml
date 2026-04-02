@@ -1,0 +1,11 @@
+# Interview Agent configuration
+
+name: "interview_agent"
+description: "Responsible for generating interview questions and evaluating answers."
+enabled: true
+
+llm:
+  provider: "openai"
+  model: "gpt-4"
+  temperature: 0.5
+  max_tokens: 1200
