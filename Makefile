@@ -1,4 +1,4 @@
-.PHONY: help install install-dev format lint test test-unit test-integration test-e2e run dev migrate seed-demo compose-up compose-down clean
+.PHONY: help install install-dev format lint test test-unit test-integration test-e2e test-smoke test-release run dev migrate seed-demo compose-up compose-down clean
 
 PYTHON ?= python
 PYTEST ?= $(PYTHON) -m pytest
@@ -16,6 +16,8 @@ help:
 	@echo "  make test-unit          Run unit tests only"
 	@echo "  make test-integration   Run integration tests only"
 	@echo "  make test-e2e           Run end-to-end tests only"
+	@echo "  make test-smoke         Run quick smoke tests (health, ready, demo chain)"
+	@echo "  make test-release       Run release readiness verification tests"
 	@echo "  make run                Run the FastAPI app"
 	@echo "  make dev                Run the FastAPI app with reload"
 	@echo "  make migrate            Run Alembic migrations to head"
@@ -51,6 +53,12 @@ test-integration:
 
 test-e2e:
 	$(PYTEST) tests/e2e
+
+test-smoke:
+	$(PYTEST) tests/integration/api/test_system_api.py tests/e2e/test_demo_chain.py --no-cov -q
+
+test-release:
+	$(PYTEST) tests/integration/api/test_system_api.py tests/integration/api/test_resume_api.py tests/integration/api/test_interview_api.py tests/integration/api/test_jobs_api.py tests/integration/api/test_tracker_api.py tests/e2e/test_user_flow.py tests/e2e/test_demo_chain.py --no-cov -q
 
 run:
 	$(PYTHON) src/main.py

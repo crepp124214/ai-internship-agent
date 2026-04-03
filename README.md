@@ -1,115 +1,125 @@
-# AI Internship Job Search Agent System
+# AI 实习求职 Agent 系统
 
-This repository is a full-stack demo workspace for an AI-assisted internship job search product. It combines a FastAPI backend, a React frontend, and four connected product flows: Resume, Jobs, Interview, and Tracker.
+围绕实习求职流程的 Python 后端 + React 前端项目，目标是可运行、可演示、可验证、可维护。
 
-## What This Repo Includes
-
-- FastAPI backend APIs
-- React + Vite frontend workspace
-- Resume / Jobs / Interview / Tracker demo flows
-- Local migrations, demo seeds, and release scripts
-
-## Current Status
-
-The project is in a demo-ready engineering stage. Wave 1 through Wave 7 are complete, and the current focus is Wave 8 stabilization and release hardening.
-
-## Quick Start
-
-### 1. Install dependencies
-
-Backend:
+## 快速开始
 
 ```bash
-python -m pip install -r requirements.txt
-python -m pip install -r requirements-dev.txt
-```
-
-Frontend:
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-### 2. Prepare environment files
-
-```bash
+# 后端
 cp .env.example .env
 cp frontend/.env.example frontend/.env
-```
-
-Recommended local values:
-
-- `DATABASE_URL=sqlite:///./data/app.db`
-- `LLM_PROVIDER=mock`
-- `VITE_API_BASE_URL=http://127.0.0.1:8000`
-
-### 3. Run migrations and seed demo data
-
-```bash
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 python scripts/migrate.py
 python scripts/seed_demo.py
-```
-
-Demo account:
-
-- Username: `demo`
-- Password: `demo123`
-
-### 4. Start the backend
-
-```bash
 make dev
-```
 
-### 5. Start the frontend
-
-```bash
+# 前端（新终端）
 cd frontend
+npm install
 npm run dev
 ```
 
-## Demo Flow
+后端默认 `http://127.0.0.1:8000`，前端默认 `http://127.0.0.1:5173`。
 
-Recommended walkthrough order:
+演示账号：`demo / demo123`
 
-1. Login
-2. Dashboard
-3. Resume
-4. Jobs
-5. Interview
-6. Tracker
+## 产品
 
-## Docker Compose Demo Path
+围绕四条业务线提供 AI 辅助能力：
 
-The official release-style demo path uses Docker Compose with [`docker/docker-compose.yml`](/D:/agent开发项目/AI实习求职Agent系统/ai-worktrees/project-repair/docker/docker-compose.yml). This is the supported bundled stack for the current release workflow.
+| 页面 | 能力 |
+|---|---|
+| `/resume` | 简历管理、AI 摘要、优化建议、历史记录 |
+| `/jobs` | 岗位管理、匹配评估、历史记录 |
+| `/interview` | 面试题生成、回答评估、记录 |
+| `/tracker` | 投递追踪、下一步建议、历史记录 |
 
-## Common Commands
+所有"建议类能力"都区分**即时预览**与**持久化**。
 
-```bash
-make test
-make test-unit
-make test-integration
-make test-e2e
-make test-smoke
-make test-release
+## 架构
+
+三层架构 + 公共核心层：
+
+```text
+src/
+├── presentation/    # 路由、Schema、依赖注入、异常转换
+├── business_logic/  # 业务服务、流程编排、领域逻辑
+├── data_access/     # 实体、Repository、持久化访问
+└── core/            # LLM、Agent、tools、memory 等跨层能力
 ```
 
-Frontend:
+依赖方向：`presentation -> business_logic -> data_access`，`core` 作为共享层。
+
+禁止：API 直接访问 ORM/Repository、数据层反向依赖上层、在路由层堆积业务逻辑。
+
+## API 文档
+
+启动后端后自动生成：
+
+- Swagger UI：`http://127.0.0.1:8000/docs`
+- ReDoc：`http://127.0.0.1:8000/redoc`
+
+常用接口：
+
+- 用户：`POST /api/v1/users/`、`POST /api/v1/users/login/`、`GET /api/v1/users/me`
+- 简历：`POST /api/v1/resumes/`、`PUT /api/v1/resumes/{id}`、`POST /api/v1/resumes/{id}/summary/`、`POST /api/v1/resumes/{id}/improvements/`
+- 岗位：`POST /api/v1/jobs/`、`GET /api/v1/jobs/`、`POST /api/v1/jobs/{id}/match/`
+- 面试：`POST /api/v1/interview/questions/generate/`、`POST /api/v1/interview/answers/evaluate/`
+- 追踪：`POST /api/v1/tracker/applications/`、`POST /api/v1/tracker/applications/{id}/advice/`
+- 系统：`GET /health`、`GET /ready`
+
+## 测试
 
 ```bash
-cd frontend
-npm run build
-npm test
+make test              # 全量测试
+make test-unit         # 单元测试
+make test-integration  # 集成测试
+make test-e2e          # 端到端测试
+make test-smoke        # 快速冒烟测试
+make test-release      # 发布就绪验证
 ```
 
-## Documentation
+Windows 无 `make`：`scripts\run_tests.bat smoke`
 
-- Project rules: `AGENTS.md`
-- Team workflow: `AGENT_TEAM.md`
-- Long-term memory: `PROJECT_MEMORY.md`
-- Stage plan: `.sisyphus/plans/PLAN.md`
-- Decision log: `docs/decisions/README.md`
-- Deployment guide: `docs/deployment.md`
-- Demo walkthrough: `docs/demo-walkthrough.md`
+## 部署
+
+```bash
+# Docker Compose
+cp .env.example .env
+make compose-up
+
+# 等价
+docker compose -f docker/docker-compose.yml up --build
+```
+
+发布前检查：
+
+- `.env` 基于 `.env.example`，`SECRET_KEY` 非占位值
+- `LLM_PROVIDER` 是有意选择，使用真实 provider 时 API Key 已配置
+- `CORS_ORIGINS` 与目标前端域名一致
+- `GET /health` 和 `GET /ready` 返回 200
+- `make test-smoke` 和 `make test-release` 通过
+
+## 演示走查
+
+1. 登录（`demo / demo123`）
+2. Dashboard → 查看当前进展
+3. Resume → 创建/更新/生成摘要
+4. Jobs → 浏览岗位/匹配评估
+5. Interview → 生成题目/评估回答
+6. Tracker → 跟踪投递/生成建议
+
+最小验收：`/health = 200`、`/ready = 200`、登录后受保护路径可访问。
+
+## 提交前检查
+
+- 改动是否遵守三层边界
+- 是否补了必要测试
+- 是否更新了阶段文档
+
+## 其他文件
+
+- 项目规则与团队：[AGENTS.md](./AGENTS.md)
+- 阶段计划：[.sisyphus/plans/PLAN.md](./.sisyphus/plans/PLAN.md)
+- 内部工作区：[docs/internal/](./docs/internal/)（设计稿、Agent 提示词、决策记录）

@@ -55,11 +55,14 @@ data/vectors/*
 
 # Logs
 *.log
+*.err.log
+*.out.log
 logs/
 
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # Jupyter Notebook
