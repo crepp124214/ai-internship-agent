@@ -102,7 +102,7 @@ describe('TrackerPage', () => {
         file_size: 128,
         processed_content: null,
         resume_text: null,
-        language: 'zh',
+        language: 'en',
         is_default: false,
         created_at: '2026-04-02T00:00:00Z',
         updated_at: '2026-04-02T00:00:00Z',
@@ -135,14 +135,14 @@ describe('TrackerPage', () => {
     renderTrackerPage()
 
     await user.upload(
-      screen.getByLabelText(/本地说明文件/),
+      screen.getByLabelText(/Local note file/),
       new File(
         [
           JSON.stringify({
             job_id: 7,
             resume_id: 4,
             status: 'screening',
-            notes: '等待 HR 约面，已完成投递说明导入。',
+            notes: 'Waiting for recruiter follow-up after the application review.',
           }),
         ],
         'tracker-note.json',
@@ -150,13 +150,13 @@ describe('TrackerPage', () => {
       ),
     )
 
-    await waitFor(() => expect(screen.getByLabelText('岗位')).toHaveValue('7'))
-    expect(screen.getByLabelText('简历')).toHaveValue('4')
-    expect(screen.getByLabelText('当前阶段')).toHaveValue('screening')
-    expect(screen.getByLabelText('备注')).toHaveValue('等待 HR 约面，已完成投递说明导入。')
-    expect(screen.getByText('已导入 tracker-note.json，表单已回填。')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Job')).toHaveValue('7'))
+    expect(screen.getByLabelText('Resume')).toHaveValue('4')
+    expect(screen.getByLabelText('Current status')).toHaveValue('screening')
+    expect(screen.getByLabelText('Notes')).toHaveValue('Waiting for recruiter follow-up after the application review.')
+    expect(screen.getByText('Imported tracker-note.json. The tracker form was updated.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '创建投递记录' }))
+    await user.click(screen.getByRole('button', { name: 'Create application record' }))
 
     await waitFor(() =>
       expect(mockedTrackerApi.createApplication).toHaveBeenCalledWith(
@@ -164,11 +164,11 @@ describe('TrackerPage', () => {
           job_id: 7,
           resume_id: 4,
           status: 'screening',
-          notes: '等待 HR 约面，已完成投递说明导入。',
+          notes: 'Waiting for recruiter follow-up after the application review.',
         }),
       ),
     )
 
-    expect(screen.getByText('投递记录已创建，接下来可以预览对应的 AI 建议。')).toBeInTheDocument()
+    expect(screen.getByText('Application record created. You can now preview or save AI guidance.')).toBeInTheDocument()
   })
 })

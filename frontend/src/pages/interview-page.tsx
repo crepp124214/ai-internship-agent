@@ -16,7 +16,7 @@ import {
 } from './page-primitives'
 
 function formatEvaluationPreview(score: number, feedback: string) {
-  return `评分：${score}\n\n${feedback}`
+  return `Score: ${score}\n\n${feedback}`
 }
 
 const CONTEXT_JSON_KEYS = [
@@ -75,14 +75,14 @@ function collectContextStrings(value: unknown, depth = 0): string[] {
 function extractImportedContext(fileName: string, mimeType: string, rawContent: string) {
   const trimmedContent = rawContent.trim()
   if (!trimmedContent) {
-    throw new Error('文件内容为空，请选择包含岗位上下文的文本或 JSON 文件。')
+    throw new Error('The file is empty. Choose a text or JSON file with job context.')
   }
 
   const isJsonFile = fileName.toLowerCase().endsWith('.json') || mimeType.includes('json')
   if (!isJsonFile) {
     return {
       content: trimmedContent,
-      message: `已导入 ${fileName}，岗位上下文已回填。`,
+      message: `Imported ${fileName}. The job context field was updated.`,
     }
   }
 
@@ -93,18 +93,18 @@ function extractImportedContext(fileName: string, mimeType: string, rawContent: 
     if (content) {
       return {
         content,
-        message: `已导入 ${fileName}，已从 JSON 中提取岗位上下文。`,
+        message: `Imported ${fileName}. Extracted structured context from JSON.`,
       }
     }
 
     return {
       content: trimmedContent,
-      message: `已导入 ${fileName}，JSON 中未找到明确字段，已按原文回填。`,
+      message: `Imported ${fileName}. No obvious fields were found, so the raw JSON text was used.`,
     }
   } catch {
     return {
       content: trimmedContent,
-      message: `已导入 ${fileName}，JSON 解析失败，已按纯文本回填。`,
+      message: `Imported ${fileName}. JSON parsing failed, so the raw text was used instead.`,
     }
   }
 }
@@ -119,7 +119,9 @@ export function InterviewPage() {
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
   const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(null)
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null)
-  const [jobContext, setJobContext] = useState('后端工程师实习岗位，关注 FastAPI、异步接口、清晰架构和可维护的业务边界。')
+  const [jobContext, setJobContext] = useState(
+    'Backend engineering internship focused on FastAPI, async APIs, clear architecture, and maintainable service boundaries.',
+  )
   const [answerText, setAnswerText] = useState('')
   const [questionCount, setQuestionCount] = useState(5)
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedInterviewQuestion[]>([])
@@ -152,7 +154,7 @@ export function InterviewPage() {
     }
 
     setContextImportState('loading')
-    setContextImportMessage(`正在导入 ${file.name} ...`)
+    setContextImportMessage(`Importing ${file.name}...`)
 
     try {
       const rawContent = await file.text()
@@ -162,7 +164,7 @@ export function InterviewPage() {
       setContextImportMessage(importedContext.message)
     } catch (error) {
       setContextImportState('error')
-      setContextImportMessage(error instanceof Error ? error.message : '导入失败，请重试。')
+      setContextImportMessage(error instanceof Error ? error.message : 'Import failed. Please try again.')
     } finally {
       input.value = ''
     }
@@ -177,7 +179,7 @@ export function InterviewPage() {
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['interview', 'sessions'] })
-      setFeedback('面试会话已创建，后续题目和记录都可以归入这条链路。')
+      setFeedback('Interview session created. Future questions and records can now be tied back to it.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -200,7 +202,7 @@ export function InterviewPage() {
   const saveGeneratedQuestionMutation = useMutation({
     mutationFn: () => {
       if (!selectedGeneratedQuestion) {
-        throw new Error('请先生成题目，再从中选择一道进行保存。')
+        throw new Error('Generate questions first, then choose one to save.')
       }
 
       return interviewApi.createQuestion({
@@ -213,7 +215,7 @@ export function InterviewPage() {
     onSuccess: async (question) => {
       await queryClient.invalidateQueries({ queryKey: ['interview', 'questions'] })
       setSelectedQuestionId(question.id)
-      setFeedback(`生成题目已保存到题库（#${question.id}），现在可以直接用于后续记录。`)
+      setFeedback(`Generated question saved to the question bank (#${question.id}).`)
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -240,7 +242,7 @@ export function InterviewPage() {
     onSuccess: async (record) => {
       await queryClient.invalidateQueries({ queryKey: ['interview', 'records'] })
       setSelectedRecordId(record.id)
-      setFeedback(`面试记录 #${record.id} 已创建，可以继续保存评估结果。`)
+      setFeedback(`Interview record #${record.id} created. You can now save the evaluation result.`)
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -250,7 +252,7 @@ export function InterviewPage() {
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['interview', 'records'] })
       setRecordResult(formatEvaluationPreview(data.score, `${data.feedback}\n\n${data.ai_evaluation}`))
-      setFeedback('面试记录评估结果已保存。')
+      setFeedback('Interview record evaluation saved.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -258,17 +260,20 @@ export function InterviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="面试准备工作区"
-        title="把题目、回答和评分串成一条可演示的面试链路"
-        description="在这里生成面试题、预览回答评分、保存题目与记录，并随时回看历史结果。"
+        eyebrow="Interview Prep Workspace"
+        title="Connect generated questions, answers, and evaluations in one review loop"
+        description="Generate interview questions, preview answer scoring, save questions, and keep evaluation history visible."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <SectionCard title="生成面试题" subtitle="基于岗位上下文和已选简历，快速生成一组用于演示的面试题目。">
+        <SectionCard
+          title="Generate Questions"
+          subtitle="Use job context and the selected resume to create a realistic set of demo interview questions."
+        >
           <div className="space-y-4">
             <FormField
-              label="导入本地上下文"
-              helper="支持 txt、md、json。导入后会自动回填到岗位上下文。"
+              label="Import local context"
+              helper="Supports txt, md, and json. The imported content will refill the job context field."
             >
               <Input
                 type="file"
@@ -287,81 +292,93 @@ export function InterviewPage() {
                 {contextImportMessage}
               </div>
             ) : null}
-            <FormField label="岗位上下文" helper="建议写出岗位方向、技术栈、团队关注点或业务背景，让题目更贴近目标岗位。">
+            <FormField
+              label="Job context"
+              helper="Include role direction, stack, team expectations, or business context so the generated questions stay grounded."
+            >
               <Textarea value={jobContext} onChange={(event) => setJobContext(event.target.value)} className="min-h-40" />
             </FormField>
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="简历">
+              <FormField label="Resume">
                 <Select value={selectedResumeId ?? ''} onChange={(event) => setSelectedResumeId(Number(event.target.value))}>
                   {resumesQuery.data?.map((resume) => (
                     <option key={resume.id} value={resume.id}>
-                      #{resume.id} · {resume.title}
+                      #{resume.id} - {resume.title}
                     </option>
                   ))}
                 </Select>
               </FormField>
-              <FormField label="题目数量">
+              <FormField label="Question count">
                 <Input type="number" min={1} max={20} value={questionCount} onChange={(event) => setQuestionCount(Number(event.target.value))} />
               </FormField>
             </div>
             <div className="flex flex-wrap gap-3">
               <PrimaryButton type="button" onClick={() => generateQuestionsMutation.mutate()}>
-                生成题目
+                Generate questions
               </PrimaryButton>
               <SecondaryButton type="button" onClick={() => createSessionMutation.mutate()}>
-                创建面试会话
+                Create interview session
               </SecondaryButton>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard title="作答评估" subtitle="先选题，再输入回答，即可预览评分并把最终结果沉淀为记录。">
+        <SectionCard
+          title="Evaluate an Answer"
+          subtitle="Choose a question, write an answer, preview the score, then save the final record."
+        >
           <div className="space-y-4">
             {generatedQuestions.length ? (
-              <FormField label="选择要保存的题目" helper="生成结果只用于预览，保存后才会进入题库并可用于记录。">
+              <FormField
+                label="Choose a generated question"
+                helper="Generated results are preview-only until you save one into the question bank."
+              >
                 <div className="flex flex-col gap-3 md:flex-row">
                   <Select value={selectedGeneratedQuestionIndex} onChange={(event) => setSelectedGeneratedQuestionIndex(Number(event.target.value))}>
                     {generatedQuestions.map((question, index) => (
                       <option key={`${question.question_number}-${question.question_text}`} value={index}>
-                        Q{question.question_number} · {question.question_text.slice(0, 60)}
+                        Q{question.question_number} - {question.question_text.slice(0, 60)}
                       </option>
                     ))}
                   </Select>
                   <SecondaryButton type="button" onClick={() => saveGeneratedQuestionMutation.mutate()}>
-                    保存生成题目
+                    Save generated question
                   </SecondaryButton>
                 </div>
               </FormField>
             ) : null}
 
-            <FormField label="题库题目">
+            <FormField label="Question bank item">
               <Select value={selectedQuestionId ?? ''} onChange={(event) => setSelectedQuestionId(Number(event.target.value))}>
                 {questionsQuery.data?.map((question) => (
                   <option key={question.id} value={question.id}>
-                    #{question.id} · {question.question_text.slice(0, 60)}
+                    #{question.id} - {question.question_text.slice(0, 60)}
                   </option>
                 ))}
               </Select>
             </FormField>
-            <FormField label="你的回答" helper="输入一段完整回答，系统会基于岗位上下文给出评分和反馈。">
+            <FormField
+              label="Your answer"
+              helper="Write a complete answer. The evaluator uses the same job context shown on this page."
+            >
               <Textarea value={answerText} onChange={(event) => setAnswerText(event.target.value)} className="min-h-40" />
             </FormField>
             <div className="flex flex-wrap gap-3">
               <SecondaryButton type="button" onClick={() => previewAnswerMutation.mutate()} disabled={!answerText.trim()}>
-                预览作答评分
+                Preview answer score
               </SecondaryButton>
               <SecondaryButton type="button" onClick={() => createRecordMutation.mutate()} disabled={!selectedQuestionId || !answerText.trim()}>
-                创建面试记录
+                Create interview record
               </SecondaryButton>
               <PrimaryButton type="button" onClick={() => evaluateRecordMutation.mutate()} disabled={!selectedRecordId}>
-                保存记录评估
+                Save record evaluation
               </PrimaryButton>
             </div>
-            <FormField label="待评估记录">
+            <FormField label="Record to evaluate">
               <Select value={selectedRecordId ?? ''} onChange={(event) => setSelectedRecordId(Number(event.target.value))}>
                 {recordsQuery.data?.map((record) => (
                   <option key={record.id} value={record.id}>
-                    记录 #{record.id} · 题目 {record.question_id}
+                    Record #{record.id} - Question {record.question_id}
                   </option>
                 ))}
               </Select>
@@ -376,68 +393,68 @@ export function InterviewPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <SectionCard title="题目结果" subtitle="展示最近一次生成的面试题，方便挑选、保存或二次演示。">
+        <SectionCard title="Generated Questions" subtitle="The latest generated set stays here for review and saving.">
           <div className="space-y-4">
             {generatedQuestions.length ? (
               generatedQuestions.map((question) => (
                 <ResultPanel
                   key={`${question.question_number}-${question.question_text}`}
-                  label={`题目 ${question.question_number}`}
+                  label={`Question ${question.question_number}`}
                   content={question.question_text}
-                  meta={`${question.question_type} · ${question.difficulty}`}
+                  meta={`${question.question_type} - ${question.difficulty}`}
                 />
               ))
             ) : (
-              <EmptyHint>先生成一组题目，这里才会出现可保存的候选项。</EmptyHint>
+              <EmptyHint>Generate a question set first to populate this panel.</EmptyHint>
             )}
           </div>
         </SectionCard>
-        <SectionCard title="作答预览" subtitle="直接查看回答在当前岗位上下文下的即时评分与反馈。">
+        <SectionCard title="Answer Preview" subtitle="See the instant score and feedback before you persist a record.">
           {answerPreview ? (
-            <ResultPanel label="预览结果" content={answerPreview} />
+            <ResultPanel label="Preview result" content={answerPreview} />
           ) : (
-            <EmptyHint>输入回答后点击“预览作答评分”，即可查看即时反馈。</EmptyHint>
+            <EmptyHint>Write an answer and preview the score to see instant feedback.</EmptyHint>
           )}
         </SectionCard>
-        <SectionCard title="记录结果" subtitle="已经持久化的面试记录与评分会在这里持续可见。">
+        <SectionCard title="Record Result" subtitle="Saved interview evaluations remain visible here for follow-up review.">
           {recordResult ? (
-            <ResultPanel label="记录评估" content={recordResult} />
+            <ResultPanel label="Saved evaluation" content={recordResult} />
           ) : (
-            <EmptyHint>先创建面试记录，再保存评估结果，这里会展示最终结论。</EmptyHint>
+            <EmptyHint>Create a record first, then save the evaluation result to see the final output here.</EmptyHint>
           )}
         </SectionCard>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="会话" subtitle="当前用户已经创建的面试会话，按时间顺序展示。">
+        <SectionCard title="Sessions" subtitle="Interview sessions created by the current user, shown in time order.">
           <div className="space-y-4">
             {sessionsQuery.data?.length ? (
               sessionsQuery.data.map((session) => (
                 <ResultPanel
                   key={session.id}
-                  label={`会话 #${session.id}`}
-                  content={`类型：${session.session_type}\n题目数：${session.total_questions ?? 0}\n完成数：${session.completed ?? 0}`}
-                  meta={`创建时间 ${session.created_at}`}
+                  label={`Session #${session.id}`}
+                  content={`Type: ${session.session_type}\nQuestions: ${session.total_questions ?? 0}\nCompleted: ${session.completed ?? 0}`}
+                  meta={`Created at ${session.created_at}`}
                 />
               ))
             ) : (
-              <EmptyHint>暂时还没有面试会话。先创建一个会话，再把题目和记录串起来。</EmptyHint>
+              <EmptyHint>No interview sessions yet. Create one first to connect questions and records.</EmptyHint>
             )}
           </div>
         </SectionCard>
-        <SectionCard title="记录" subtitle="记录是作答评估的持久化来源，适合回看与追踪。">
+        <SectionCard title="Records" subtitle="Records are the persisted source of truth for answer evaluation.">
           <div className="space-y-4">
             {recordsQuery.data?.length ? (
               recordsQuery.data.map((record) => (
                 <ResultPanel
                   key={record.id}
-                  label={`记录 #${record.id}`}
+                  label={`Record #${record.id}`}
                   content={record.ai_evaluation || record.user_answer}
-                  meta={`评分 ${record.score ?? '暂无'} · ${record.created_at}`}
+                  meta={`Score ${record.score ?? 'N/A'} - ${record.created_at}`}
                 />
               ))
             ) : (
-              <EmptyHint>暂时还没有面试记录。先创建并保存一次回答，这里就会出现追踪痕迹。</EmptyHint>
+              <EmptyHint>No interview records yet. Save an answer first to build a traceable history.</EmptyHint>
             )}
           </div>
         </SectionCard>

@@ -43,7 +43,7 @@ function deriveJobTitleFromFileName(fileName: string) {
   const baseName = fileName.replace(/\.[^.]+$/, '')
   const normalized = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
 
-  return normalized || '导入岗位'
+  return normalized || 'Imported job'
 }
 
 async function readFileText(file: File) {
@@ -58,7 +58,7 @@ async function readFileText(file: File) {
       resolve(typeof reader.result === 'string' ? reader.result : '')
     }
     reader.onerror = () => {
-      reject(reader.error ?? new Error('无法读取文件'))
+      reject(reader.error ?? new Error('Failed to read file'))
     }
     reader.readAsText(file)
   })
@@ -153,7 +153,7 @@ export function JobsPage() {
     onSuccess: async (job) => {
       await queryClient.invalidateQueries({ queryKey: ['jobs', 'list'] })
       setSelectedJobId(job.id)
-      setFeedback('岗位创建成功。')
+      setFeedback('Job created successfully.')
       setJobForm(initialJobForm)
     },
     onError: (error) => setFeedback(readApiError(error)),
@@ -162,7 +162,7 @@ export function JobsPage() {
   const matchPreviewMutation = useMutation({
     mutationFn: () => jobsApi.previewMatch(selectedJobId!, { resume_id: selectedResumeId! }),
     onSuccess: (data) => {
-      setMatchPreview(`评分 ${data.score}\n\n${data.feedback}`)
+      setMatchPreview(`Score ${data.score}\n\n${data.feedback}`)
       setFeedback(null)
     },
     onError: (error) => setFeedback(readApiError(error)),
@@ -172,8 +172,8 @@ export function JobsPage() {
     mutationFn: () => jobsApi.persistMatch(selectedJobId!, { resume_id: selectedResumeId! }),
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['jobs', 'match-history', selectedJobId] })
-      setMatchPreview(`评分 ${data.score}\n\n${data.feedback}`)
-      setFeedback('岗位匹配结果已保存到历史记录。')
+      setMatchPreview(`Score ${data.score}\n\n${data.feedback}`)
+      setFeedback('Match result saved to history.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -205,13 +205,13 @@ export function JobsPage() {
       }))
       setImportStatus({
         kind: 'success',
-        message: `已导入 ${file.name}，标题和描述已回填到表单。`,
+        message: `Imported ${file.name}. The title and description were copied into the form.`,
       })
       setFeedback(null)
     } catch {
       setImportStatus({
         kind: 'error',
-        message: '文件读取失败，请选择有效的 txt、md 或 json 文本文件。',
+        message: 'File import failed. Choose a valid txt, md, or json text file.',
       })
     }
   }
@@ -219,17 +219,20 @@ export function JobsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="岗位匹配工作区"
-        title="把目标岗位和当前简历放到同一张工作台上"
-        description="在这里录入岗位、选择简历、预览匹配结果并保存历史，完成一条清晰的演示链路。"
+        eyebrow="Job Matching Workspace"
+        title="Keep target roles and resume evidence on the same desk"
+        description="Capture a job, choose a resume, preview the match, and save the result into history."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-        <SectionCard title="创建岗位" subtitle="先录入岗位信息，构建一套可复用的演示数据。">
+        <SectionCard
+          title="Create a Job"
+          subtitle="Build a reusable set of demo job records before you compare them with resumes."
+        >
           <div className="space-y-4">
             <FormField
-              label="导入本地岗位文件"
-              helper="支持 txt、md、json。上传后会自动读取文本，并尽量回填标题和描述。"
+              label="Import a local job file"
+              helper="Supports txt, md, and json. The file is read in the browser and used to prefill the form."
             >
               <Input
                 type="file"
@@ -248,14 +251,14 @@ export function JobsPage() {
                 {importStatus.message}
               </div>
             ) : null}
-            <FormField label="岗位名称">
+            <FormField label="Job title">
               <Input
                 value={jobForm.title}
                 onChange={(event) => setJobForm((value) => ({ ...value, title: event.target.value }))}
               />
             </FormField>
             <div className="grid gap-4 md:grid-cols-2">
-              <FormField label="公司">
+              <FormField label="Company">
                 <Input
                   value={jobForm.company}
                   onChange={(event) =>
@@ -263,7 +266,7 @@ export function JobsPage() {
                   }
                 />
               </FormField>
-              <FormField label="城市 / 地点">
+              <FormField label="Location">
                 <Input
                   value={jobForm.location}
                   onChange={(event) =>
@@ -272,7 +275,7 @@ export function JobsPage() {
                 />
               </FormField>
             </div>
-            <FormField label="岗位描述">
+            <FormField label="Description">
               <Textarea
                 value={jobForm.description}
                 onChange={(event) =>
@@ -280,7 +283,7 @@ export function JobsPage() {
                 }
               />
             </FormField>
-            <FormField label="岗位要求">
+            <FormField label="Requirements">
               <Textarea
                 value={jobForm.requirements}
                 onChange={(event) =>
@@ -298,27 +301,30 @@ export function JobsPage() {
                 !jobForm.description.trim()
               }
             >
-              创建岗位
+              Create job
             </PrimaryButton>
           </div>
         </SectionCard>
 
-        <SectionCard title="匹配操作" subtitle="选定岗位和简历后，先预览，再决定是否把结果保存到历史。">
+        <SectionCard
+          title="Run a Match"
+          subtitle="Pick a job and a resume, preview the result, then decide whether to save it."
+        >
           <div className="grid gap-4 md:grid-cols-2">
-            <FormField label="岗位">
+            <FormField label="Job">
               <Select value={selectedJobId ?? ''} onChange={(event) => setSelectedJobId(Number(event.target.value))}>
                 {jobsQuery.data?.map((job) => (
                   <option key={job.id} value={job.id}>
-                    #{job.id} · {job.title}（{job.company}）
+                    #{job.id} - {job.title} ({job.company})
                   </option>
                 ))}
               </Select>
             </FormField>
-            <FormField label="简历">
+            <FormField label="Resume">
               <Select value={selectedResumeId ?? ''} onChange={(event) => setSelectedResumeId(Number(event.target.value))}>
                 {resumesQuery.data?.map((resume) => (
                   <option key={resume.id} value={resume.id}>
-                    #{resume.id} · {resume.title}
+                    #{resume.id} - {resume.title}
                   </option>
                 ))}
               </Select>
@@ -329,12 +335,12 @@ export function JobsPage() {
             <div className="mt-4 rounded-[24px] border border-[var(--color-stroke)] bg-[var(--color-panel)] p-5">
               <p className="text-base font-semibold text-[var(--color-ink)]">{selectedJob.title}</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">
-                {selectedJob.company} · {selectedJob.location}
+                {selectedJob.company} - {selectedJob.location}
               </p>
               <p className="mt-4 text-sm leading-7 text-[var(--color-ink)]">{selectedJob.description}</p>
             </div>
           ) : (
-            <EmptyHint>请先创建岗位，再进行匹配。</EmptyHint>
+            <EmptyHint>Create a job first before you run a match.</EmptyHint>
           )}
 
           <div className="mt-5 flex flex-wrap gap-3">
@@ -343,14 +349,14 @@ export function JobsPage() {
               onClick={() => matchPreviewMutation.mutate()}
               disabled={!selectedJobId || !selectedResumeId}
             >
-              预览匹配
+              Preview match
             </SecondaryButton>
             <PrimaryButton
               type="button"
               onClick={() => persistMatchMutation.mutate()}
               disabled={!selectedJobId || !selectedResumeId}
             >
-              保存匹配记录
+              Save match history
             </PrimaryButton>
           </div>
           {feedback ? (
@@ -362,26 +368,26 @@ export function JobsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="当前匹配结果" subtitle="预览使用同一套后端能力，但不会写入历史记录。">
+        <SectionCard title="Latest Match Result" subtitle="Preview uses the same backend capability without writing history.">
           {matchPreview ? (
-            <ResultPanel label="匹配结果预览" content={matchPreview} />
+            <ResultPanel label="Match preview" content={matchPreview} />
           ) : (
-            <EmptyHint>先预览或保存一次匹配结果，这里才会显示内容。</EmptyHint>
+            <EmptyHint>Preview or save a match result to see output here.</EmptyHint>
           )}
         </SectionCard>
-        <SectionCard title="匹配历史" subtitle="保存过的结果会与当前岗位持续关联，方便回看。">
+        <SectionCard title="Match History" subtitle="Saved results stay attached to the current job for later review.">
           <div className="space-y-4">
             {matchHistoryQuery.data?.length ? (
               matchHistoryQuery.data.map((item) => (
                 <ResultPanel
                   key={item.id}
-                  label={`匹配 #${item.id}`}
-                  content={`评分 ${item.score}\n\n${item.feedback}`}
+                  label={`Match #${item.id}`}
+                  content={`Score ${item.score}\n\n${item.feedback}`}
                   meta={item.created_at}
                 />
               ))
             ) : (
-              <EmptyHint>暂时还没有匹配历史。</EmptyHint>
+              <EmptyHint>No saved match history yet.</EmptyHint>
             )}
           </div>
         </SectionCard>

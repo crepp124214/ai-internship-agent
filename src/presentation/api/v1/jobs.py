@@ -32,11 +32,11 @@ def _result_value(result, key: str):
 async def create_job(job_data: JobCreate, db: Session = Depends(get_db)):
     try:
         return await job_service.create_job(db, job_data)
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"创建岗位失败: {str(e)}",
-        ) from e
+            detail="Create job failed",
+        ) from exc
 
 
 @router.get("/{job_id}", response_model=Job)
@@ -45,7 +45,7 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="岗位不存在",
+            detail="Job not found",
         )
     return job
 
@@ -61,16 +61,16 @@ async def update_job(
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="岗位不存在",
+                detail="Job not found",
             )
         return job
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"更新岗位失败: {str(e)}",
-        ) from e
+            detail="Update job failed",
+        ) from exc
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -80,15 +80,15 @@ async def delete_job(job_id: int, db: Session = Depends(get_db)):
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="岗位不存在",
+                detail="Job not found",
             )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"删除岗位失败: {str(e)}",
-        ) from e
+            detail="Delete job failed",
+        ) from exc
 
 
 @router.get("/", response_model=list[Job])
@@ -124,15 +124,15 @@ async def match_job_to_resume(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "job not found": "job not found",
-                "resume not found": "resume not found",
+                "job not found": "Job not found",
+                "resume not found": "Resume not found",
             },
             bad_request={"resume text is empty"},
         )
     except HTTPException:
         raise
-    except Exception as exc:
-        raise_ai_internal_error(f"Job match failed: {str(exc)}")
+    except Exception:
+        raise_ai_internal_error("Job match failed")
 
 
 @router.post("/{job_id}/match/persist/", response_model=JobMatchRecord)
@@ -153,15 +153,15 @@ async def persist_job_match(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "job not found": "job not found",
-                "resume not found": "resume not found",
+                "job not found": "Job not found",
+                "resume not found": "Resume not found",
             },
             bad_request={"resume text is empty"},
         )
     except HTTPException:
         raise
-    except Exception as exc:
-        raise_ai_internal_error(f"Job match persistence failed: {str(exc)}")
+    except Exception:
+        raise_ai_internal_error("Job match persistence failed")
 
 
 @router.get("/{job_id}/match-history/", response_model=list[JobMatchRecord])
@@ -175,12 +175,12 @@ async def list_job_match_history(
     except ValueError as exc:
         raise_ai_value_error(
             str(exc),
-            not_found={"job not found": "job not found"},
+            not_found={"job not found": "Job not found"},
         )
     except HTTPException:
         raise
-    except Exception as exc:
-        raise_ai_internal_error(f"List job match history failed: {str(exc)}")
+    except Exception:
+        raise_ai_internal_error("List job match history failed")
 
 
 @router.get("/search/", response_model=list[Job])

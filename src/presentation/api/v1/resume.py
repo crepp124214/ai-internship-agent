@@ -30,10 +30,10 @@ async def create_resume(
         return await resume_service.create_resume(db, current_user, resume_data)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Create resume failed: {str(e)}",
+            detail="Create resume failed",
         )
 
 
@@ -74,10 +74,10 @@ async def update_resume(
         return resume
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Update resume failed: {str(e)}",
+            detail="Update resume failed",
         )
 
 
@@ -96,10 +96,10 @@ async def delete_resume(
             )
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete resume failed: {str(e)}",
+            detail="Delete resume failed",
         )
 
 

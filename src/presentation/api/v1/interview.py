@@ -35,7 +35,7 @@ async def create_question(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Create interview question failed: {exc}",
+            detail="Create interview question failed",
         ) from exc
 
 
@@ -69,7 +69,7 @@ async def update_question(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Update interview question failed: {exc}",
+            detail="Update interview question failed",
         ) from exc
 
 
@@ -87,7 +87,7 @@ async def delete_question(question_id: int, db: Session = Depends(get_db)):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete interview question failed: {exc}",
+            detail="Delete interview question failed",
         ) from exc
 
 
@@ -123,10 +123,10 @@ async def generate_questions(
     except ValueError as exc:
         raise_ai_value_error(
             str(exc),
-            not_found={"resume not found": "resume not found"},
+            not_found={"resume not found": "Resume not found"},
         )
-    except Exception as exc:
-        raise_ai_internal_error(f"Generate interview questions failed: {exc}")
+    except Exception:
+        raise_ai_internal_error("Generate interview questions failed")
 
 
 @router.post("/answers/evaluate/", response_model=InterviewAnswerEvaluationResponse)
@@ -142,8 +142,8 @@ async def evaluate_answer(
         )
     except ValueError as exc:
         raise_ai_value_error(str(exc), not_found={})
-    except Exception as exc:
-        raise_ai_internal_error(f"Evaluate interview answer failed: {exc}")
+    except Exception:
+        raise_ai_internal_error("Evaluate interview answer failed")
 
 
 @router.post("/sessions/", response_model=InterviewSession)
@@ -157,7 +157,7 @@ async def create_session(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Create interview session failed: {exc}",
+            detail="Create interview session failed",
         ) from exc
 
 
@@ -180,7 +180,7 @@ async def create_record(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Create interview record failed: {exc}",
+            detail="Create interview record failed",
         ) from exc
 
 
@@ -225,9 +225,9 @@ async def evaluate_record(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "interview record not found": "interview record not found",
-                "interview question not found": "interview question not found",
+                "interview record not found": "Interview record not found",
+                "interview question not found": "Interview question not found",
             },
         )
-    except Exception as exc:
-        raise_ai_internal_error(f"Evaluate interview record failed: {exc}")
+    except Exception:
+        raise_ai_internal_error("Evaluate interview record failed")

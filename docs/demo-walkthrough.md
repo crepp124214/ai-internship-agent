@@ -1,19 +1,19 @@
-# 前后端作品集演示脚本
+# Demo Walkthrough
 
-这份文档用于把当前仓库演示成一套**真实可运行的 AI 求职产品原型**，而不是一组分散的后端接口。
+Use this script to present the repository as a real, runnable AI job-search product prototype instead of a loose set of backend endpoints.
 
-## 演示目标
+## Demo Goals
 
-这次演示要证明 4 件事：
+This walkthrough should prove four things:
 
-- 项目可以本地快速启动
-- 前后端都能真实跑起来
-- 登录与受保护页面链路可用
-- `简历 / 岗位 / 面试 / 投递追踪` 可以串成一条完整产品路径
+- the project boots locally without hidden manual steps
+- the frontend and backend both run for real
+- login and protected routes are connected
+- Resume, Jobs, Interview, and Tracker form one connected product path
 
-## 演示前准备
+## Before the Demo
 
-### 1）初始化环境
+### 1. Prepare the environment
 
 ```bash
 cp .env.example .env
@@ -22,149 +22,143 @@ python scripts/migrate.py
 python scripts/seed_demo.py
 ```
 
-### 2）启动后端
+### 2. Start the backend
 
 ```bash
 make run
 ```
 
-确认以下接口可访问：
+Confirm:
 
 - <http://127.0.0.1:8000/health>
 - <http://127.0.0.1:8000/ready>
 
-### 3）启动前端
+### 3. Start the frontend
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-默认地址通常是：
+Expected local URL:
 
 - `http://127.0.0.1:4173`
 
-如果端口被占用，Vite 会自动切换到下一个可用端口（例如 `4174`）。
+If that port is busy, Vite will pick the next available port.
 
-### 4）演示账号
+### 4. Demo account
 
-- 用户名：`demo`
-- 密码：`demo123`
+- Username: `demo`
+- Password: `demo123`
 
-## 正式演示顺序
+## Recommended Demo Order
 
-### 1. 登录
+### 1. Login
 
-打开前端登录页，使用演示账号直接登录。
+Open the login page and sign in with the demo account.
 
-讲解重点：
+Call out:
 
-- 前端不是静态壳，已接通 Bearer 令牌鉴权
-- 登录成功后会调用 `/api/v1/users/me`
-- 未登录访问受保护页面会回退到登录页
+- the frontend uses real bearer-token auth
+- successful login calls `/api/v1/users/me`
+- protected routes redirect back to the login page when the user is not authenticated
 
-### 2. 仪表盘
+### 2. Dashboard
 
-登录后进入仪表盘，说明其定位：
+After login, open the dashboard and explain that it is a product workspace, not a fake summary page.
 
-- 仪表盘不依赖新聚合接口
-- 只是组合已有 `简历 / 岗位 / 面试 / 投递追踪` 结果
+Call out:
 
-讲解重点：
+- it combines existing Resume, Jobs, Interview, and Tracker results
+- the latest AI output cards reflect saved records, not mocked screenshots
+- the quick-start actions map to real product flows
 
-- “最新 AI 输出”展示的是已存在的保存结果
-- “快速开始”对应 4 条真实业务页面
-- 首页是产品工作台，不是伪造统计面板
+### 3. Resume
 
-### 3. 简历（Resume）
+Open the Resume page and show:
 
-进入简历页面，展示：
+- resume content editing
+- summary preview and save
+- improvement preview and save
+- summary history
+- improvement history
 
-- 简历内容
-- 摘要预览 / 保存
-- 优化预览 / 保存
-- 摘要历史
-- 优化历史
+Call out:
 
-讲解重点：
+- the output is traceable over time instead of being a one-off response
+- saved history feeds back into the dashboard view
 
-- 简历结果不是一次性返回，而是可留历史
-- 历史结果会反映到仪表盘摘要区
+### 4. Jobs
 
-### 4. 岗位（Jobs）
+Open the Jobs page and show:
 
-进入岗位页面，展示：
+- job details
+- selecting a resume for matching
+- match preview
+- saving a match
+- match history
 
-- 岗位详情
-- 选择简历进行匹配
-- 匹配预览
-- 保存匹配
-- 匹配历史
+Call out:
 
-讲解重点：
+- job matching depends on actual resume content
+- saved match results flow back into the dashboard
 
-- 岗位匹配依赖已有简历内容
-- 保存后的匹配结果会回流到仪表盘
+### 5. Interview
 
-### 5. 面试（Interview）
+Open the Interview page and walk through:
 
-进入面试页面，按顺序演示：
+1. generate questions
+2. save one generated question
+3. write an answer
+4. preview the evaluation
+5. create a record
+6. save the record evaluation
 
-1. 生成题目
-2. 选择一题保存到题库
-3. 输入回答
-4. 预览评估
-5. 创建记录
-6. 保存记录评估
+Call out:
 
-讲解重点：
+- question generation and record persistence are separate steps
+- the frontend now covers the full "generate -> save question -> create record" bridge
 
-- 题目生成和记录保存是两步，不是伪造一键
-- 当前前端已补齐“生成题目 -> 保存题目 -> 创建记录”的真实桥接
+### 6. Tracker
 
-### 6. 投递追踪（Tracker）
+Open the Tracker page and show:
 
-进入投递追踪页面，展示：
+- application records
+- advice preview
+- advice save
+- advice history
 
-- 投递列表或创建投递
-- 建议预览
-- 保存建议
-- 建议历史
+Call out:
 
-讲解重点：
+- tracker advice depends on the linked job, resume, and application state
+- saved advice becomes a persistent history stream
 
-- 投递建议依赖已有岗位 + 简历 + 投递上下文
-- 保存后同样可形成历史记录
+### 7. Return to Dashboard
 
-### 7. 回到仪表盘
+Go back to the dashboard and explain how the home view summarizes the latest results from all four product lanes.
 
-最后返回仪表盘，解释：
+## One-Pass Verification Flow
 
-- 首页如何组合四条业务线最新结果
-- 为什么这是一套真实产品壳，而不是几张静态页面
-
-## 一键验证步骤
-
-若只想快速确认“当前可演示链路是否可用”，按下面顺序执行：
+If you only need a quick confidence check before a demo:
 
 1. `python scripts/migrate.py`
 2. `python scripts/seed_demo.py`
 3. `make run`
 4. `cd frontend && npm run dev`
-5. 打开前端登录页
-6. 使用 `demo / demo123` 登录
-7. 进入 `/dashboard`
-8. 依次打开 `/resume`、`/jobs`、`/interview`、`/tracker`
+5. open the login page
+6. sign in with `demo / demo123`
+7. visit `/dashboard`
+8. then open `/resume`, `/jobs`, `/interview`, and `/tracker`
 
-## 收尾话术（可直接复述）
+## Suggested Closing Line
 
-> 这个项目现在已经不只是后端接口集合，而是一套可本地启动、可真实登录、可完成前后端联调演示的 AI 求职产品原型。它有清晰的三层架构、可追踪的 AI 结果历史，以及一套能承接这些能力的前端工作台。
+> This project is no longer just a backend endpoint collection. It is a runnable AI job-search product prototype with a real login flow, a connected frontend workspace, traceable AI history, and a layered backend architecture that supports end-to-end demos.
 
-## 当前边界
+## Current Boundary
 
-建议主动说明边界：
+Be explicit about the current limits:
 
-- 当前官方演示部署路径是 Docker Compose
-- 不是 Kubernetes 就绪系统
-- 没有完整刷新令牌（refresh token）/ 后台任务（worker）编排体系
-- 当前重点是作品集级产品演示，不是假装生产级完工
+- the supported release-style path is Docker Compose
+- this is not a production-ready Kubernetes stack
+- refresh-token flows and worker orchestration are not fully finished
+- the goal at this stage is a strong portfolio-grade product demo, not a fully hardened production system

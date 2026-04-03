@@ -70,14 +70,14 @@ describe('ResumePage', () => {
       const createdResume = {
         id: 101,
         user_id: 1,
-        title: '导入测试简历',
+        title: 'Imported test resume',
         original_file_path: 'imports/101-alice-md.md',
         file_name: 'alice.md',
         file_type: 'text/markdown',
         file_size: 42,
         processed_content: null,
         resume_text: null,
-        language: 'zh',
+        language: 'en',
         is_default: false,
         created_at: '2026-04-02T00:00:00Z',
         updated_at: '2026-04-02T00:00:00Z',
@@ -89,14 +89,14 @@ describe('ResumePage', () => {
       const updatedResume = {
         id: 101,
         user_id: 1,
-        title: '导入测试简历',
+        title: 'Imported test resume',
         original_file_path: 'imports/101-alice-md.md',
         file_name: 'alice.md',
         file_type: 'text/markdown',
         file_size: 42,
         processed_content: '# Resume\nSenior frontend engineer',
         resume_text: '# Resume\nSenior frontend engineer',
-        language: 'zh',
+        language: 'en',
         is_default: false,
         created_at: '2026-04-02T00:00:00Z',
         updated_at: '2026-04-02T00:00:01Z',
@@ -107,17 +107,17 @@ describe('ResumePage', () => {
 
     renderResumePage()
 
-    await user.type(screen.getByLabelText('新建简历'), '导入测试简历')
+    await user.type(screen.getByLabelText('New resume'), 'Imported test resume')
     await user.upload(
-      screen.getByLabelText(/导入本地文本简历/),
+      screen.getByLabelText(/Import a local text resume/),
       new File(['# Resume\nSenior frontend engineer'], 'alice.md', { type: 'text/markdown' }),
     )
-    await user.click(screen.getByRole('button', { name: '导入并创建' }))
+    await user.click(screen.getByRole('button', { name: 'Import and create' }))
 
     await waitFor(() =>
       expect(mockedResumeApi.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: '导入测试简历',
+          title: 'Imported test resume',
           file_path: expect.stringContaining('alice.md'),
         }),
       ),
@@ -132,6 +132,6 @@ describe('ResumePage', () => {
       ),
     )
 
-    expect(screen.getByText('简历导入并写入成功')).toBeInTheDocument()
+    expect(screen.getByText('Resume imported and saved successfully.')).toBeInTheDocument()
   })
 })
