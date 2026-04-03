@@ -30,7 +30,7 @@ async def create_application(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Create application failed: {exc}",
+            detail="Create application failed",
         ) from exc
 
 
@@ -71,7 +71,7 @@ async def update_application(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Update application failed: {exc}",
+            detail="Update application failed",
         ) from exc
 
 
@@ -93,7 +93,7 @@ async def delete_application(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Delete application failed: {exc}",
+            detail="Delete application failed",
         ) from exc
 
 

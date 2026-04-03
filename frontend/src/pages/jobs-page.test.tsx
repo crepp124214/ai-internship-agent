@@ -94,7 +94,7 @@ describe('JobsPage', () => {
     renderJobsPage()
 
     await user.upload(
-      screen.getByLabelText(/导入本地岗位文件/),
+      screen.getByLabelText(/Import a local job file/),
       new File(
         ['# Senior Frontend Engineer\nBuild resilient interfaces for candidates.'],
         'Senior-Frontend-Engineer.md',
@@ -103,18 +103,18 @@ describe('JobsPage', () => {
     )
 
     await waitFor(() =>
-      expect(screen.getByLabelText('岗位名称')).toHaveValue('Senior Frontend Engineer'),
+      expect(screen.getByLabelText('Job title')).toHaveValue('Senior Frontend Engineer'),
     )
-    expect(screen.getByLabelText('岗位描述')).toHaveValue(
+    expect(screen.getByLabelText('Description')).toHaveValue(
       '# Senior Frontend Engineer\nBuild resilient interfaces for candidates.',
     )
     expect(
-      screen.getByText('已导入 Senior-Frontend-Engineer.md，标题和描述已回填到表单。'),
+      screen.getByText('Imported Senior-Frontend-Engineer.md. The title and description were copied into the form.'),
     ).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('公司'), 'Acme AI')
-    await user.type(screen.getByLabelText('城市 / 地点'), 'Remote')
-    await user.click(screen.getByRole('button', { name: '创建岗位' }))
+    await user.type(screen.getByLabelText('Company'), 'Acme AI')
+    await user.type(screen.getByLabelText('Location'), 'Remote')
+    await user.click(screen.getByRole('button', { name: 'Create job' }))
 
     await waitFor(() => expect(mockedJobsApi.create).toHaveBeenCalled())
     expect(mockedJobsApi.create.mock.calls[0]?.[0]).toEqual(
@@ -127,6 +127,6 @@ describe('JobsPage', () => {
       }),
     )
 
-    expect(screen.getByText('岗位创建成功。')).toBeInTheDocument()
+    expect(screen.getByText('Job created successfully.')).toBeInTheDocument()
   })
 })

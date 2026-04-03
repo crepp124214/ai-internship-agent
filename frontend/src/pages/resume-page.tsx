@@ -79,7 +79,7 @@ async function readTextFile(file: File) {
     const reader = new FileReader()
 
     reader.onload = () => resolve(String(reader.result ?? ''))
-    reader.onerror = () => reject(reader.error ?? new Error('读取文件失败'))
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file'))
     reader.readAsText(file)
   })
 }
@@ -143,7 +143,7 @@ export function ResumePage() {
       await queryClient.invalidateQueries({ queryKey: ['resume', 'list'] })
       setSelectedResumeId(resume.id)
       setCreateTitle('')
-      setFeedback('简历创建成功')
+      setFeedback('Resume created successfully.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -164,7 +164,7 @@ export function ResumePage() {
       setSelectedResumeId(resume.id)
       setEditTitle(resume.title)
       setResumeText(resume.processed_content ?? resume.resume_text ?? '')
-      setFeedback('简历内容已更新')
+      setFeedback('Resume content updated.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -180,7 +180,7 @@ export function ResumePage() {
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['resume', 'summary-history', selectedResumeId] })
       setSummaryPreview(data.optimized_text)
-      setFeedback('摘要已保存到历史记录')
+      setFeedback('Summary saved to history.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -196,7 +196,7 @@ export function ResumePage() {
     onSuccess: async (data) => {
       await queryClient.invalidateQueries({ queryKey: ['resume', 'optimization-history', selectedResumeId] })
       setImprovementsPreview(data.optimized_text)
-      setFeedback('优化建议已保存到历史记录')
+      setFeedback('Improvement notes saved to history.')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -204,21 +204,21 @@ export function ResumePage() {
   const importResumeMutation = useMutation({
     mutationFn: async ({ file, title }: { file: File; title: string }) => {
       if (!isSupportedResumeImport(file)) {
-        throw new Error('只支持 txt、md、json 文本简历文件')
+        throw new Error('Only txt, md, and json resume files are supported.')
       }
 
       const resolvedTitle = resolveResumeTitle(title, file)
 
-      setImportStatus(`正在读取 ${file.name}`)
+      setImportStatus(`Reading ${file.name}...`)
       const fileText = await readTextFile(file)
 
-      setImportStatus(`正在创建 ${file.name}`)
+      setImportStatus(`Creating ${file.name}...`)
       const createdResume = await resumeApi.create({
         title: resolvedTitle,
         file_path: buildImportedFilePath(file),
       })
 
-      setImportStatus(`正在写入 ${file.name}`)
+      setImportStatus(`Writing ${file.name} back to the record...`)
       const updatedResume = await resumeApi.update(createdResume.id, {
         title: resolvedTitle,
         resume_text: fileText,
@@ -244,8 +244,8 @@ export function ResumePage() {
       setResumeText(updatedResume.processed_content ?? updatedResume.resume_text ?? fileText)
       setCreateTitle('')
       setSelectedImportFile(null)
-      setImportStatus(`已导入 ${fileName}`)
-      setFeedback('简历导入并写入成功')
+      setImportStatus(`Imported ${fileName}.`)
+      setFeedback('Resume imported and saved successfully.')
       setImportInputKey((value) => value + 1)
     },
     onError: (error) => {
@@ -269,32 +269,35 @@ export function ResumePage() {
 
     if (!isSupportedResumeImport(file)) {
       setSelectedImportFile(null)
-      setFeedback('只支持 txt、md、json 文本简历文件')
+      setFeedback('Only txt, md, and json resume files are supported.')
       setImportInputKey((value) => value + 1)
       return
     }
 
     setSelectedImportFile(file)
-    setImportStatus(`已选择 ${file.name}`)
+    setImportStatus(`Selected ${file.name}.`)
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="简历中心"
-        title="一次编辑，保留每次 AI 迭代的轨迹"
-        description="在这里统一管理简历内容、摘要预览与保存、优化建议预览与保存，以及两条历史记录。"
+        eyebrow="Resume Workspace"
+        title="Edit once and keep every AI iteration traceable"
+        description="Manage resume content, preview AI summaries and improvement notes, and keep both history streams in one place."
       />
 
       <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
-        <SectionCard title="简历列表" subtitle="先手动创建一份简历，再在岗位、面试和投递流程里持续复用。">
+        <SectionCard
+          title="Resume List"
+          subtitle="Create a base resume first, then reuse it across jobs, interviews, and tracker flows."
+        >
           <div className="space-y-4">
-            <FormField label="新建简历">
+            <FormField label="New resume">
               <div className="flex flex-col gap-3 md:flex-row">
                 <Input
                   value={createTitle}
                   onChange={(event) => setCreateTitle(event.target.value)}
-                  placeholder="2026 届实习求职主简历"
+                  placeholder="Summer internship master resume"
                 />
                 <PrimaryButton
                   type="button"
@@ -306,13 +309,13 @@ export function ResumePage() {
                     })
                   }
                 >
-                  创建
+                  Create
                 </PrimaryButton>
               </div>
             </FormField>
             <FormField
-              label="导入本地文本简历"
-              helper="支持 txt、md、json。浏览器会先读取文件内容，再创建并写回正文。"
+              label="Import a local text resume"
+              helper="Supports txt, md, and json. The browser reads the file first, then creates a record and writes the content back."
             >
               <div className="space-y-3">
                 <input
@@ -323,9 +326,11 @@ export function ResumePage() {
                   className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[var(--color-accent)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(199,107,79,0.14)]"
                 />
                 {selectedImportFile ? (
-                  <p className="text-sm text-[var(--color-ink)]">已选择：{selectedImportFile.name}</p>
+                  <p className="text-sm text-[var(--color-ink)]">Selected: {selectedImportFile.name}</p>
                 ) : (
-                  <p className="text-sm text-[var(--color-muted)]">先选择一个本地文本文件，再点击导入创建简历。</p>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    Choose a local text file, then import it as a new resume record.
+                  </p>
                 )}
                 <PrimaryButton
                   type="button"
@@ -336,18 +341,18 @@ export function ResumePage() {
                     }
                   }}
                 >
-                  {importResumeMutation.isPending ? '导入中…' : '导入并创建'}
+                  {importResumeMutation.isPending ? 'Importing...' : 'Import and create'}
                 </PrimaryButton>
                 {importStatus ? (
                   <p className="text-xs leading-5 text-[var(--color-muted)]">{importStatus}</p>
                 ) : null}
               </div>
             </FormField>
-            <FormField label="当前简历">
+            <FormField label="Current resume">
               <Select value={selectedResumeId ?? ''} onChange={(event) => setSelectedResumeId(Number(event.target.value))}>
                 {resumesQuery.data?.map((resume) => (
                   <option key={resume.id} value={resume.id}>
-                    #{resume.id} · {resume.title}
+                    #{resume.id} - {resume.title}
                   </option>
                 ))}
               </Select>
@@ -361,97 +366,101 @@ export function ResumePage() {
         </SectionCard>
 
         <SectionCard
-          title="简历内容"
-          subtitle="当前版本会把同一份内容同时写入 processed_content 与 resume_text，方便保持演示链路的一致性。"
+          title="Resume Content"
+          subtitle="This page writes the same content into both processed and raw fields so the demo flow stays stable."
         >
           {selectedResume ? (
             <div className="space-y-4">
-              <FormField label="标题">
+              <FormField label="Title">
                 <Input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} />
               </FormField>
               <FormField
-                label="简历正文"
-                helper="后端会优先读取 processed_content，缺失时再回退到 resume_text。当前页会同时写入这两个字段。"
+                label="Resume body"
+                helper="The backend reads processed content first and falls back to raw text when needed. This page updates both fields together."
               >
                 <Textarea value={resumeText} onChange={(event) => setResumeText(event.target.value)} className="min-h-56" />
               </FormField>
-              <FormField label="目标岗位">
-                <Input value={targetRole} onChange={(event) => setTargetRole(event.target.value)} placeholder="后端开发实习生" />
+              <FormField label="Target role">
+                <Input
+                  value={targetRole}
+                  onChange={(event) => setTargetRole(event.target.value)}
+                  placeholder="Backend engineering intern"
+                />
               </FormField>
               <div className="flex flex-wrap gap-3">
                 <PrimaryButton
                   type="button"
                   onClick={() => updateResumeMutation.mutate({ resume: selectedResume, title: editTitle, resumeText })}
                 >
-                  保存简历
+                  Save resume
                 </PrimaryButton>
                 <SecondaryButton type="button" onClick={() => summaryPreviewMutation.mutate()} disabled={!selectedResumeId}>
-                  预览摘要
+                  Preview summary
                 </SecondaryButton>
                 <SecondaryButton type="button" onClick={() => summaryPersistMutation.mutate()} disabled={!selectedResumeId}>
-                  保存摘要
+                  Save summary
                 </SecondaryButton>
                 <SecondaryButton type="button" onClick={() => improvementsPreviewMutation.mutate()} disabled={!selectedResumeId}>
-                  预览优化
+                  Preview improvements
                 </SecondaryButton>
                 <SecondaryButton type="button" onClick={() => improvementsPersistMutation.mutate()} disabled={!selectedResumeId}>
-                  保存优化
+                  Save improvements
                 </SecondaryButton>
               </div>
             </div>
           ) : (
-            <EmptyHint>请先创建简历，再解锁摘要、优化和后续匹配能力。</EmptyHint>
+            <EmptyHint>Create a resume first to unlock summary, improvement, and downstream matching flows.</EmptyHint>
           )}
         </SectionCard>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="摘要" subtitle="预览不会写入历史，保存后才会生成可追溯记录。">
+        <SectionCard title="Summary" subtitle="Preview does not write history. Saving creates a traceable record.">
           {summaryPreview ? (
-            <ResultPanel label="摘要预览" content={summaryPreview} />
+            <ResultPanel label="Summary preview" content={summaryPreview} />
           ) : (
-            <EmptyHint>使用“预览摘要”或“保存摘要”查看最新结果。</EmptyHint>
+            <EmptyHint>Use preview or save summary to see the latest generated copy.</EmptyHint>
           )}
         </SectionCard>
-        <SectionCard title="优化建议" subtitle="这部分结果适合用来展示 AI 对简历内容的润色与补强。">
+        <SectionCard title="Improvement Notes" subtitle="Use this to show how AI rewrites and strengthens the resume.">
           {improvementsPreview ? (
-            <ResultPanel label="优化预览" content={improvementsPreview} />
+            <ResultPanel label="Improvement preview" content={improvementsPreview} />
           ) : (
-            <EmptyHint>使用优化相关操作，生成可执行的改写建议。</EmptyHint>
+            <EmptyHint>Run an improvement action to generate actionable rewrite suggestions.</EmptyHint>
           )}
         </SectionCard>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="摘要历史" subtitle="已经保存过的摘要记录。">
+        <SectionCard title="Summary History" subtitle="Previously saved summary records.">
           <div className="space-y-4">
             {summaryHistoryQuery.data?.length ? (
               summaryHistoryQuery.data.map((item) => (
                 <ResultPanel
                   key={item.id}
-                  label={`摘要 #${item.id}`}
+                  label={`Summary #${item.id}`}
                   content={item.optimized_text}
-                  meta={`保存时间 ${new Date(item.created_at).toLocaleString()}`}
+                  meta={`Saved at ${new Date(item.created_at).toLocaleString()}`}
                 />
               ))
             ) : (
-              <EmptyHint>暂时还没有摘要历史。</EmptyHint>
+              <EmptyHint>No summary history yet.</EmptyHint>
             )}
           </div>
         </SectionCard>
-        <SectionCard title="优化历史" subtitle="已经保存过的优化记录。">
+        <SectionCard title="Improvement History" subtitle="Previously saved improvement records.">
           <div className="space-y-4">
             {optimizationHistoryQuery.data?.length ? (
               optimizationHistoryQuery.data.map((item) => (
                 <ResultPanel
                   key={item.id}
-                  label={`优化 #${item.id}`}
+                  label={`Improvement #${item.id}`}
                   content={item.optimized_text}
-                  meta={`保存时间 ${new Date(item.created_at).toLocaleString()}`}
+                  meta={`Saved at ${new Date(item.created_at).toLocaleString()}`}
                 />
               ))
             ) : (
-              <EmptyHint>暂时还没有优化历史。</EmptyHint>
+              <EmptyHint>No improvement history yet.</EmptyHint>
             )}
           </div>
         </SectionCard>

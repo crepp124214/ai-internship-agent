@@ -72,7 +72,7 @@ describe('InterviewPage', () => {
     renderInterviewPage()
 
     await user.upload(
-      screen.getByLabelText(/导入本地上下文/),
+      screen.getByLabelText(/Import local context/),
       new File(
         ['Remote backend internship with FastAPI and clean architecture.'],
         'job-context.txt',
@@ -83,9 +83,9 @@ describe('InterviewPage', () => {
     await waitFor(() =>
       expect(screen.getByDisplayValue('Remote backend internship with FastAPI and clean architecture.')).toBeInTheDocument(),
     )
-    expect(screen.getByText(/已导入 job-context\.txt/)).toBeInTheDocument()
+    expect(screen.getByText(/Imported job-context\.txt/)).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '生成题目' }))
+    await user.click(screen.getByRole('button', { name: 'Generate questions' }))
 
     await waitFor(() =>
       expect(mockedInterviewApi.generateQuestions).toHaveBeenCalledWith(

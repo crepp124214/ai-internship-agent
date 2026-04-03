@@ -1,115 +1,115 @@
-# 部署说明
+# Deployment Guide
 
-这个项目当前只有一条正式支持的“发布式”部署路径：
+This project currently supports one official release-style deployment path:
 
-- 通过 [`docker/docker-compose.yml`](../docker/docker-compose.yml) 使用 Docker Compose
+- Docker Compose via [`docker/docker-compose.yml`](/D:/agent开发项目/AI实习求职Agent系统/ai-worktrees/project-repair/docker/docker-compose.yml)
 
-仓库中的 Kubernetes 资产目前还没有被持续维护，因此当前项目的“可发布”定义是围绕 Compose，而不是 `k8s/`。
+The repository still contains Kubernetes-related assets, but they are not the maintained release path for the current stage. For now, "deployable" means the Compose stack can boot, pass health checks, and run the documented smoke and release flows.
 
-## 1. 前置条件
+## Prerequisites
 
 - Docker
 - Docker Compose v2
-- 仓库根目录下准备好的 `.env` 文件
+- A prepared `.env` file in the repository root
 
-建议从本地安全模板开始：
+Start from the local template:
 
 ```bash
 cp .env.example .env
 ```
 
-如果要跑更接近发布的路径，至少要检查这些配置：
+Check these values before running a release-style stack:
 
 - `SECRET_KEY`
 - `LLM_PROVIDER`
-- `OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 - `CORS_ORIGINS`
 
-`docker-compose.yml` 会覆盖数据库和 Redis 地址，让应用指向 Compose 内部服务。
+`docker-compose.yml` overrides the database and Redis addresses so the app points at the internal Compose services.
 
-### 2.1 生产环境 CORS 配置
+## Production CORS Example
 
-部署到生产环境前，**必须**将 `CORS_ORIGINS` 改为实际的前端域名：
+Before deploying to a real environment, replace `CORS_ORIGINS` with the actual frontend origin:
 
 ```bash
-# .env 生产配置示例
 CORS_ORIGINS=["https://your-frontend-domain.com"]
 ```
 
-当前默认配置仅允许本地开发域名（`localhost:3000`、`localhost:4173` 等），不允许任何生产域名。
+The default values only allow local development hosts such as `localhost:3000` and `localhost:4173`.
 
-其他安全相关配置：
-- `SECRET_KEY`：生产环境必须使用随机字符串，不使用默认值
-- `APP_DEBUG=false`：生产环境必须关闭调试模式
-- `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS`：根据实际流量调整限流参数
+Other production-minded settings:
 
-## 2. 启动整套服务
+- `SECRET_KEY` should be a strong random value
+- `APP_DEBUG=false`
+- `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS` should match expected traffic
+
+## Start the Stack
 
 ```bash
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-或者：
+Or:
 
 ```bash
 make compose-up
 ```
 
-涉及服务：
+Services in the stack:
 
 - `postgres`
 - `redis`
 - `app`
 
-## 3. 检查就绪状态
+## Health and Readiness
 
-服务启动后，检查：
+After the stack starts, check:
 
-- 存活：`GET /health`
-- 就绪：`GET /ready`
+- `GET /health`
+- `GET /ready`
 
-例如：
+Example:
 
 ```bash
 curl http://localhost:8000/ready
 ```
 
-只有当 `/ready` 返回 `200` 时，这套发布式栈才算真正就绪。
+The stack is only considered ready when `/ready` returns `200`.
 
-## 4. 运行迁移
+## Migrations
 
-对于本地或 CI 风格运行：
+For local or CI-style execution:
 
 ```bash
 python scripts/migrate.py
 ```
 
-对于 Compose 运行，建议在发布前或通过同一个 app 镜像对应的运维步骤执行迁移。当前仓库还没有单独定义 migration container job。
+For Compose-based execution, run the same migration step before release or through an operational step using the app image. The repository does not yet define a dedicated migration job container.
 
-## 5. 停止整套服务
+## Stop the Stack
 
 ```bash
 docker compose -f docker/docker-compose.yml down
 ```
 
-或者：
+Or:
 
 ```bash
 make compose-down
 ```
 
-## 6. 当前发布边界
+## Release Boundary
 
-当前仓库中的“发布就绪”表示：
+Today, "release ready" means:
 
-- 应用可以从文档化的 env 文件启动
-- Compose 能启动 `postgres`、`redis` 和 `app`
-- `/health` 和 `/ready` 都可用
-- 受保护 smoke 路径和核心 AI 路径回归通过
+- the app boots from documented environment files
+- Compose starts `postgres`, `redis`, and `app`
+- `/health` and `/ready` respond correctly
+- smoke and release verification commands pass
 
-它**并不**表示：
+It does not mean:
 
-- Kubernetes 部署已经生产就绪
-- refresh-token / session 管理已经完整
-- 外部 secrets 管理已经完全接入
-- 后台 worker 和异步编排已经完成发布级加固
+- Kubernetes deployment is production ready
+- refresh-token or session management is fully complete
+- external secret management is fully integrated
+- worker orchestration and async background hardening are finished
