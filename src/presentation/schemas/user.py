@@ -63,24 +63,19 @@ class LoginRequest(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    """Login response with access and refresh tokens."""
+    """Login response with access token.
+
+    Refresh token is stored in HttpOnly cookie.
+    """
 
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 
-class TokenRefreshRequest(BaseModel):
-    """Refresh token exchange request."""
-
-    refresh_token: str
-
-
 class TokenRefreshResponse(BaseModel):
-    """Refresh token exchange response."""
+    """Refresh token exchange response with new access token."""
 
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
 
 

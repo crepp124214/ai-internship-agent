@@ -19,15 +19,15 @@ class JobBase(BaseModel):
 class JobCreate(JobBase):
     """Job create request model."""
 
-    salary: Optional[str]
-    work_type: Optional[str]
-    experience: Optional[str]
-    education: Optional[str]
-    welfare: Optional[str]
-    tags: Optional[str]
+    salary: Optional[str] = None
+    work_type: Optional[str] = None
+    experience: Optional[str] = None
+    education: Optional[str] = None
+    welfare: Optional[str] = None
+    tags: Optional[str] = None
     source: str
-    source_url: Optional[str]
-    source_id: Optional[str]
+    source_url: Optional[str] = None
+    source_id: Optional[str] = None
 
 
 class JobUpdate(JobBase):

@@ -25,6 +25,11 @@ async def create_application(
 ):
     try:
         return await tracker_service.create_application(db, application_data, current_user.id)
+    except ValueError as exc:
+        raise_ai_value_error(
+            str(exc),
+            not_found={"resume not found": "Resume not found"},
+        )
     except HTTPException:
         raise
     except Exception as exc:

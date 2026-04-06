@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from src.presentation.api.middleware.rate_limit import (
     MemoryRateLimitBackend,
-    RedisRateLimitBackend,
     RateLimitMiddleware,
+    RedisRateLimitBackend,
     _get_backend,
+    get_rate_limit_runtime_config,
 )
 
 
@@ -20,7 +22,7 @@ class TestMemoryRateLimitBackend:
     async def test_allows_within_limit(self):
         """Requests within limit should be allowed."""
         backend = MemoryRateLimitBackend()
-        for i in range(5):
+        for _ in range(5):
             result = await backend.is_allowed("test-key", limit=10, window_seconds=60)
             assert result is True
 
@@ -56,6 +58,7 @@ class TestMemoryRateLimitBackend:
 
         # Add entries with old timestamps
         import time
+
         now = time.time()
         backend._store["old-key"] = [(now - 120, 1.0), (now - 119, 2.0)]
 
@@ -121,17 +124,54 @@ class TestRateLimitMiddleware:
 class TestGetBackend:
     """Test backend selection."""
 
-    def test_get_backend_returns_memory_by_default(self):
-        """By default (localhost Redis), should return memory backend."""
-        # Reset global
+    def setup_method(self):
         import src.presentation.api.middleware.rate_limit as rl_module
-        old_redis = rl_module._redis_backend
-        rl_module._redis_backend = None
 
-        # Patch get_settings to return a localhost URL
-        with patch("src.presentation.api.middleware.rate_limit.get_settings") as mock_settings:
-            mock_settings.return_value.REDIS_URL = "redis://localhost:6379/0"
+        self.rl_module = rl_module
+        self.old_redis = rl_module._redis_backend
+
+    def teardown_method(self):
+        self.rl_module._redis_backend = self.old_redis
+
+    def test_get_backend_returns_memory_when_mode_memory(self):
+        self.rl_module._redis_backend = None
+
+        with patch("src.presentation.api.middleware.rate_limit.RATE_LIMIT_BACKEND", "memory"):
             backend = _get_backend()
             assert isinstance(backend, MemoryRateLimitBackend)
 
-        rl_module._redis_backend = old_redis
+    def test_get_backend_returns_redis_when_mode_redis(self):
+        self.rl_module._redis_backend = None
+
+        with patch("src.presentation.api.middleware.rate_limit.RATE_LIMIT_BACKEND", "redis"):
+            with patch("src.presentation.api.middleware.rate_limit.get_settings") as mock_settings:
+                mock_settings.return_value.REDIS_URL = "redis://redis:6379/0"
+                backend = _get_backend()
+                assert isinstance(backend, RedisRateLimitBackend)
+
+    def test_get_backend_returns_memory_in_auto_mode_with_default_local_redis(self):
+        self.rl_module._redis_backend = None
+
+        with patch("src.presentation.api.middleware.rate_limit.RATE_LIMIT_BACKEND", "auto"):
+            with patch("src.presentation.api.middleware.rate_limit.get_settings") as mock_settings:
+                mock_settings.return_value.REDIS_URL = "redis://localhost:6379/0"
+                backend = _get_backend()
+                assert isinstance(backend, MemoryRateLimitBackend)
+
+    def test_get_backend_returns_redis_in_auto_mode_with_non_default_redis(self):
+        self.rl_module._redis_backend = None
+
+        with patch("src.presentation.api.middleware.rate_limit.RATE_LIMIT_BACKEND", "auto"):
+            with patch("src.presentation.api.middleware.rate_limit.get_settings") as mock_settings:
+                mock_settings.return_value.REDIS_URL = "redis://redis:6379/0"
+                backend = _get_backend()
+                assert isinstance(backend, RedisRateLimitBackend)
+
+
+class TestRateLimitRuntimeConfig:
+    def test_runtime_config_reports_selected_backend(self):
+        with patch("src.presentation.api.middleware.rate_limit.RATE_LIMIT_BACKEND", "auto"):
+            with patch("src.presentation.api.middleware.rate_limit.get_settings") as mock_settings:
+                mock_settings.return_value.REDIS_URL = "redis://localhost:6379/0"
+                config = get_rate_limit_runtime_config()
+                assert config["selected_backend"] == "memory"

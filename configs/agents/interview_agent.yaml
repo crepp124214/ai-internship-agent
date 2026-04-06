@@ -5,7 +5,8 @@ description: "Responsible for generating interview questions and evaluating answ
 enabled: true
 
 llm:
-  provider: "openai"
-  model: "gpt-4"
+  provider: "minimax"
+  model: "abab6.5s-chat"
   temperature: 0.5
   max_tokens: 1200
+  base_url: "https://api.minimax.chat/v1"

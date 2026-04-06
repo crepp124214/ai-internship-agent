@@ -8,3 +8,4 @@
 - [Wave 5：Frontend Productization](./2026-04-02-wave5-frontend-productization.md)
 - [Wave 6：Frontend Capability Completion](./2026-04-02-wave6-frontend-capability-completion.md)
 - [Wave 7：Real LLM Provider Integration](./2026-04-02-wave7-real-llm-provider-integration.md)
+- [Wave 8：发布就绪与稳定性](./2026-04-03-wave8-release-readiness.md)

@@ -34,6 +34,7 @@ class TestBaseRepository:
 
     def teardown_method(self):
         RepositoryTestBase.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
 
     def test_get_by_id(self):
         db = self.SessionLocal()
@@ -120,6 +121,7 @@ class TestCreateRepository:
 
         db.close()
         RepositoryTestBase.metadata.drop_all(bind=engine)
+        engine.dispose()
 
 
 class TestModelRepositories:
@@ -150,6 +152,7 @@ class TestModelRepositories:
         from src.data_access.database import Base
 
         Base.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
 
     def test_create_user(self):
         db = self.SessionLocal()

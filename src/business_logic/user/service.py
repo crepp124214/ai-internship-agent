@@ -1,6 +1,7 @@
 """User service logic, including minimal authentication helpers."""
 
 from datetime import datetime, timedelta, timezone
+import uuid
 from typing import Any, List, Optional
 
 from jose import JWTError, jwt
@@ -15,7 +16,6 @@ from src.utils.config_loader import get_settings
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
 
 class UserService:
@@ -29,50 +29,92 @@ class UserService:
         """Verify a plain password against its stored hash."""
         return pwd_context.verify(plain_password, password_hash)
 
+    @staticmethod
+    def _now() -> datetime:
+        return datetime.now(timezone.utc)
+
+    def _token_common_claims(self) -> dict[str, Any]:
+        settings = get_settings()
+        now = self._now()
+        return {
+            "iss": settings.JWT_ISSUER,
+            "aud": settings.JWT_AUDIENCE,
+            "iat": now,
+            "nbf": now,
+            "jti": str(uuid.uuid4()),
+        }
+
     def create_access_token(
-        self, subject: str, expires_delta: Optional[timedelta] = None
+        self,
+        subject: str,
+        expires_delta: Optional[timedelta] = None,
     ) -> str:
         """Create a signed JWT access token."""
         settings = get_settings()
-        expire_at = datetime.now(timezone.utc) + (
-            expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire_at = self._now() + (
+            expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-        payload = {"sub": subject, "exp": expire_at}
+        payload = {
+            **self._token_common_claims(),
+            "sub": subject,
+            "exp": expire_at,
+            "type": "access",
+        }
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
     def decode_access_token(self, token: str) -> dict[str, Any]:
         """Decode and validate a JWT access token."""
         settings = get_settings()
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[ALGORITHM],
+                audience=settings.JWT_AUDIENCE,
+                issuer=settings.JWT_ISSUER,
+            )
         except JWTError as exc:
             raise ValueError("Invalid authentication credentials") from exc
 
         subject = payload.get("sub")
-        if not subject:
+        if not subject or payload.get("type") != "access":
             raise ValueError("Invalid authentication credentials")
         return payload
 
     # Refresh token related helpers
     def create_refresh_token(self, user_id: int) -> str:
-        """Create a signed JWT refresh token for the given user_id (7 days by default)."""
+        """Create a signed JWT refresh token for the given user_id."""
         settings = get_settings()
-        expire_at = datetime.now(timezone.utc) + timedelta(days=7)
-        payload = {"sub": str(user_id), "exp": expire_at, "type": "refresh"}
+        expire_at = self._now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        payload = {
+            **self._token_common_claims(),
+            "sub": str(user_id),
+            "exp": expire_at,
+            "type": "refresh",
+        }
         return jwt.encode(payload, settings.SECRET_KEY, algorithm=ALGORITHM)
 
     def verify_refresh_token(self, token: str) -> Optional[int]:
         """Verify a refresh token and return user_id if valid, else None."""
         settings = get_settings()
         try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[ALGORITHM],
+                audience=settings.JWT_AUDIENCE,
+                issuer=settings.JWT_ISSUER,
+            )
         except JWTError:
             return None
+
         if payload.get("type") != "refresh":
             return None
+
         sub = payload.get("sub")
         if not sub:
             return None
+
         try:
             return int(sub)
         except ValueError:
@@ -102,8 +144,8 @@ class UserService:
                 },
             )
             return user
-        except Exception as exc:
-            raise Exception(f"create user failed: {exc}") from exc
+        except Exception:
+            raise Exception("Create user failed") from None
 
     async def get_user(self, db: Session, user_id: int) -> Optional[UserModel]:
         """Look up a user by id."""

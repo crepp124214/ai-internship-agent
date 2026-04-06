@@ -28,19 +28,24 @@ router = APIRouter()
 @router.post("/questions/", response_model=InterviewQuestion)
 async def create_question(
     question_data: InterviewQuestionCreate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
         return await interview_service.create_question(db, question_data)
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Create interview question failed",
-        ) from exc
+        )
 
 
 @router.get("/questions/{question_id}", response_model=InterviewQuestion)
-async def get_question(question_id: int, db: Session = Depends(get_db)):
+async def get_question(
+    question_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     question = await interview_service.get_question(db, question_id)
     if not question:
         raise HTTPException(
@@ -54,6 +59,7 @@ async def get_question(question_id: int, db: Session = Depends(get_db)):
 async def update_question(
     question_id: int,
     question_data: InterviewQuestionUpdate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
@@ -66,15 +72,19 @@ async def update_question(
         return question
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Update interview question failed",
-        ) from exc
+        )
 
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_question(question_id: int, db: Session = Depends(get_db)):
+async def delete_question(
+    question_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
         deleted = await interview_service.delete_question(db, question_id)
         if not deleted:
@@ -84,25 +94,36 @@ async def delete_question(question_id: int, db: Session = Depends(get_db)):
             )
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Delete interview question failed",
-        ) from exc
+        )
 
 
 @router.get("/questions/", response_model=list[InterviewQuestion])
-async def list_questions(db: Session = Depends(get_db)):
+async def list_questions(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     return await interview_service.get_questions(db)
 
 
 @router.get("/questions/category/{category}", response_model=list[InterviewQuestion])
-async def list_questions_by_category(category: str, db: Session = Depends(get_db)):
+async def list_questions_by_category(
+    category: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     return await interview_service.get_questions_by_category(db, category)
 
 
 @router.get("/questions/random/", response_model=list[InterviewQuestion])
-async def get_random_questions(count: int = 5, db: Session = Depends(get_db)):
+async def get_random_questions(
+    count: int = 5,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     return await interview_service.get_random_questions(db, count)
 
 
@@ -123,7 +144,7 @@ async def generate_questions(
     except ValueError as exc:
         raise_ai_value_error(
             str(exc),
-            not_found={"resume not found": "Resume not found"},
+            not_found={"resume not found": "resume not found"},
         )
     except Exception:
         raise_ai_internal_error("Generate interview questions failed")
@@ -225,8 +246,8 @@ async def evaluate_record(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "interview record not found": "Interview record not found",
-                "interview question not found": "Interview question not found",
+                "interview record not found": "interview record not found",
+                "interview question not found": "interview question not found",
             },
         )
     except Exception:

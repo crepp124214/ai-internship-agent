@@ -5,7 +5,10 @@ AI实习求职Agent系统 - 主入口文件
 import uvicorn
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from src.presentation.api.middleware.rate_limit import RateLimitMiddleware
+from src.presentation.api.middleware.rate_limit import (
+    RateLimitMiddleware,
+    get_rate_limit_runtime_config,
+)
 from src.presentation.api.middleware.security_headers import SecurityHeadersMiddleware
 from src.presentation.api.metrics import MetricsMiddleware, metrics
 
@@ -51,6 +54,16 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 # Observability: Prometheus metrics middleware
 app.add_middleware(MetricsMiddleware)
+
+# Startup runtime config logs
+_rate_limit_runtime = get_rate_limit_runtime_config()
+logger.info(
+    "Rate limit configured: mode=%s selected_backend=%s requests=%s window_seconds=%s",
+    _rate_limit_runtime["mode"],
+    _rate_limit_runtime["selected_backend"],
+    _rate_limit_runtime["requests"],
+    _rate_limit_runtime["window_seconds"],
+)
 
 # OpenTelemetry FastAPI instrumentation（在所有中间件注册完成后执行）
 if _tracer_provider is not None:

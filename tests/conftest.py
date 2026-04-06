@@ -78,6 +78,7 @@ def test_db():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
 
 @pytest.fixture
@@ -109,8 +110,11 @@ def test_engine():
         connect_args={"check_same_thread": False}
     )
     Base.metadata.create_all(bind=engine)
-    yield engine
-    Base.metadata.drop_all(bind=engine)
+    try:
+        yield engine
+    finally:
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
 
 @pytest.fixture

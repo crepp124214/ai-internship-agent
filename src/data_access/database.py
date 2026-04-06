@@ -3,6 +3,7 @@
 from typing import Any
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from src.utils.config_loader import get_settings
@@ -10,13 +11,30 @@ from src.utils.config_loader import get_settings
 # 获取配置
 settings = get_settings()
 
+
+def _engine_options_for_url(database_url: str, *, echo: bool) -> dict[str, Any]:
+    options: dict[str, Any] = {"echo": echo}
+    backend_name = make_url(database_url).get_backend_name()
+    if backend_name != "sqlite":
+        options.update(
+            pool_size=20,
+            max_overflow=10,
+            pool_recycle=3600,
+        )
+    return options
+
+
+def _import_all_entities() -> tuple[str, ...]:
+    from src.data_access.entities import interview, job, resume, tracker, user
+
+    _ = (interview, job, resume, tracker, user)
+    return ("user", "resume", "job", "interview", "tracker")
+
+
 # 创建数据库引擎
 engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
-    pool_recycle=3600,
-    echo=settings.APP_DEBUG,
+    **_engine_options_for_url(settings.DATABASE_URL, echo=settings.APP_DEBUG),
 )
 
 # OpenTelemetry SQLAlchemy instrumentation (best-effort)
@@ -56,8 +74,7 @@ def create_tables() -> None:
     """
     try:
         # 导入所有模型以确保它们被注册到Base.metadata中
-        from src.data_access.entities import user, resume, job, interview
-
+        _import_all_entities()
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         raise Exception(f"创建数据库表失败: {str(e)}") from e

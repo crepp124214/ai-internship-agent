@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import openai
 
 from src.core.llm import (
     LLMFactory,
@@ -29,6 +30,7 @@ class TestLLMFactoryConfigResolution:
         assert llm.config["provider"] == "openai"
         assert llm.model == "gpt-4o-mini"
 
+    @patch.dict("os.environ", {"LLM_PROVIDER": ""}, clear=False)
     def test_create_defaults_to_mock_when_provider_missing(self):
         with patch(
             "src.core.llm.factory.get_settings",
@@ -220,6 +222,25 @@ class TestOpenAIAdapterRuntime:
         assert kwargs["input"][1]["content"] == "Summarize the resume"
 
     @pytest.mark.asyncio
+    async def test_generate_reads_text_from_output_content_items(self):
+        response = SimpleNamespace(
+            output=[
+                SimpleNamespace(
+                    content=[SimpleNamespace(text="content item summary")]
+                )
+            ]
+        )
+        client = MagicMock()
+        client.responses.create = AsyncMock(return_value=response)
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"api_key": "test-key", "model": "gpt-4o-mini"})
+
+            result = await adapter.generate("Summarize the resume")
+
+        assert result == "content item summary"
+
+    @pytest.mark.asyncio
     async def test_generate_and_chat_use_configured_runtime_defaults_when_not_overridden(self):
         response = SimpleNamespace(output_text="mock summary")
         chat_response = SimpleNamespace(
@@ -260,8 +281,12 @@ class TestOpenAIAdapterRuntime:
         with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
             adapter = OpenAIAdapter({"api_key": "test-key", "model": "gpt-4o-mini"})
 
-            with pytest.raises(LLMRequestError, match="OpenAI chat request failed"):
-                await adapter.chat([{"role": "user", "content": "Hello"}])
+            with patch("src.core.llm.retry.asyncio.sleep", new=AsyncMock()) as sleep_mock:
+                with pytest.raises(LLMRequestError, match="LLM request failed after retries"):
+                    await adapter.chat([{"role": "user", "content": "Hello"}])
+
+        assert client.chat.completions.create.await_count == 3
+        assert sleep_mock.await_count == 3
 
     @pytest.mark.asyncio
     async def test_embedding_uses_embeddings_endpoint(self):
@@ -292,3 +317,64 @@ class TestOpenAIAdapterRuntime:
 
             with pytest.raises(LLMRequestError, match="OpenAI embedding request failed"):
                 await adapter.get_embedding("Test text")
+
+    @pytest.mark.asyncio
+    async def test_chat_retries_transient_openai_errors(self):
+        chat_response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="recovered"))]
+        )
+        client = MagicMock()
+        transient_error = openai.RateLimitError(
+            "rate limited",
+            response=MagicMock(request=MagicMock(), status_code=429),
+            body={},
+        )
+        client.chat.completions.create = AsyncMock(
+            side_effect=[transient_error, transient_error, chat_response]
+        )
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"api_key": "test-key", "model": "gpt-4o-mini"})
+
+            with patch("src.core.llm.retry.asyncio.sleep", new=AsyncMock()) as sleep_mock:
+                result = await adapter.chat([{"role": "user", "content": "Hello"}])
+
+        assert result["content"] == "recovered"
+        assert client.chat.completions.create.await_count == 3
+        assert sleep_mock.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_generate_retries_transient_openai_errors(self):
+        response = SimpleNamespace(output_text="recovered")
+        client = MagicMock()
+        transient_error = openai.APITimeoutError(request=MagicMock())
+        client.responses.create = AsyncMock(side_effect=[transient_error, response])
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"api_key": "test-key", "model": "gpt-4o-mini"})
+
+            with patch("src.core.llm.retry.asyncio.sleep", new=AsyncMock()) as sleep_mock:
+                result = await adapter.generate("Summarize")
+
+        assert result == "recovered"
+        assert client.responses.create.await_count == 2
+        assert sleep_mock.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_embedding_retries_transient_openai_errors(self):
+        response = SimpleNamespace(
+            data=[SimpleNamespace(embedding=[0.4, 0.5, 0.6])]
+        )
+        client = MagicMock()
+        transient_error = openai.APIConnectionError(message="disconnected", request=MagicMock())
+        client.embeddings.create = AsyncMock(side_effect=[transient_error, response])
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"api_key": "test-key", "model": "text-embedding-3-small"})
+
+            with patch("src.core.llm.retry.asyncio.sleep", new=AsyncMock()) as sleep_mock:
+                result = await adapter.get_embedding("Retry me")
+
+        assert result == [0.4, 0.5, 0.6]
+        assert client.embeddings.create.await_count == 2
+        assert sleep_mock.await_count == 1

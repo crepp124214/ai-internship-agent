@@ -85,10 +85,20 @@ class TestInterviewAgent:
         mock_create.assert_called_once()
         assert mock_create.call_args.args[0] == "openai"
 
+    @patch.dict(
+        "os.environ",
+        {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "", "LLM_PROVIDER": ""},
+        clear=True,
+    )
     def test_explicit_openai_without_api_key_raises_provider_error(self):
         with pytest.raises(LLMProviderError, match="OpenAI API key is required"):
             InterviewAgent(config={"provider": "openai"})
 
+    @patch.dict(
+        "os.environ",
+        {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "", "LLM_PROVIDER": ""},
+        clear=True,
+    )
     def test_default_agent_falls_back_to_mock_when_key_is_missing(self):
         agent = InterviewAgent(config={"provider": "openai"}, allow_mock_fallback=True)
 

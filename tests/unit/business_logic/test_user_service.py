@@ -53,7 +53,7 @@ class TestUserService:
             with pytest.raises(Exception) as exc_info:
                 await self.service.create_user(self.mock_db, user_data)
 
-            assert "create user failed" in str(exc_info.value)
+            assert "Create user failed" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_user(self):

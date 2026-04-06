@@ -92,7 +92,7 @@ class TestDemoChain:
 
         # ── 2. Login ─────────────────────────────────────────────────────────
         login_resp = client.post(
-            "/api/v1/users/login/",
+            "/api/v1/auth/login",
             json={"username": "demouser", "password": "demo123"},
         )
         assert login_resp.status_code == 200, f"Login failed: {login_resp.text}"

@@ -107,9 +107,11 @@ describe('ResumePage', () => {
 
     renderResumePage()
 
-    await user.type(screen.getByLabelText('New resume'), 'Imported test resume')
+    expect(screen.getByText('简历工作台')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('新建简历'), 'Imported test resume')
     await user.upload(
-      screen.getByLabelText(/Import a local text resume/),
+      screen.getByLabelText(/导入本地简历文本/),
       new File(['# Resume\nSenior frontend engineer'], 'alice.md', { type: 'text/markdown' }),
     )
     await user.click(screen.getByRole('button', { name: 'Import and create' }))

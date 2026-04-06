@@ -29,8 +29,13 @@ def _result_value(result, key: str):
 
 
 @router.post("/", response_model=Job)
-async def create_job(job_data: JobCreate, db: Session = Depends(get_db)):
+async def create_job(
+    job_data: JobCreate,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
+        _ = current_user
         return await job_service.create_job(db, job_data)
     except Exception as exc:
         raise HTTPException(
@@ -45,7 +50,7 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found",
+            detail="岗位不存在",
         )
     return job
 
@@ -54,14 +59,16 @@ async def get_job(job_id: int, db: Session = Depends(get_db)):
 async def update_job(
     job_id: int,
     job_data: JobUpdate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     try:
+        _ = current_user
         job = await job_service.update_job(db, job_id, job_data)
         if not job:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Job not found",
+                detail="岗位不存在",
             )
         return job
     except HTTPException:
@@ -74,13 +81,18 @@ async def update_job(
 
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(job_id: int, db: Session = Depends(get_db)):
+async def delete_job(
+    job_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
+        _ = current_user
         deleted = await job_service.delete_job(db, job_id)
         if not deleted:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Job not found",
+                detail="岗位不存在",
             )
     except HTTPException:
         raise
@@ -124,15 +136,15 @@ async def match_job_to_resume(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "job not found": "Job not found",
-                "resume not found": "Resume not found",
+                "job not found": "job not found",
+                "resume not found": "resume not found",
             },
             bad_request={"resume text is empty"},
         )
     except HTTPException:
         raise
-    except Exception:
-        raise_ai_internal_error("Job match failed")
+    except Exception as exc:
+        raise_ai_internal_error(f"Job match failed: {exc}")
 
 
 @router.post("/{job_id}/match/persist/", response_model=JobMatchRecord)
@@ -153,15 +165,15 @@ async def persist_job_match(
         raise_ai_value_error(
             str(exc),
             not_found={
-                "job not found": "Job not found",
-                "resume not found": "Resume not found",
+                "job not found": "job not found",
+                "resume not found": "resume not found",
             },
             bad_request={"resume text is empty"},
         )
     except HTTPException:
         raise
-    except Exception:
-        raise_ai_internal_error("Job match persistence failed")
+    except Exception as exc:
+        raise_ai_internal_error(f"Job match persistence failed: {exc}")
 
 
 @router.get("/{job_id}/match-history/", response_model=list[JobMatchRecord])
@@ -175,7 +187,7 @@ async def list_job_match_history(
     except ValueError as exc:
         raise_ai_value_error(
             str(exc),
-            not_found={"job not found": "Job not found"},
+            not_found={"job not found": "job not found"},
         )
     except HTTPException:
         raise

@@ -344,6 +344,32 @@ def test_tracker_api_returns_400_for_missing_context(db_session, client):
     assert response.json()["detail"] == "required context is missing"
 
 
+def test_tracker_api_rejects_creating_application_with_unowned_resume(db_session, client):
+    user_1 = _seed_user(db_session, "tracker-owner-a", "tracker-owner-a@example.com")
+    user_2 = _seed_user(db_session, "tracker-owner-b", "tracker-owner-b@example.com")
+    job = _seed_job(db_session, "Tracker Ownership Job")
+    resume_2 = _seed_resume(
+        db_session,
+        user_2.id,
+        "tracker-unowned-resume",
+        processed_content="Owned by another user",
+    )
+
+    _set_current_user(user_1.id)
+    response = client.post(
+        "/api/v1/tracker/applications/",
+        json={
+            "job_id": job.id,
+            "resume_id": resume_2.id,
+            "status": "applied",
+            "notes": "should fail",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Resume not found"
+
+
 def test_tracker_api_returns_500_for_provider_failure(db_session, client):
     user = _seed_user(db_session, "tracker-provider-user", "tracker-provider-user@example.com")
     job = _seed_job(db_session, "Tracker Provider Job")

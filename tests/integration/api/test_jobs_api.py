@@ -82,7 +82,7 @@ def _seed_job(db):
             "description": "Build APIs",
             "requirements": "Python, FastAPI",
             "salary": "10k-15k",
-            "work_type": "intern",
+            "work_type": "internship",
             "experience": "0-1 year",
             "education": "Bachelor",
             "welfare": "Remote",
@@ -111,6 +111,60 @@ def _seed_resume(db, user_id, resume_text="Built APIs with FastAPI"):
     )
 
 
+def test_jobs_create_requires_authentication(client):
+    response = client.post(
+        "/api/v1/jobs/",
+        json={
+            "title": "Backend Intern",
+            "company": "Test Co",
+            "location": "Beijing",
+            "description": "Build APIs",
+            "requirements": "Python, FastAPI",
+            "salary": "10k-15k",
+            "work_type": "internship",
+            "experience": "0-1 year",
+            "education": "Bachelor",
+            "welfare": "Remote",
+            "tags": "python,fastapi",
+            "source": "test",
+            "source_url": "https://example.com/job/1",
+            "source_id": "job-1",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_jobs_create_succeeds_with_authenticated_user(db_session, client):
+    user = _seed_user(db_session, "job_creator", "job_creator@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/",
+        json={
+            "title": "Backend Intern",
+            "company": "Test Co",
+            "location": "Beijing",
+            "description": "Build APIs",
+            "requirements": "Python, FastAPI",
+            "salary": "10k-15k",
+            "work_type": "internship",
+            "experience": "0-1 year",
+            "education": "Bachelor",
+            "welfare": "Remote",
+            "tags": "python,fastapi",
+            "source": "test",
+            "source_url": "https://example.com/job/1",
+            "source_id": "job-1",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Backend Intern"
+    assert payload["company"] == "Test Co"
+
+
 def test_jobs_applications_endpoints_are_delegated_to_tracker(client):
     response = client.post(
         "/api/v1/jobs/applications/",
@@ -129,6 +183,7 @@ def test_jobs_applications_endpoints_are_delegated_to_tracker(client):
 
 
 def test_jobs_update_propagates_not_found(client):
+    _set_current_user(999)
     with patch("src.presentation.api.v1.jobs.job_service.update_job", new=AsyncMock(return_value=None)):
         response = client.put(
             "/api/v1/jobs/999",
@@ -139,12 +194,32 @@ def test_jobs_update_propagates_not_found(client):
     assert "岗位不存在" in response.json()["detail"]
 
 
+def test_jobs_update_requires_authentication(db_session, client):
+    job = _seed_job(db_session)
+
+    response = client.put(
+        f"/api/v1/jobs/{job.id}",
+        json={"title": "anonymous update"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_jobs_delete_propagates_not_found(client):
+    _set_current_user(999)
     with patch("src.presentation.api.v1.jobs.job_service.delete_job", new=AsyncMock(return_value=False)):
         response = client.delete("/api/v1/jobs/999")
 
     assert response.status_code == 404
     assert "岗位不存在" in response.json()["detail"]
+
+
+def test_jobs_delete_requires_authentication(db_session, client):
+    job = _seed_job(db_session)
+
+    response = client.delete(f"/api/v1/jobs/{job.id}")
+
+    assert response.status_code == 401
 
 
 def test_jobs_match_endpoint_returns_structured_result(db_session, client):

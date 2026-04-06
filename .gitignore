@@ -38,6 +38,7 @@ venv/
 
 # Environment variables
 .env
+.env.compose
 .env.local
 
 # Database

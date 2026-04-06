@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_core_docs_exist():
     assert (REPO_ROOT / "README.md").exists()
     assert (REPO_ROOT / "AGENTS.md").exists()
+    assert (REPO_ROOT / ".env.compose.example").exists()
     assert (REPO_ROOT / ".sisyphus" / "plans" / "PLAN.md").exists()
     assert (REPO_ROOT / "docs" / "internal" / "decisions" / "README.md").exists()
     assert (REPO_ROOT / "docs" / "internal" / "prompts" / "agent_team_bootstrap.md").exists()
@@ -45,7 +46,16 @@ def test_compose_stack_includes_release_services():
         (REPO_ROOT / "docker" / "docker-compose.yml").read_text(encoding="utf-8")
     )
     assert "services" in compose
-    assert {"postgres", "redis", "app"}.issubset(compose["services"])
+    assert {"postgres", "redis", "app", "frontend"}.issubset(compose["services"])
+
+    app = compose["services"]["app"]
+    assert "../.env.compose" in app["env_file"]
+    assert app["environment"]["SEED_DEMO_ON_BOOT"] == "${SEED_DEMO_ON_BOOT:-false}"
+
+    frontend = compose["services"]["frontend"]
+    assert frontend["depends_on"]["app"]["condition"] == "service_healthy"
+    assert "3000:80" in frontend["ports"]
+    assert frontend["build"]["args"]["VITE_API_BASE_URL"] == ""
 
 
 def test_readme_declares_demo_flow():

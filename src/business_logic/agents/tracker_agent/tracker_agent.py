@@ -211,6 +211,8 @@ class TrackerAgent(BaseAgent):
             "next_steps": self._extract_section_lines(content, "next steps"),
             "risks": self._extract_section_lines(content, "risks"),
             "raw_content": content,
+            "provider": self.config.get("provider") or "mock",
+            "model": self.config.get("model") or "unknown",
         }
 
     async def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:

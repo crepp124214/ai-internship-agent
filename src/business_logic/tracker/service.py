@@ -38,6 +38,13 @@ class TrackerService:
         current_user_id: int,
     ) -> JobApplicationModel:
         try:
+            resume = resume_repository.get_by_id_and_user_id(
+                db,
+                application_data.resume_id,
+                current_user_id,
+            )
+            if resume is None:
+                raise ValueError("resume not found")
             return tracker_repository.create(
                 db,
                 {
@@ -49,6 +56,8 @@ class TrackerService:
                     "status_updated_at": datetime.now(),
                 },
             )
+        except ValueError:
+            raise
         except Exception as exc:
             raise Exception(f"Create application failed: {exc}") from exc
 

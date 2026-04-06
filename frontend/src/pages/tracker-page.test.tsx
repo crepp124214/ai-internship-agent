@@ -134,8 +134,10 @@ describe('TrackerPage', () => {
 
     renderTrackerPage()
 
+    expect(screen.getByText('投递追踪工作台')).toBeInTheDocument()
+
     await user.upload(
-      screen.getByLabelText(/Local note file/),
+      screen.getByLabelText(/本地备注文件/),
       new File(
         [
           JSON.stringify({
@@ -150,13 +152,13 @@ describe('TrackerPage', () => {
       ),
     )
 
-    await waitFor(() => expect(screen.getByLabelText('Job')).toHaveValue('7'))
-    expect(screen.getByLabelText('Resume')).toHaveValue('4')
-    expect(screen.getByLabelText('Current status')).toHaveValue('screening')
-    expect(screen.getByLabelText('Notes')).toHaveValue('Waiting for recruiter follow-up after the application review.')
+    await waitFor(() => expect(screen.getByLabelText('岗位')).toHaveValue('7'))
+    expect(screen.getByLabelText('简历')).toHaveValue('4')
+    expect(screen.getByLabelText('当前状态')).toHaveValue('screening')
+    expect(screen.getByLabelText('备注')).toHaveValue('Waiting for recruiter follow-up after the application review.')
     expect(screen.getByText('Imported tracker-note.json. The tracker form was updated.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Create application record' }))
+    await user.click(screen.getByRole('button', { name: '创建投递记录' }))
 
     await waitFor(() =>
       expect(mockedTrackerApi.createApplication).toHaveBeenCalledWith(

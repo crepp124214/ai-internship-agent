@@ -6,13 +6,11 @@ WORKDIR /app
 
 # 设置环境变量
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=1.6.1
+    PYTHONUNBUFFERED=1
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
@@ -31,9 +29,13 @@ RUN mkdir -p logs data/raw data/processed data/vectors
 # 暴露端口
 EXPOSE 8000
 
+# 复制启动脚本
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # 启动命令
-CMD ["python", "src/main.py"]
+ENTRYPOINT ["/entrypoint.sh"]

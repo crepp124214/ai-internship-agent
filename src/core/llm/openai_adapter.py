@@ -6,6 +6,7 @@ import asyncio
 import os
 from typing import Any, Dict, List, Optional
 
+import openai
 from src.core.llm.exceptions import LLMRetryableError, CircuitBreakerOpenError
 from src.core.llm.circuit_breaker import CircuitBreaker
 from src.core.llm.retry import retry_async
@@ -22,26 +23,32 @@ class OpenAIAdapter(BaseLLM):
     provider = "openai"
     name = "openai_llm"
     description = "OpenAI-compatible LLM adapter"
+    _RETRYABLE_OPENAI_ERRORS = (
+        openai.RateLimitError,
+        openai.APIConnectionError,
+        openai.APITimeoutError,
+    )
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
+        self.provider_name = (self.config.get("provider") or "openai").lower()
         self.api_key = self._resolve_api_key()
-        self.model = self._resolve_option("model", "gpt-4", env_var="OPENAI_MODEL")
+        self.model = self._resolve_model()
         self.temperature = self._resolve_float_option(
             "temperature",
             0.7,
-            env_var="OPENAI_TEMPERATURE",
+            env_var=self._env_var("TEMPERATURE"),
         )
         self.max_tokens = self._resolve_int_option(
             "max_tokens",
             None,
-            env_var="OPENAI_MAX_TOKENS",
+            env_var=self._env_var("MAX_TOKENS"),
         )
-        self.timeout = self._resolve_timeout_option("timeout", None, env_var="OPENAI_TIMEOUT")
+        self.timeout = self._resolve_timeout_option("timeout", None, env_var=self._env_var("TIMEOUT"))
         self.max_retries = self._resolve_int_option(
             "max_retries",
             None,
-            env_var="OPENAI_MAX_RETRIES",
+            env_var=self._env_var("MAX_RETRIES"),
         )
 
         # Optional circuit breaker injection from config
@@ -194,10 +201,21 @@ class OpenAIAdapter(BaseLLM):
         return value
 
     def _resolve_api_key(self) -> str:
-        api_key = self._resolve_option("api_key", None, env_var="OPENAI_API_KEY")
+        api_key = self._resolve_option("api_key", None, env_var=self._env_var("API_KEY"))
         if not api_key:
-            raise LLMConfigurationError("OpenAI API key is required")
+            display_name = "OpenAI" if self.provider_name == "openai" else self.provider_name.upper()
+            raise LLMConfigurationError(f"{display_name} API key is required")
         return str(api_key)
+
+    def _resolve_model(self) -> str:
+        if self.provider_name == "minimax":
+            return self._resolve_option("model", "abab6.5s-chat", env_var="MINIMAX_MODEL")
+        return self._resolve_option("model", "gpt-4o-mini", env_var="OPENAI_MODEL")
+
+    def _env_var(self, suffix: str) -> str:
+        """Resolve environment variable name based on provider."""
+        prefix = "MINIMAX" if self.provider_name == "minimax" else "OPENAI"
+        return f"{prefix}_{suffix}"
 
     def _build_client_kwargs(self) -> Dict[str, Any]:
         client_kwargs: Dict[str, Any] = {}
@@ -216,8 +234,10 @@ class OpenAIAdapter(BaseLLM):
                 value = self.timeout
             elif key == "max_retries":
                 value = self.max_retries
+            elif key == "base_url":
+                value = self._resolve_option(key, None, env_var=self._env_var("BASE_URL"))
             else:
-                env_var = "OPENAI_BASE_URL" if key == "base_url" else None
+                env_var = None
                 value = self._resolve_option(key, None, env_var=env_var)
             if value is not None:
                 client_kwargs[key] = value
@@ -264,21 +284,29 @@ class OpenAIAdapter(BaseLLM):
         return [float(value) for value in embedding]
 
     async def _run_text_generation(self, **kwargs: Any) -> Any:
+        # Try responses API first (OpenAI only)
         try:
             return await self.client.responses.create(**kwargs)
+        except openai.NotFoundError:
+            # Provider doesn't support responses API (e.g. MiniMax) - fall back to chat
+            pass
+        except openai.BadRequestError:
+            # Provider doesn't support this endpoint - fall back to chat
+            pass
         except LLMRequestError:
             raise
-        except Exception as exc:  # pragma: no cover - defensive conversion
-            try:
-                from openai import error as openai_error
-            except Exception:
-                openai_error = None  # type: ignore
-            if (
-                openai_error is not None
-                and isinstance(exc, (openai_error.RateLimitError, ConnectionError, TimeoutError))
-            ):
+        except Exception as exc:
+            if isinstance(exc, self._RETRYABLE_OPENAI_ERRORS + (ConnectionError, TimeoutError)):
                 raise LLMRetryableError("Transient OpenAI text generation error") from exc
             raise LLMRequestError("OpenAI text generation failed") from exc
+
+        # Fallback: use chat completions for providers that don't support responses API
+        return await self._run_chat_completion(
+            model=kwargs.get("model"),
+            messages=kwargs.get("input", []),
+            temperature=kwargs.get("temperature"),
+            max_tokens=kwargs.get("max_output_tokens"),
+        )
 
     async def _run_chat_completion(self, **kwargs: Any) -> Any:
         try:
@@ -286,14 +314,7 @@ class OpenAIAdapter(BaseLLM):
         except LLMRequestError:
             raise
         except Exception as exc:  # pragma: no cover - defensive conversion
-            try:
-                from openai import error as openai_error
-            except Exception:
-                openai_error = None  # type: ignore
-            if (
-                openai_error is not None
-                and isinstance(exc, (openai_error.RateLimitError, ConnectionError, TimeoutError))
-            ):
+            if isinstance(exc, self._RETRYABLE_OPENAI_ERRORS + (ConnectionError, TimeoutError)):
                 raise LLMRetryableError("Transient OpenAI chat error") from exc
             raise LLMRequestError("OpenAI chat request failed") from exc
 
@@ -303,14 +324,7 @@ class OpenAIAdapter(BaseLLM):
         except LLMRequestError:
             raise
         except Exception as exc:  # pragma: no cover - defensive conversion
-            try:
-                from openai import error as openai_error
-            except Exception:
-                openai_error = None  # type: ignore
-            if (
-                openai_error is not None
-                and isinstance(exc, (openai_error.RateLimitError, ConnectionError, TimeoutError))
-            ):
+            if isinstance(exc, self._RETRYABLE_OPENAI_ERRORS + (ConnectionError, TimeoutError)):
                 raise LLMRetryableError("Transient OpenAI embedding error") from exc
             raise LLMRequestError("OpenAI embedding request failed") from exc
 
@@ -354,6 +368,9 @@ class OpenAIAdapter(BaseLLM):
             if self.circuit_breaker is not None:
                 await self.circuit_breaker.on_failure()
             raise
+        # Handle both responses API and chat completions API
+        if hasattr(response, "choices"):
+            return self._extract_chat_content(response)
         return self._extract_text_content(response)
 
     @retry_async(max_retries=3, base=2, initial=1.0)

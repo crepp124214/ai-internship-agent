@@ -6,10 +6,11 @@ enabled: true
 
 # LLM配置
 llm:
-  provider: "openai"
-  model: "gpt-4"
+  provider: "minimax"
+  model: "abab6.5s-chat"
   temperature: 0.6
   max_tokens: 2000
+  base_url: "https://api.minimax.chat/v1"
 
 # 解析器配置
 parser:

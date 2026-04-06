@@ -6,9 +6,7 @@ import type { TokenResponse } from '../lib/api'
 import {
   getStoredToken,
   setStoredToken,
-  setStoredTokens,
-  getStoredRefreshToken,
-  clearStoredTokens,
+  clearStoredToken,
 } from './auth-storage'
 import { AuthContext, type AuthUser } from './use-auth'
 
@@ -23,10 +21,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } catch {
       // ignore
     } finally {
-      clearStoredTokens()
+      clearStoredToken()
       setToken(null)
       setUser(null)
-      // Optional: redirect to login route
       if (typeof window !== 'undefined') {
         window.location.href = '/login'
       }
@@ -55,14 +52,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const login = useCallback(
     async (username: string, password: string) => {
       try {
-        const { access_token, refresh_token } = await authApi.login({ username, password }) as TokenResponse
-        // Store both tokens for rotation
-        if (refresh_token) {
-          setStoredTokens(access_token, refresh_token)
-        } else {
-          // Fallback for compatibility: store access token only
-          setStoredToken(access_token)
-        }
+        const { access_token } = await authApi.login({ username, password }) as TokenResponse
+        setStoredToken(access_token)
         setToken(access_token)
 
         const currentUser = await authApi.getCurrentUser()
@@ -75,18 +66,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [logout],
   )
 
-  // Token refresh helper
   const refreshToken = useCallback(async () => {
-    const refresh = getStoredRefreshToken()
-    if (!refresh) {
-      await logout()
-      throw new Error('No refresh token available')
-    }
-
     const refreshed = await authApi.refreshToken()
-    const { access_token: newAccess, refresh_token: newRefresh } = refreshed
+    const { access_token: newAccess } = refreshed
     if (newAccess) {
-      setStoredTokens(newAccess, newRefresh ?? refresh)
+      setStoredToken(newAccess)
       setToken(newAccess)
       return newAccess
     }
@@ -108,10 +92,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         setToken(activeToken)
         setUser(currentUser)
       } catch {
-        // Token might be expired; try refreshing
         try {
           const newAccess = await refreshToken()
-          // After refresh, try to fetch user again
           const currentUser = await authApi.getCurrentUser()
           setToken(newAccess)
           setUser(currentUser)
@@ -124,7 +106,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     void bootstrap()
-  }, [logout])
+  }, [logout, refreshToken])
 
   const value = useMemo(
     () => ({

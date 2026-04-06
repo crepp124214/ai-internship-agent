@@ -71,7 +71,7 @@ class TestUserFlow:
         assert "password_hash" not in created_user
 
         login_response = client.post(
-            "/api/v1/users/login/",
+            "/api/v1/auth/login",
             json={"username": "testuser", "password": "password123"},
         )
 
@@ -105,7 +105,7 @@ class TestUserFlow:
         user_id = register_response.json()["id"]
 
         login_response = client.post(
-            "/api/v1/users/login/",
+            "/api/v1/auth/login",
             json={"username": "resumeauth", "password": "password123"},
         )
         access_token = login_response.json()["access_token"]
@@ -171,19 +171,72 @@ class TestUserFlow:
         )
 
         login_response = client.post(
-            "/api/v1/users/login/",
+            "/api/v1/auth/login",
             json={"username": "wrongpass", "password": "not-the-right-password"},
         )
 
         assert login_response.status_code == 401
-        assert login_response.json()["detail"] == "Invalid username or password"
+        assert login_response.json()["detail"] == "Invalid credentials"
 
     def test_missing_user_routes_return_404(self, client):
-        get_response = client.get("/api/v1/users/999999")
-        assert get_response.status_code == 404
+        # First register and login to get a token
+        client.post(
+            "/api/v1/users/",
+            json={
+                "username": "authuser",
+                "email": "auth@example.com",
+                "name": "Auth User",
+                "password": "password123",
+            },
+        )
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"username": "authuser", "password": "password123"},
+        )
+        token = login_resp.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
 
-        update_response = client.put("/api/v1/users/999999", json={"name": "Missing"})
-        assert update_response.status_code == 404
+        # Unauthenticated access to user routes should return 401
+        get_no_auth = client.get("/api/v1/users/999999")
+        assert get_no_auth.status_code == 401
 
-        delete_response = client.delete("/api/v1/users/999999")
-        assert delete_response.status_code == 404
+        update_no_auth = client.put("/api/v1/users/999999", json={"name": "Missing"})
+        assert update_no_auth.status_code == 401
+
+        delete_no_auth = client.delete("/api/v1/users/999999")
+        assert delete_no_auth.status_code == 401
+
+        # Authenticated user accessing another user's profile returns 403
+        get_other = client.get("/api/v1/users/999999", headers=headers)
+        assert get_other.status_code == 403
+
+        update_other = client.put(
+            "/api/v1/users/999999",
+            json={"name": "Missing"},
+            headers=headers,
+        )
+        assert update_other.status_code == 403
+
+        delete_other = client.delete("/api/v1/users/999999", headers=headers)
+        assert delete_other.status_code == 403
+
+    def test_list_users_is_forbidden_for_regular_users(self, client):
+        client.post(
+            "/api/v1/users/",
+            json={
+                "username": "listuser",
+                "email": "listuser@example.com",
+                "name": "List User",
+                "password": "password123",
+            },
+        )
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"username": "listuser", "password": "password123"},
+        )
+        headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+        response = client.get("/api/v1/users/", headers=headers)
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "User listing is not available"

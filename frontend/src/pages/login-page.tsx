@@ -8,13 +8,13 @@ export function LoginPage() {
   const { isAuthenticated, isBootstrapping, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const destination = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/dashboard'
   const [username, setUsername] = useState('demo')
   const [password, setPassword] = useState('demo123')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isBootstrapping && isAuthenticated) {
-    const destination = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/dashboard'
     return <Navigate replace to={destination} />
   }
 
@@ -25,7 +25,7 @@ export function LoginPage() {
 
     try {
       await login(username, password)
-      navigate('/dashboard', { replace: true })
+      navigate(destination, { replace: true })
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '登录失败')
     } finally {

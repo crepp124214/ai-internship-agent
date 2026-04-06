@@ -41,12 +41,14 @@ services:
       dockerfile: docker/Dockerfile
     container_name: internship-agent-app
     env_file:
-      - ../.env
+      - ../.env.compose
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
       DATABASE_URL: postgresql://agent_user:agent_password@postgres:5432/internship_agent
       REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+      SEED_DEMO_ON_BOOT: ${SEED_DEMO_ON_BOOT:-false}
     ports:
       - "8000:8000"
     depends_on:
@@ -56,6 +58,26 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - agent-network
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: internship-agent-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

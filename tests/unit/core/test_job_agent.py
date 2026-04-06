@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -54,6 +54,11 @@ class TestJobAgent:
 
         assert agent.llm is not None
 
+    @patch.dict(
+        "os.environ",
+        {"OPENAI_API_KEY": "", "OPENAI_BASE_URL": "", "LLM_PROVIDER": ""},
+        clear=True,
+    )
     def test_job_agent_rejects_openai_without_api_key(self):
         with pytest.raises(LLMProviderError, match="OpenAI API key is required"):
             job_agent_module.JobAgent(config={"provider": "openai"})

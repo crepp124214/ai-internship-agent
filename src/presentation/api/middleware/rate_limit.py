@@ -9,13 +9,13 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import Request, HTTPException, status
+from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.utils.config_loader import (
+    RATE_LIMIT_BACKEND,
     RATE_LIMIT_REQUESTS,
     RATE_LIMIT_WINDOW_SECONDS,
     get_settings,
@@ -75,6 +75,7 @@ class RedisRateLimitBackend(RateLimitBackend):
     async def _get_client(self) -> "redis.asyncio.Redis":
         if self._client is None:
             import redis.asyncio  # type: ignore
+
             self._client = redis.asyncio.from_url(self._redis_url, decode_responses=True)
         return self._client
 
@@ -118,18 +119,54 @@ _redis_backend: Optional[RedisRateLimitBackend] = None
 _memory_backend: MemoryRateLimitBackend = MemoryRateLimitBackend()
 
 
+def _backend_mode() -> str:
+    return (RATE_LIMIT_BACKEND or "auto").strip().lower()
+
+
 def _get_backend() -> RateLimitBackend:
-    """Return Redis backend if configured and available, else memory backend."""
+    """Return backend according to RATE_LIMIT_BACKEND policy."""
     global _redis_backend
+
+    settings = get_settings()
+    redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
+    mode = _backend_mode()
+
+    if mode == "memory":
+        return _memory_backend
+
+    if mode == "redis":
+        if _redis_backend is None:
+            _redis_backend = RedisRateLimitBackend(redis_url=redis_url)
+        return _redis_backend
+
+    # auto mode: keep previous behavior, fallback to memory for localhost default
     if _redis_backend is None:
-        settings = get_settings()
-        redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
-        # Only create Redis backend if we have a non-local URL or explicit config
         if redis_url and redis_url != "redis://localhost:6379/0":
             _redis_backend = RedisRateLimitBackend(redis_url=redis_url)
             return _redis_backend
         return _memory_backend
     return _redis_backend
+
+
+def get_rate_limit_runtime_config() -> dict[str, str | int]:
+    """Expose rate limit runtime configuration for startup logging."""
+    settings = get_settings()
+    redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379/0")
+
+    mode = _backend_mode()
+    if mode == "memory":
+        selected = "memory"
+    elif mode == "redis":
+        selected = "redis"
+    else:
+        selected = "redis" if redis_url and redis_url != "redis://localhost:6379/0" else "memory"
+
+    return {
+        "mode": mode,
+        "selected_backend": selected,
+        "requests": RATE_LIMIT_REQUESTS,
+        "window_seconds": RATE_LIMIT_WINDOW_SECONDS,
+    }
 
 
 # ---------------------------------------------------------------------------

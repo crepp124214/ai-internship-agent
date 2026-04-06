@@ -1,12 +1,21 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-宀椾綅妯″瀷
+Job-related persistence models.
 """
 
 from datetime import datetime
-from typing import Optional
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, Float, ForeignKey, Boolean, Index, Numeric
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 
 from src.data_access.database import Base
@@ -14,76 +23,65 @@ from src.data_access.database import Base
 
 class Job(Base):
     """
-    宀椾綅瀹炰綋
+    Job posting entity.
 
-    瀛樺偍鎷涜仒宀椾綅鐨勮缁嗕俊鎭紝鍖呮嫭鑱屼綅鎻忚堪銆佸叕鍙镐俊鎭€佽柂璧勭瓑銆?
-    Attributes:
-        id: 宀椾綅涓婚敭ID
-        title: 鑱屼綅鏍囬
-        company: 鍏徃鍚嶇О
-        company_logo: 鍏徃Logo URL
-        location: 宸ヤ綔鍦扮偣
-        salary: 钖祫鑼冨洿
-        salary_min: 钖祫涓嬮檺
-        salary_max: 钖祫涓婇檺
-        work_type: 宸ヤ綔绫诲瀷锛堝叏鑱?鍏艰亴/瀹炰範锛?        experience: 缁忛獙瑕佹眰
-        education: 瀛﹀巻瑕佹眰
-        description: 鑱屼綅鎻忚堪
-        requirements: 鑱屼綅瑕佹眰
-        welfare: 绂忓埄寰呴亣
-        tags: 鏍囩锛岄€楀彿鍒嗛殧
-        source: 鏉ユ簮骞冲彴
-        source_url: 婧怳RL
-        source_id: 婧愬钩鍙癐D
-        is_active: 鏄惁婵€娲?        publish_date: 鍙戝竷鏃ユ湡
-        deadline: 鎴鏃ユ湡
-        created_at: 鍒涘缓鏃堕棿
-        updated_at: 鏇存柊鏃堕棿
+    Stores the full job posting record, including the core description,
+    company data, salary metadata, and source details.
     """
 
     __tablename__ = "jobs"
 
-    # 涓婚敭
-    id = Column(Integer, primary_key=True, index=True, comment="宀椾綅涓婚敭ID")
+    # Primary key
+    id = Column(Integer, primary_key=True, index=True, comment="Job primary key")
 
-    # 鍩烘湰淇℃伅
-    title = Column(String(200), nullable=False, index=True, comment="鑱屼綅鏍囬")
-    company = Column(String(100), nullable=False, index=True, comment="鍏徃鍚嶇О")
-    company_logo = Column(String(500), comment="鍏徃Logo URL")
-    location = Column(String(100), nullable=False, index=True, comment="宸ヤ綔鍦扮偣")
+    # Core details
+    title = Column(String(200), nullable=False, index=True, comment="Job title")
+    company = Column(String(100), nullable=False, index=True, comment="Company name")
+    company_logo = Column(String(500), comment="Company logo URL")
+    location = Column(String(100), nullable=False, index=True, comment="Job location")
 
-    # 钖祫淇℃伅
-    salary = Column(String(100), comment="钖祫鑼冨洿")
-    salary_min = Column(Numeric(10, 2), comment="钖祫涓嬮檺")
-    salary_max = Column(Numeric(10, 2), comment="钖祫涓婇檺")
+    # Salary details
+    salary = Column(String(100), comment="Salary range text")
+    salary_min = Column(Numeric(10, 2), comment="Minimum salary")
+    salary_max = Column(Numeric(10, 2), comment="Maximum salary")
 
-    # 鑱屼綅瑕佹眰
-    work_type = Column(String(50), index=True, comment="宸ヤ綔绫诲瀷")
-    experience = Column(String(50), index=True, comment="缁忛獙瑕佹眰")
-    education = Column(String(50), index=True, comment="瀛﹀巻瑕佹眰")
+    # Job requirements
+    work_type = Column(String(50), index=True, comment="Work type")
+    experience = Column(String(50), index=True, comment="Experience requirement")
+    education = Column(String(50), index=True, comment="Education requirement")
 
-    # 璇︾粏鍐呭
-    description = Column(Text, comment="鑱屼綅鎻忚堪")
-    requirements = Column(Text, comment="鑱屼綅瑕佹眰")
-    welfare = Column(Text, comment="绂忓埄寰呴亣")
-    tags = Column(String(500), comment="鏍囩锛岄€楀彿鍒嗛殧")
+    # Long-form content
+    description = Column(Text, comment="Job description")
+    requirements = Column(Text, comment="Job requirements")
+    welfare = Column(Text, comment="Benefits")
+    tags = Column(String(500), comment="Comma-separated tags")
 
-    # 鏉ユ簮淇℃伅
-    source = Column(String(50), nullable=False, index=True, comment="鏉ユ簮骞冲彴")
-    source_url = Column(String(500), comment="婧怳RL")
-    source_id = Column(String(100), comment="婧愬钩鍙癐D")
+    # Source details
+    source = Column(String(50), nullable=False, index=True, comment="Source platform")
+    source_url = Column(String(500), comment="Source URL")
+    source_id = Column(String(100), comment="Source platform ID")
 
     # Status
-    is_active = Column(Boolean, default=True, index=True, comment="Is active")
+    is_active = Column(Boolean, default=True, index=True, comment="Whether the job is active")
 
-    # 鏃堕棿淇℃伅
-    publish_date = Column(DateTime, index=True, comment="鍙戝竷鏃ユ湡")
-    deadline = Column(DateTime, index=True, comment="鎴鏃ユ湡")
-    created_at = Column(DateTime, default=datetime.now, index=True, comment="鍒涘缓鏃堕棿")
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="鏇存柊鏃堕棿")
+    # Timestamps
+    publish_date = Column(DateTime, index=True, comment="Published at")
+    deadline = Column(DateTime, index=True, comment="Application deadline")
+    created_at = Column(DateTime, default=datetime.now, index=True, comment="Created at")
+    updated_at = Column(
+        DateTime,
+        default=datetime.now,
+        onupdate=datetime.now,
+        comment="Updated at",
+    )
 
-    # 鍏崇郴鏄犲皠
-    job_applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan", lazy="dynamic")
+    # Relationships
+    job_applications = relationship(
+        "JobApplication",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+    )
     job_match_results = relationship(
         "JobMatchResult",
         back_populates="job",
@@ -93,39 +91,28 @@ class Job(Base):
     interview_records = relationship("InterviewRecord", back_populates="job", lazy="dynamic")
     interview_sessions = relationship("InterviewSession", back_populates="job", lazy="dynamic")
 
-    # 澶嶅悎绱㈠紩
+    # Composite indexes
     __table_args__ = (
-        Index('idx_job_company_location', 'company', 'location'),
-        Index('idx_job_work_type_experience', 'work_type', 'experience'),
-        Index('idx_job_source_active', 'source', 'is_active'),
-        Index('idx_job_publish_active', 'publish_date', 'is_active'),
+        Index("idx_job_company_location", "company", "location"),
+        Index("idx_job_work_type_experience", "work_type", "experience"),
+        Index("idx_job_source_active", "source", "is_active"),
+        Index("idx_job_publish_active", "publish_date", "is_active"),
     )
 
     def __repr__(self) -> str:
-        """宀椾綅瀵硅薄鐨勫瓧绗︿覆琛ㄧず"""
+        """Return a compact debug representation."""
         return f"<Job(id={self.id}, title='{self.title}', company='{self.company}')>"
 
     def get_salary_range(self) -> str:
-        """
-        鑾峰彇钖祫鑼冨洿瀛楃涓?
-        Returns:
-            str: 钖祫鑼冨洿鎻忚堪
-        """
+        """Return a human-readable salary range string."""
         if self.salary_min and self.salary_max:
             return f"{self.salary_min}-{self.salary_max}"
-        elif self.salary:
+        if self.salary:
             return self.salary
-        else:
-            return "闈㈣"
+        return "Negotiable"
 
     def is_salary_in_range(self, min_salary: float, max_salary: float) -> bool:
-        """
-        妫€鏌ヨ柂璧勬槸鍚﹀湪鎸囧畾鑼冨洿鍐?
-        Args:
-            min_salary: 鏈€浣庤柂璧?            max_salary: 鏈€楂樿柂璧?
-        Returns:
-            bool: 钖祫鏄惁鍦ㄨ寖鍥村唴
-        """
+        """Check whether the stored salary range is inside the given range."""
         if self.salary_min and self.salary_max:
             return self.salary_min >= min_salary and self.salary_max <= max_salary
         return False
@@ -178,9 +165,9 @@ class JobApplication(Base):
     )
 
     __table_args__ = (
-        Index('idx_application_user_status', 'user_id', 'status'),
-        Index('idx_application_job_status', 'job_id', 'status'),
-        Index('idx_application_date_status', 'application_date', 'status'),
+        Index("idx_application_user_status", "user_id", "status"),
+        Index("idx_application_job_status", "job_id", "status"),
+        Index("idx_application_date_status", "application_date", "status"),
     )
 
     def __repr__(self) -> str:

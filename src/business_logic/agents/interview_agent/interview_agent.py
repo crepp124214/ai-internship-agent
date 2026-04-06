@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -59,7 +60,7 @@ class InterviewAgent(BaseAgent):
 
         default_config = {
             "provider": settings.LLM_PROVIDER,
-            "api_key": settings.OPENAI_API_KEY,
+            "api_key": settings.OPENAI_API_KEY or os.getenv("MINIMAX_API_KEY"),
             "model": settings_yaml.get("llm", {}).get("default_model"),
             "temperature": settings_yaml.get("llm", {}).get("temperature"),
             "max_tokens": settings_yaml.get("llm", {}).get("max_tokens"),
@@ -69,6 +70,8 @@ class InterviewAgent(BaseAgent):
         default_config.update(
             {
                 "provider": interview_llm.get("provider", default_config.get("provider")),
+                "api_key": interview_llm.get("api_key") or os.getenv("MINIMAX_API_KEY") or default_config.get("api_key"),
+                "base_url": interview_llm.get("base_url") or os.getenv("MINIMAX_BASE_URL"),
                 "model": interview_llm.get("model", default_config.get("model")),
                 "temperature": interview_llm.get("temperature", default_config.get("temperature")),
                 "max_tokens": interview_llm.get("max_tokens", default_config.get("max_tokens")),
@@ -86,8 +89,8 @@ class InterviewAgent(BaseAgent):
         provider = (self.config.get("provider") or "mock").lower()
         try:
             return LLMFactory.create(provider, self.config)
-        except LLMProviderError:
-            if provider == "openai" and self.allow_mock_fallback and not self.config.get("api_key"):
+        except (LLMProviderError, Exception):
+            if self.allow_mock_fallback:
                 fallback_config = dict(self.config)
                 fallback_config["provider"] = "mock"
                 fallback_config.pop("api_key", None)
@@ -209,6 +212,8 @@ class InterviewAgent(BaseAgent):
             "count": count,
             "questions": self._extract_questions(content, count),
             "raw_content": content,
+            "provider": self.config.get("provider") or "mock",
+            "model": self.config.get("model") or "unknown",
         }
 
     async def evaluate_interview_answer(
@@ -239,6 +244,8 @@ class InterviewAgent(BaseAgent):
             "score": self._extract_score(content),
             "feedback": self._extract_feedback(content),
             "raw_content": content,
+            "provider": self.config.get("provider") or "mock",
+            "model": self.config.get("model") or "unknown",
         }
 
     async def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:
