@@ -53,12 +53,13 @@ def test_search_memory_returns_filtered_results(memory, mock_chroma):
         "ids": [["mem-1"]],
         "documents": [["resume experience with Python"]],
         "metadatas": [[{"source": "resume"}]],
-        "distances": [[0.3]],
+        "distances": [[0.3]],  # L2 distance
     }
     mock_chroma.get_or_create_collection.return_value = mock_collection
     results = memory.search_memory("Python experience", session_id="session-1", threshold=0.5)
     assert len(results) == 1
-    assert results[0].score == 0.3
+    # similarity = 1 - 0.3 = 0.7, which is >= 0.5 threshold
+    assert results[0].score == 0.7
     assert "Python" in results[0].content
 
 
@@ -68,12 +69,13 @@ def test_search_memory_filters_by_threshold(memory, mock_chroma):
         "ids": [["mem-1", "mem-2"]],
         "documents": [["relevant content"], ["less relevant content"]],
         "metadatas": [[{}], {}],
-        "distances": [[0.2], [0.9]],  # 0.9 > 0.7 threshold
+        "distances": [[0.2], [0.9]],  # L2 distances
     }
     mock_chroma.get_or_create_collection.return_value = mock_collection
     results = memory.search_memory("query", threshold=0.7)
+    # similarity(0.2) = 0.8 >= 0.7 → included; similarity(0.9) = 0.1 < 0.7 → filtered
     assert len(results) == 1
-    assert results[0].score == 0.2
+    assert results[0].score == 0.8
 
 
 def test_clear_session_removes_redis_keys(memory, mock_redis):

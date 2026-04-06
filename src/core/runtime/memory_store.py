@@ -148,13 +148,15 @@ class MemoryStore:
         entries = []
         for mid, doc, meta, dist in zip(ids[0], docs[0], metas[0], dists[0]):
             # ChromaDB distances are L2 distance (0 = identical, higher = more different)
-            # Filter: distance must be less than threshold
-            if dist < threshold:
+            # Convert to similarity: higher = better match
+            similarity = max(0.0, 1.0 - dist)
+            # Filter: similarity must be >= threshold
+            if similarity >= threshold:
                 entries.append(MemoryEntry(
                     id=mid,
                     content=doc,
                     metadata=meta or {},
-                    score=round(dist, 4),
+                    score=round(similarity, 4),
                 ))
         return entries
 
