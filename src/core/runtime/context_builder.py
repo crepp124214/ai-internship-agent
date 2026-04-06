@@ -68,7 +68,7 @@ class ContextBuilder:
 
         return messages
 
-    async def build(
+    async def build_async(
         self,
         session_id: str,
         system_prompt: str,
@@ -88,8 +88,8 @@ class ContextBuilder:
         for turn in turns:
             messages.append({"role": turn.role, "content": turn.content})
 
-        # 2. 从 ChromaDB 检索相关记忆
-        memory_results = await self._memory.search_memory(
+        # 2. 从 ChromaDB 检索相关记忆（同步调用，MemoryStore.search_memory 是同步方法）
+        memory_results = self._memory.search_memory(
             query=system_prompt,
             session_id=session_id,
             top_k=max_memory_results,

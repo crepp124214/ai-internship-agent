@@ -61,3 +61,16 @@ def test_build_no_memory_below_threshold(builder, mock_memory):
     messages = builder.build_sync("session-1", "system prompt", memory_threshold=0.7)
     full_content = " ".join(m["content"] for m in messages)
     assert "low relevance" not in full_content
+
+
+@pytest.mark.asyncio
+async def test_build_async_includes_system_prompt_and_turns(builder, mock_memory):
+    """Async build_async method includes system prompt and turns like build_sync."""
+    messages = await builder.build_async("session-1", "You are a helpful assistant")
+    assert messages[0]["role"] == "system"
+    assert "helpful assistant" in messages[0]["content"]
+    roles = [m["role"] for m in messages]
+    contents = [m["content"] for m in messages]
+    assert "user" in roles
+    assert "I want to customize my resume" in contents
+    assert "Please paste your JD" in contents
