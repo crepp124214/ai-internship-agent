@@ -4,16 +4,11 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional
 
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool as LangChainBaseTool
-from pydantic import BaseModel
-
-
-class ToolInput(BaseModel):
-    """工具输入 Schema 基类"""
-    pass
+from pydantic import BaseModel, Field
 
 
 class BaseTool(LangChainBaseTool):
@@ -22,7 +17,7 @@ class BaseTool(LangChainBaseTool):
     所有领域工具都应继承此类
     """
 
-    runtime: Optional[Any] = None
+    runtime: Optional[Any] = Field(default=None, exclude=True)
 
     def _run(
         self,

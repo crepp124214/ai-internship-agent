@@ -13,7 +13,6 @@ from src.core.tools.base_tool import BaseTool
 
 def langchain_tool_to_basetool(
     langchain_tool: Any,
-    runtime: Any = None,
 ) -> BaseTool:
     """
     将 LangChain @tool 装饰器创建的工具转换为我们的 BaseTool
@@ -23,7 +22,7 @@ def langchain_tool_to_basetool(
         name: str = langchain_tool.name
         description: str = langchain_tool.description
 
-        def _execute_sync(self, tool_input: Dict[str, Any], runtime: Any = None) -> Dict[str, Any]:
+        def _execute_sync(self, tool_input: Dict[str, Any]) -> Dict[str, Any]:
             result = langchain_tool.invoke(tool_input, config={"tool_call": True})
             if isinstance(result, str):
                 return {"result": result}
