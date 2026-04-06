@@ -28,3 +28,7 @@ opentelemetry-sdk==1.40.0
 opentelemetry-instrumentation-fastapi==0.61b0
 opentelemetry-instrumentation-sqlalchemy==0.61b0
 opentelemetry-exporter-otlp==1.40.0
+# Agent Runtime
+litellm>=1.0.0
+langchain-core>=0.3.0
+langchain-community>=0.2.0
