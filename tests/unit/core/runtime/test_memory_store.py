@@ -40,7 +40,7 @@ def test_get_turns_returns_reversed_order(memory, mock_redis):
 
 def test_add_memory_calls_chroma(memory, mock_chroma):
     mock_collection = MagicMock()
-    mock_chroma.get_or_create_collection.return_value = mock_collection
+    mock_chroma.get_collection.return_value = mock_collection
     memory.add_memory("session-1", "user submitted resume", {"source": "resume"})
     mock_collection.add.assert_called_once()
     call_args = mock_collection.add.call_args
@@ -55,7 +55,7 @@ def test_search_memory_returns_filtered_results(memory, mock_chroma):
         "metadatas": [[{"source": "resume"}]],
         "distances": [[0.3]],  # L2 distance
     }
-    mock_chroma.get_or_create_collection.return_value = mock_collection
+    mock_chroma.get_collection.return_value = mock_collection
     results = memory.search_memory("Python experience", session_id="session-1", threshold=0.5)
     assert len(results) == 1
     # similarity = 1 - 0.3 = 0.7, which is >= 0.5 threshold
@@ -71,7 +71,7 @@ def test_search_memory_filters_by_threshold(memory, mock_chroma):
         "metadatas": [[{}], {}],
         "distances": [[0.2], [0.9]],  # L2 distances
     }
-    mock_chroma.get_or_create_collection.return_value = mock_collection
+    mock_chroma.get_collection.return_value = mock_collection
     results = memory.search_memory("query", threshold=0.7)
     # similarity(0.2) = 0.8 >= 0.7 → included; similarity(0.9) = 0.1 < 0.7 → filtered
     assert len(results) == 1

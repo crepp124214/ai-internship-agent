@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, NamedTuple, Optional
 
@@ -84,7 +85,12 @@ class MemoryStore:
         return turns
 
     def clear_session(self, session_id: str) -> None:
-        """清除会话的所有记忆"""
+        """
+        清除会话的所有短期记忆（仅 Redis）。
+
+        注意：此方法仅清除 Redis 中的短期会话记忆，不处理 ChromaDB 中的长期向量记忆。
+        如需清除 ChromaDB 中的会话记忆，请使用 delete_memory 或自行调用 clear_session_chroma。
+        """
         if self._redis:
             self._redis.delete(self._redis_key(session_id))
 
@@ -93,10 +99,12 @@ class MemoryStore:
     def _get_collection(self):
         if self._chroma is None:
             return None
-        return self._chroma.get_or_create_collection(
-            name=self._collection_name,
-            metadata={"description": "Agent long-term memory"},
-        )
+        # Avoid get_or_create_collection with metadata to prevent conflicts
+        # if collection already exists with different metadata
+        try:
+            return self._chroma.get_collection(name=self._collection_name)
+        except Exception:
+            return self._chroma.create_collection(name=self._collection_name)
 
     def add_memory(
         self,
@@ -108,7 +116,6 @@ class MemoryStore:
         collection = self._get_collection()
         if collection is None:
             return ""
-        import uuid
         memory_id = str(uuid.uuid4())
         collection.add(
             ids=[memory_id],
