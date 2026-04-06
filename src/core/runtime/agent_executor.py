@@ -67,7 +67,7 @@ class AgentExecutor:
                 step += 1
 
                 # 调用 LLM
-                tool_schemas = self._tools.get_schemas() if self._tools._tools else None
+                tool_schemas = self._tools.get_schemas()
                 response = await self._llm.chat(
                     messages=messages,
                     tools=tool_schemas,
