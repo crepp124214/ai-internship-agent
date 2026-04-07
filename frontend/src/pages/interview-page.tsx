@@ -1,7 +1,9 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { interviewApi, readApiError, resumeApi, type GeneratedInterviewQuestion } from '../lib/api'
+import { interviewApi, readApiError, resumeApi, type GeneratedInterviewQuestion, type ReviewReport } from '../lib/api'
+import { ChatBubble } from './components/ChatBubble'
+import { CoachReviewReportCard } from './components/CoachReviewReportCard'
 import {
   EmptyHint,
   FormField,
@@ -132,6 +134,18 @@ export function InterviewPage() {
   const [contextImportState, setContextImportState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [contextImportMessage, setContextImportMessage] = useState<string | null>(null)
 
+  // Coach mode state
+  const [coachActive, setCoachActive] = useState(false)
+  const [coachSessionId, setCoachSessionId] = useState<number | null>(null)
+  const [coachMessages, setCoachMessages] = useState<Array<{role: 'ai' | 'user', message: string, score?: number | null}>>([])
+  const [coachAnswer, setCoachAnswer] = useState('')
+  const [coachLoading, setCoachLoading] = useState(false)
+  const [coachFeedback, setCoachFeedback] = useState<string | null>(null)
+  const [coachReport, setCoachReport] = useState<ReviewReport | null>(null)
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(null)
+  const [isLast, setIsLast] = useState(false)
+  const [inFollowup, setInFollowup] = useState(false)
+
   useEffect(() => {
     if (!selectedResumeId && resumesQuery.data?.length) setSelectedResumeId(resumesQuery.data[0].id)
   }, [resumesQuery.data, selectedResumeId])
@@ -253,6 +267,57 @@ export function InterviewPage() {
       await queryClient.invalidateQueries({ queryKey: ['interview', 'records'] })
       setRecordResult(formatEvaluationPreview(data.score, `${data.feedback}\n\n${data.ai_evaluation}`))
       setFeedback('面试记录评估已保存。')
+    },
+    onError: (error) => setFeedback(readApiError(error)),
+  })
+
+  const startCoachMutation = useMutation({
+    mutationFn: ({ jdId, resumeId }: { jdId: number; resumeId: number }) =>
+      interviewApi.coachStart({ jd_id: jdId, resume_id: resumeId }),
+    onSuccess: (data) => {
+      setCoachSessionId(data.session_id)
+      setCoachMessages([
+        { role: 'ai', message: data.opening_message },
+        { role: 'ai', message: data.first_question },
+      ])
+      setCurrentQuestion(data.first_question)
+      setIsLast(false)
+      setCoachActive(true)
+    },
+    onError: (error) => setFeedback(readApiError(error)),
+  })
+
+  const submitAnswerMutation = useMutation({
+    mutationFn: ({ sessionId, answer }: { sessionId: number; answer: string }) =>
+      interviewApi.coachAnswer({ session_id: sessionId, answer }),
+    onSuccess: (data) => {
+      setCoachMessages((prev) => [
+        ...prev,
+        { role: 'user', message: coachAnswer },
+        { role: 'ai', message: data.feedback, score: data.score },
+      ])
+      setCoachFeedback(`本题得分：${data.score}分 - ${data.feedback}`)
+      setCoachAnswer('')
+      if (data.next_question) {
+        setCurrentQuestion(data.next_question)
+        setCoachMessages((prev) => [...prev, { role: 'ai', message: data.next_question! }])
+        setIsLast(data.is_last)
+      } else {
+        // 进入追问轮
+        setInFollowup(true)
+        setCurrentQuestion(null)
+      }
+    },
+    onError: (error) => setFeedback(readApiError(error)),
+  })
+
+  const endCoachMutation = useMutation({
+    mutationFn: ({ sessionId, followupSkipped }: { sessionId: number; followupSkipped: boolean }) =>
+      interviewApi.coachEnd(sessionId, followupSkipped),
+    onSuccess: (data) => {
+      setCoachReport(data.review_report)
+      setCoachActive(false)
+      setFeedback('面试已结束，复盘报告已生成。')
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
