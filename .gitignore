@@ -65,6 +65,8 @@ logs/
 .coverage
 coverage.xml
 htmlcov/
+.playwright-mcp/
+.sisyphus/
 
 # Jupyter Notebook
 .ipynb_checkpoints/
