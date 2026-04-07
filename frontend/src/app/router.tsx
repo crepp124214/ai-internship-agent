@@ -8,7 +8,6 @@ import { JdCustomizePage } from '../pages/jd-customize-page'
 import { JobsPage } from '../pages/jobs-page'
 import { LoginPage } from '../pages/login-page'
 import { ResumePage } from '../pages/resume-page'
-import { TrackerPage } from '../pages/tracker-page'
 
 export function AppRouter() {
   return (
@@ -27,7 +26,6 @@ export function AppRouter() {
         <Route path="/jd-customize" element={<JdCustomizePage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/interview" element={<InterviewPage />} />
-        <Route path="/tracker" element={<TrackerPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="/dashboard" />} />
     </Routes>
