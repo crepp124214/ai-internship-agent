@@ -79,6 +79,10 @@ class InterviewRecord(Base):
     user = relationship("User", back_populates="interview_records", lazy="joined")
     job = relationship("Job", back_populates="interview_records", lazy="joined")
     question = relationship("InterviewQuestion", back_populates="interview_records", lazy="joined")
+    session_id = Column(Integer, ForeignKey("interview_sessions.id", ondelete="CASCADE"), index=True, comment="Related session ID")
+    question_index = Column(Integer, default=0, comment="Question order in session")
+    is_followup = Column(Boolean, default=False, comment="Whether this is a follow-up question")
+    session = relationship("InterviewSession", back_populates="interview_records")
 
     __table_args__ = (
         Index("idx_record_user_question", "user_id", "question_id"),
@@ -131,6 +135,11 @@ class InterviewSession(Base):
 
     user = relationship("User", back_populates="interview_sessions", lazy="joined")
     job = relationship("Job", back_populates="interview_sessions", lazy="joined")
+    resume_id = Column(Integer, ForeignKey("resumes.id", ondelete="SET NULL"), index=True, comment="Related resume ID")
+    jd_text = Column(Text, comment="Full JD text for this session")
+    status = Column(String(20), default="active", index=True, comment="Session status: active/completed/paused")
+    followup_completed = Column(Boolean, default=False, comment="Whether follow-up round is done")
+    interview_records = relationship("InterviewRecord", back_populates="session", lazy="dynamic", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_session_user_completed", "user_id", "completed"),
