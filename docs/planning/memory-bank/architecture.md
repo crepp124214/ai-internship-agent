@@ -9,9 +9,7 @@
 - 设计源文档：`internship-design-document.md`
 - 技术栈源文档：`tech-stack.md`
 
-## 当前到目标的映射
-
-### 当前核心层
+## 当前核心层
 
 - `src/presentation/`
   - 负责 API、请求响应、Schema、依赖注入、认证与错误转换
@@ -22,16 +20,16 @@
 - `src/core/`
   - 负责共享 LLM 能力、运行时基础能力、通用抽象
 
-### 目标增强层
+## 目标增强层
 
 根据设计文档，后续应逐步补齐：
 
 - `src/core/runtime/`
-  - `agent_executor`
-  - `tool_registry`
-  - `state_machine`
-  - `memory_store`
-  - `context_builder`
+  - `agent_executor` — ReAct 执行循环
+  - `tool_registry` — 工具注册与发现
+  - `state_machine` — Agent 执行状态管理
+  - `memory_store` — Redis(会话) + ChromaDB(向量)
+  - `context_builder` — RAG 上下文构建
 - `src/core/tools/`
   - 统一工具抽象与领域工具集
 - `src/business_logic/jd/`
@@ -59,77 +57,59 @@
 - `core` 不承载领域业务
 - 所有新能力都要为后续 LangChain + LangGraph 路线兼容
 
-## 当前重点变更
+## 已完成重点变更
 
-1. ~~识别并移除 `Tracker` 相关结构~~ ✅ Tracker 入口已断开
-2. ~~保留并稳定基础域~~ ✅ 四个域全部稳定
-3. 为 `JD 定制简历` 和 `AI 面试官对练` 预留目录与职责边界
-4. ~~逐步把 LLM 调用统一到共享抽象层~~ ✅ LiteLLM Adapter 已实现
-5. **Agent Runtime Phase 1 ✅ 已实现** — ReAct 循环、工具注册、状态机、记忆存储、上下文构建全部完成
+| 变更 | 状态 | 提交 |
+|------|------|------|
+| Tracker 路由入口断开 | ✅ | `c760ee2` |
+| 基础域稳定（用户/简历/岗位/面试） | ✅ | Phase 1 |
+| Agent Runtime Phase 1 实现 | ✅ | Phase 2 |
+| JD 定制简历功能 | ✅ | Phase 3 |
+| Docker 多环境配置 | ✅ | Phase 9 |
+| P0: 架构违规修复（工具层禁止从 presentation 导入） | ✅ | `db57d6f` |
+| P0: Exception swallowing 修复 | ✅ | `d2ad37c` |
 
 ## Agent Runtime 详细设计
 
-> 状态：已设计，待实现 | 日期：2026-04-07
+> 状态：Phase 1 完成 | 日期：2026-04-07
 
 ### 架构概览
 
 ```
 src/core/runtime/
 ├── agent_executor.py     # ReAct 执行循环
-├── tool_registry.py     # 工具注册与发现
-├── state_machine.py     # Agent 执行状态管理
-├── memory_store.py      # Redis(会话) + ChromaDB(向量)
-└── context_builder.py   # RAG 上下文构建
+├── tool_registry.py      # 工具注册与发现
+├── state_machine.py      # Agent 执行状态管理
+├── memory_store.py       # Redis(会话) + ChromaDB(向量)
+└── context_builder.py    # RAG 上下文构建
 
 src/core/tools/
-├── base_tool.py         # LangChain BaseTool 封装
-└── langchain_tools.py   # LangChain @tool 装饰器工具定义
+├── base_tool.py          # LangChain BaseTool 封装
+└── tool_context.py       # 工具执行上下文（含 db session）
 
 src/core/llm/
-└── litellm_adapter.py   # LiteLLM 统一 adapter（新增）
+├── factory.py            # LLM 工厂（OpenAI/Minimax/Mock）
+├── openai_adapter.py     # OpenAI/Minimax 兼容 adapter
+└── mock_adapter.py       # 确定性 Mock adapter（测试用）
 ```
 
-### 设计决策
+### LLM Adapter 设计
 
-| 决策项 | 选择 | 理由 |
-|--------|------|------|
-| LLM 调用层 | LiteLLM | 统一接口，支持所有主流 provider，切换模型改配置即可 |
-| Tool 定义 | LangChain @tool | 原生 function calling 支持，Executor 直接对接 |
-| StateMachine | 只管 Agent 执行状态 | idle→planning→tool_use→responding→done |
-| 短期记忆 | Redis | 快速存取会话上下文 |
-| 长期记忆 | ChromaDB | 向量相似度检索，RAG 核心 |
-| RAG 检索 | 纯向量相似度 | threshold 过滤，无需复杂混合检索 |
+| Adapter | 用途 |
+|---------|------|
+| `OpenAIAdapter` | 调用 OpenAI/Minimax API，支持 function calling |
+| `MockLLMAdapter` | 本地测试/开发， deterministic 输出 |
+| `LLMFactory` | 根据 `LLM_PROVIDER` 环境变量创建对应 adapter |
 
-### 1. LiteLLM Adapter（新增）
+**Provider 支持：** `openai`, `minimax`, `mock`, `stub`
 
-文件：`src/core/llm/litellm_adapter.py`
-
-```python
-class LiteLLMAdapter:
-    """通过 litellm 调用所有 LLM provider，统一接口"""
-
-    async def chat(
-        self,
-        messages: list[dict],
-        tools: list[dict] | None = None,
-        model: str | None = None,
-        **kwargs
-    ) -> LLMResponse: ...
-
-    async def generate(
-        self,
-        prompt: str,
-        system_prompt: str | None = None,
-        **kwargs
-    ) -> str: ...
+**配置方式：**
+```bash
+LLM_PROVIDER=mock        # 本地开发
+LLM_PROVIDER=minimax     # 生产环境
 ```
 
-**与现有 LLMFactory 的关系：**
-- 现有 `LLMFactory` + 各 adapter 保持不动，确保向后兼容
-- 新 `LiteLLMAdapter` 专供 Runtime 使用，与旧系统隔离
-- 后续 JD/Interview Agent 可逐步迁移到新 adapter
-
-### 2. ToolRegistry + BaseTool
+### ToolRegistry + BaseTool
 
 文件：`src/core/tools/base_tool.py`
 
@@ -148,9 +128,11 @@ class BaseTool(LangChainBaseTool):
     description: str
     args_schema: Type[BaseModel]
 
-    def _run(self, tool_input: dict, runtime: "AgentRuntime") -> dict: ...
-    async def _arun(self, tool_input: dict, runtime: "AgentRuntime") -> dict: ...
+    def _run(self, tool_input: dict, runtime=None, context: ToolContext = None) -> dict: ...
+    async def _arun(self, tool_input: dict, runtime=None, context: ToolContext = None) -> dict: ...
 ```
+
+**ToolContext：** 通过 `context.db` 获取数据库会话，禁止工具直接调用 `get_db()`
 
 文件：`src/core/runtime/tool_registry.py`
 
@@ -160,11 +142,11 @@ class ToolRegistry:
 
     def register(self, tool: BaseTool) -> None: ...
     def get_tool(self, name: str) -> BaseTool: ...
-    def list_tools(self) -> list[dict]: ...  # 返回 [{name, description, schema}, ...]
-    def get_schemas(self) -> list[dict]: ...  # 返回 LangChain 格式 tool schemas
+    def list_tools(self) -> list[dict]: ...
+    def get_schemas(self) -> list[dict]: ...
 ```
 
-### 3. AgentExecutor — ReAct 循环
+### AgentExecutor — ReAct 循环
 
 文件：`src/core/runtime/agent_executor.py`
 
@@ -177,7 +159,7 @@ class AgentExecutor:
 
     def __init__(
         self,
-        llm: LiteLLMAdapter,
+        llm: BaseLLM,
         tools: ToolRegistry,
         memory: "MemoryStore",
         state_machine: "StateMachine",
@@ -193,15 +175,9 @@ class AgentExecutor:
         """
         执行任务，yield 每一步的文本输出
         """
-        # ReAct 循环:
-        # 1. state_machine.transition("planning")
-        # 2. context_builder.build() → messages
-        # 3. llm.chat(messages, tools=registry.get_schemas())
-        # 4a. 如果是 tool_call → registry.execute(name, args) → observation → 回到步骤1
-        # 4b. 如果是 text → yield → state_machine.transition("done")
 ```
 
-### 4. StateMachine
+### StateMachine
 
 文件：`src/core/runtime/state_machine.py`
 
@@ -225,15 +201,9 @@ class StateMachine:
         "responding": {"done", "planning"},
         "done": {"idle"},
     }
-
-    def __init__(self): ...
-    def transition(self, to: str, reason: str | None = None) -> None: ...
-    def get_state(self) -> str: ...
-    def get_history(self) -> list[StateTransition]: ...
-    def reset(self) -> None: ...
 ```
 
-### 5. MemoryStore
+### MemoryStore
 
 文件：`src/core/runtime/memory_store.py`
 
@@ -256,33 +226,16 @@ class MemoryStore:
     短期会话记忆（Redis）+ 长期向量记忆（ChromaDB）
     """
 
-    def __init__(self, redis_client, chroma_client, collection_name: str = "agent_memory"): ...
-
     # --- 短期会话记忆 ---
     def add_turn(self, session_id: str, role: str, content: str) -> None: ...
     def get_turns(self, session_id: str, limit: int = 20) -> list[Turn]: ...
-    def clear_session(self, session_id: str) -> None: ...
 
     # --- 长期向量记忆 ---
-    def add_memory(
-        self,
-        session_id: str,
-        content: str,
-        metadata: dict | None = None,
-    ) -> str: ...  # 返回 memory_id
-
-    def search_memory(
-        self,
-        query: str,
-        session_id: str | None = None,
-        top_k: int = 5,
-        threshold: float = 0.7,
-    ) -> list[MemoryEntry]: ...
-
-    def delete_memory(self, memory_id: str) -> None: ...
+    def add_memory(self, session_id: str, content: str, metadata: dict | None = None) -> str: ...
+    def search_memory(self, query: str, session_id: str | None = None, top_k: int = 5, threshold: float = 0.7) -> list[MemoryEntry]: ...
 ```
 
-### 6. ContextBuilder
+### ContextBuilder
 
 文件：`src/core/runtime/context_builder.py`
 
@@ -292,8 +245,6 @@ class ContextBuilder:
     RAG 上下文构建器
     负责从 MemoryStore 组装 LLM 可用的 messages
     """
-
-    def __init__(self, memory: MemoryStore): ...
 
     async def build(
         self,
@@ -305,15 +256,7 @@ class ContextBuilder:
     ) -> list[dict[str, str]]:
         """
         返回格式化的 messages 列表
-        [
-            {"role": "system", "content": "..."},
-            {"role": "user", "content": "..."},
-            ...
-        ]
         """
-        # 1. 从 Redis 取最近 max_turns 轮对话
-        # 2. 从 ChromaDB 检索相关历史记忆（相似度 > threshold）
-        # 3. 组装 messages，记忆片段插入为补充 context
 ```
 
 ## 更新规则
