@@ -75,13 +75,14 @@ if _tracer_provider is not None:
         logger.warning(f"FastAPI instrumentation skipped: {exc}")
 
 # 注册路由
-from src.presentation.api.v1 import auth, resume, jobs, interview, tracker, users
+from src.presentation.api.v1 import auth, resume, jobs, interview, tracker, users, agent
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(resume.router, prefix="/api/v1/resumes", tags=["简历管理"])
 app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["岗位管理"])
 app.include_router(interview.router, prefix="/api/v1/interview", tags=["面试管理"])
 app.include_router(tracker.router, prefix="/api/v1/tracker", tags=["进度追踪"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["用户管理"])
+app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 
 # Metrics endpoint (Prometheus)
 app.add_api_route("/metrics", metrics, methods=["GET"])

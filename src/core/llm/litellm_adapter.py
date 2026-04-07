@@ -4,7 +4,7 @@ LiteLLM 统一 adapter
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, AsyncIterator
 from unittest.mock import MagicMock
 
 import litellm
@@ -155,3 +155,28 @@ class LiteLLMAdapter:
         if embedding is None:
             raise LLMRequestError("LiteLLM embedding has no vector")
         return [float(x) for x in embedding]
+
+    async def stream_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        model: Optional[str] = None,
+        **kwargs: Any,
+    ) -> AsyncIterator[str]:
+        """
+        流式聊天，返回异步迭代器，每次 yield 一个文本片段。
+        litellm 的 stream=True 返回异步生成器，直接 yield ModelResponse chunks。
+        """
+        params = self._build_litellm_params(messages, tools, **kwargs)
+        if model:
+            params["model"] = model
+        params["stream"] = True
+        try:
+            response = await acompletion(**params)
+        except Exception as exc:
+            raise LLMRequestError(f"LiteLLM stream failed: {exc}") from exc
+
+        async for chunk in response:
+            content = getattr(chunk.choices[0].delta, "content", None) if hasattr(chunk, "choices") else None
+            if content:
+                yield content
