@@ -19,7 +19,7 @@ class EchoTool(BaseTool):
     name: str = "echo"
     description: str = "Echoes back the input"
 
-    def _execute_sync(self, tool_input: dict, runtime=None) -> dict:
+    def _execute_sync(self, tool_input: dict, runtime=None, context=None) -> dict:
         return {"echoed": tool_input.get("message", "")}
 
 
