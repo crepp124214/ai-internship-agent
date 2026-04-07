@@ -7,6 +7,9 @@ from src.business_logic.interview import interview_service
 from src.presentation.api.ai_errors import raise_ai_internal_error, raise_ai_value_error
 from src.presentation.api.deps import get_current_user, get_db
 from src.presentation.schemas.interview import (
+    CoachStartRequest, CoachStartResponse,
+    CoachAnswerRequest, CoachAnswerResponse,
+    CoachEndResponse, ReviewReportResponse,
     InterviewRecordEvaluationRequest,
     InterviewRecordEvaluationResponse,
     InterviewAnswerEvaluationRequest,
@@ -21,6 +24,7 @@ from src.presentation.schemas.interview import (
     InterviewSession,
     InterviewSessionCreate,
 )
+from src.business_logic.interview.coach_service import coach_service
 
 router = APIRouter()
 
@@ -252,3 +256,122 @@ async def evaluate_record(
         )
     except Exception:
         raise_ai_internal_error("Evaluate interview record failed")
+
+
+@router.post("/coach/start", response_model=CoachStartResponse)
+async def coach_start(
+    req: CoachStartRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """启动 AI 面试对练会话"""
+    try:
+        result = coach_service.start_session(
+            db=db,
+            user=current_user,
+            jd_id=req.jd_id,
+            resume_id=req.resume_id,
+            question_count=req.question_count,
+        )
+        return CoachStartResponse(**result)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        msg = str(exc)
+        if "not found" in msg.lower() or "不存在" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+
+@router.post("/coach/answer", response_model=CoachAnswerResponse)
+async def coach_answer(
+    req: CoachAnswerRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """提交回答，获取评分和下一题"""
+    try:
+        result = coach_service.submit_answer(
+            db=db,
+            user=current_user,
+            session_id=req.session_id,
+            answer=req.answer,
+        )
+        return CoachAnswerResponse(**result)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        msg = str(exc)
+        if "已结束" in msg:
+            raise HTTPException(status_code=409, detail=msg)
+        raise HTTPException(status_code=404, detail=msg)
+
+
+@router.post("/coach/followup", response_model=CoachEndResponse)
+async def coach_followup(
+    req: dict,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """提交追问轮回答，获取复盘报告"""
+    try:
+        result = coach_service.submit_followup_answers(
+            db=db,
+            user=current_user,
+            session_id=req["session_id"],
+            followup_answers=req.get("followup_answers", []),
+        )
+        return CoachEndResponse(**result)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.post("/coach/end", response_model=CoachEndResponse)
+async def coach_end(
+    session_id: int,
+    followup_skipped: bool = False,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """提前结束面试，获取复盘报告"""
+    try:
+        result = coach_service.end_session(
+            db=db,
+            user=current_user,
+            session_id=session_id,
+            followup_skipped=followup_skipped,
+        )
+        return CoachEndResponse(**result)
+    except ValueError as exc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@router.get("/coach/report/{session_id}", response_model=ReviewReportResponse)
+async def coach_get_report(
+    session_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """获取历史复盘报告"""
+    from src.data_access.entities.interview import InterviewSession
+    from src.data_access.repositories.interview_repository import interview_session_repository
+
+    session = interview_session_repository.get_by_id(db, session_id)
+    if not session or session.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.status != "completed":
+        raise HTTPException(status_code=400, detail="Session not completed yet")
+
+    records = session.interview_records.all()
+    answers = [
+        {"question": r.user_answer or "", "answer": r.user_answer or "", "score": r.score or 0}
+        for r in records
+    ]
+    gen = ReviewReportGenerator()
+    report = gen.generate(answers)
+
+    return ReviewReportResponse(
+        session_id=session_id,
+        review_report=report,
+        average_score=session.average_score or 0,
+    )
