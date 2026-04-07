@@ -32,9 +32,7 @@ class UpdateResumeTool(BaseTool):
         resume_id = tool_input.get("resume_id")
         if context is None:
             raise ValueError("ToolContext is required to execute this tool")
-            db = next(get_db())
-        else:
-            db = context.db
+        db = context.db
 
         resume = resume_repository.get_by_id(db, resume_id)
         if not resume:

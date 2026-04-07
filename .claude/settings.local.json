@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell:*)",
+      "Read(//c/Users/qwer/.claude/plugins/marketplaces/anthropics-claude-code/.git//**)",
+      "Bash(rm -f /c/Users/qwer/.claude/plugins/marketplaces/anthropics-claude-code/.git/shallow.lock)",
+      "Bash(python:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)"
+    ]
+  }
+}

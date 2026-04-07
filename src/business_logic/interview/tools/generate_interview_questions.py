@@ -34,9 +34,7 @@ class GenerateInterviewQuestionsTool(BaseTool):
 
         if context is None:
             raise ValueError("ToolContext is required to execute this tool")
-            db = next(get_db())
-        else:
-            db = context.db
+        db = context.db
 
         job = job_repository.get_by_id(db, jd_id)
         if not job:

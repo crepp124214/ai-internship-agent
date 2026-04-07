@@ -32,9 +32,7 @@ class CompareResumesTool(BaseTool):
 
         if context is None:
             raise ValueError("ToolContext is required to execute this tool")
-            db = next(get_db())
-        else:
-            db = context.db
+        db = context.db
 
         resume1 = resume_repository.get_by_id(db, resume_id_1)
         if not resume1:

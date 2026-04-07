@@ -32,9 +32,7 @@ class SearchJobsTool(BaseTool):
 
         if context is None:
             raise ValueError("ToolContext is required to execute this tool")
-            db = next(get_db())
-        else:
-            db = context.db
+        db = context.db
 
         jobs = job_repository.get_all(db)
 
