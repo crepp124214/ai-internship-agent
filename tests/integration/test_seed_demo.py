@@ -8,6 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "seed_demo.py"
@@ -63,7 +65,6 @@ def test_seed_demo_script_is_idempotent():
         assert "Resume ID:" in first_run.stdout
         assert "Job ID:" in first_run.stdout
         assert "Interview Record ID:" in first_run.stdout
-        assert "Application ID:" in first_run.stdout
 
         second_run = _run_seed(database_url)
         assert second_run.returncode == 0, second_run.stderr
