@@ -201,3 +201,68 @@ class InterviewRecordEvaluationResponse(BaseModel):
     provider: Optional[str] = None
     model: Optional[str] = None
     answered_at: datetime
+
+
+# ============== Interview Coach Schemas ==============
+
+
+class ReviewReportDimension(BaseModel):
+    """面试复盘报告维度"""
+    name: str = Field(..., description="维度名称")
+    score: int = Field(..., ge=0, le=100, description="维度得分")
+    stars: int = Field(..., ge=1, le=5, description="星级评分")
+    suggestion: str = Field(..., description="改进建议")
+
+
+class ReviewReport(BaseModel):
+    """面试复盘报告"""
+    dimensions: list["ReviewReportDimension"] = Field(..., description="各项维度评分")
+    overall_score: int = Field(..., ge=0, le=100, description="总体得分")
+    overall_comment: str = Field(..., description="总体评价")
+    improvement_suggestions: list[str] = Field(..., description="改进建议列表")
+    markdown: str = Field(..., description="Markdown格式的完整报告")
+
+
+class CoachStartRequest(BaseModel):
+    """开始面试对练请求"""
+    jd_id: int = Field(..., ge=1, description="职位描述ID")
+    resume_id: int = Field(..., ge=1, description="简历ID")
+    question_count: int = Field(default=5, ge=1, le=20, description="问题数量")
+
+
+class CoachStartResponse(BaseModel):
+    """开始面试对练响应"""
+    session_id: int = Field(..., description="会话ID")
+    opening_message: str = Field(..., description="开场白")
+    first_question: str = Field(..., description="第一个问题")
+    total_questions: int = Field(..., ge=1, description="总问题数")
+
+
+class CoachAnswerRequest(BaseModel):
+    """回答面试问题请求"""
+    session_id: int = Field(..., ge=1, description="会话ID")
+    answer: str = Field(..., min_length=1, description="用户回答")
+
+
+class CoachAnswerResponse(BaseModel):
+    """回答面试问题响应"""
+    score: int = Field(..., ge=0, le=100, description="回答得分")
+    feedback: str = Field(..., description="反馈意见")
+    next_question: Optional[str] = Field(None, description="下一个问题，无则为结束")
+    is_followup: bool = Field(..., description="是否为追问")
+    is_last: bool = Field(..., description="是否为最后一题")
+    timeout_followup_skipped: bool = Field(..., description="是否因超时跳过了追问")
+
+
+class CoachEndResponse(BaseModel):
+    """结束面试对练响应"""
+    session_id: int = Field(..., description="会话ID")
+    review_report: ReviewReport = Field(..., description="复盘报告")
+    average_score: float = Field(..., ge=0, le=100, description="平均分")
+
+
+class ReviewReportResponse(BaseModel):
+    """获取复盘报告响应"""
+    session_id: int = Field(..., description="会话ID")
+    review_report: ReviewReport = Field(..., description="复盘报告")
+    average_score: float = Field(..., ge=0, le=100, description="平均分")
