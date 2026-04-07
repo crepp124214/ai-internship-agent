@@ -4,11 +4,11 @@ from typing import Type
 from pydantic import BaseModel
 
 from src.core.tools.base_tool import BaseTool
+from src.core.tools.tool_context import ToolContext
 
 
 class MatchResumeToJobInput(BaseModel):
     """Input schema for match_resume_to_job tool."""
-
     resume_id: int
     jd_id: int
 
@@ -20,26 +20,34 @@ class MatchResumeToJobTool(BaseTool):
     description: str = "输入简历 ID 和岗位 JD ID，返回简历与 JD 的匹配度分析报告"
     args_schema: Type[BaseModel] = MatchResumeToJobInput
 
-    def _execute(self, resume_id: int, jd_id: int, runtime=None) -> dict:
+    def _execute_sync(
+        self,
+        tool_input: dict,
+        runtime=None,
+        context: ToolContext = None,
+    ) -> dict:
         from src.business_logic.jd.jd_parser_service import JdParserService
         from src.business_logic.jd.resume_match_service import ResumeMatchService
         from src.data_access.repositories import resume_repository, job_repository
-        from src.presentation.api.deps import get_db
 
-        db = next(get_db())
+        resume_id = tool_input.get("resume_id")
+        jd_id = tool_input.get("jd_id")
 
-        # Get resume
+        if context is None:
+            from src.presentation.api.deps import get_db
+            db = next(get_db())
+        else:
+            db = context.db
+
         resume = resume_repository.get_by_id(db, resume_id)
         if not resume:
             return {"error": f"Resume {resume_id} not found"}
         resume_text = resume.processed_content or resume.resume_text or ""
 
-        # Get job
         job = job_repository.get_by_id(db, jd_id)
         if not job:
             return {"error": f"Job {jd_id} not found"}
 
-        # Parse JD and compute match
         jd_text = job.description or ""
         parser = JdParserService()
         parsed_jd = parser.parse(jd_text)
