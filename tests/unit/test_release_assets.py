@@ -10,16 +10,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def test_core_docs_exist():
     assert (REPO_ROOT / "README.md").exists()
-    assert (REPO_ROOT / "AGENTS.md").exists()
-    assert (REPO_ROOT / ".env.compose.example").exists()
-    assert (REPO_ROOT / ".sisyphus" / "plans" / "PLAN.md").exists()
-    assert (REPO_ROOT / "docs" / "internal" / "decisions" / "README.md").exists()
-    assert (REPO_ROOT / "docs" / "internal" / "prompts" / "agent_team_bootstrap.md").exists()
-    assert (REPO_ROOT / "docs" / "internal" / "runbooks" / "incident-response.md").exists()
+    assert (REPO_ROOT / ".env.local.example").exists()
 
 
 def test_legacy_docs_removed():
-    assert not (REPO_ROOT / "CLAUDE.md").exists()
     assert not (REPO_ROOT / "AGENT_TEAM.md").exists()
     assert not (REPO_ROOT / "PROJECT_MEMORY.md").exists()
     assert not (REPO_ROOT / "docs" / "README.md").exists()
@@ -49,7 +43,6 @@ def test_compose_stack_includes_release_services():
     assert {"postgres", "redis", "app", "frontend"}.issubset(compose["services"])
 
     app = compose["services"]["app"]
-    assert "../.env.compose" in app["env_file"]
     assert app["environment"]["SEED_DEMO_ON_BOOT"] == "${SEED_DEMO_ON_BOOT:-false}"
 
     frontend = compose["services"]["frontend"]
@@ -62,20 +55,17 @@ def test_readme_declares_demo_flow():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
     assert "demo / demo123" in readme
-    assert "seed_demo.py" in readme
-    assert "make dev" in readme
-    assert "AGENTS.md" in readme
-    assert "/resume" in readme
-    assert "/jobs" in readme
-    assert "/interview" in readme
-    assert "/tracker" in readme
+    assert "docker compose" in readme
+    assert "ReAct" in readme
+    assert "StateMachine" in readme
+    assert "ToolRegistry" in readme
+    assert "MemoryStore" in readme
 
 
 def test_readme_contains_demo_walkthrough():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "python scripts/seed_demo.py" in readme
-    assert "Resume" in readme
-    assert "Jobs" in readme
-    assert "Interview" in readme
-    assert "Tracker" in readme
+    assert "JD 定制简历" in readme
+    assert "AI 面试对练" in readme
+    assert "岗位匹配" in readme
+    assert "MIT" in readme

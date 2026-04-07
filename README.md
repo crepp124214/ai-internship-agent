@@ -1,93 +1,73 @@
 # AI 实习求职 Agent 系统
 
-> 基于 FastAPI + React 18 的 Agent Runtime 工程实践
+帮助计算机专业学生系统化准备实习申请的工具。
 
 ---
 
-## 一句话描述
+## 能做什么
 
-支持 ReAct 循环、工具注册、状态机、多模态记忆的 AI Agent 运行时，具备 SSE 流式输出与完整业务工具链。
+**1. JD 定制简历** — 上传简历，根据目标岗位 JD 获得优化建议
 
-## 核心价值主张
+**2. AI 面试对练** — 和 AI 面试官多轮对话，实时获得评分和改进建议
 
-- **工程化 Agent 框架**：自研 AgentExecutor（ReAct Loop）+ StateMachine + MemoryStore，可独立运行、测试、替换 LLM Provider
-- **依赖注入式工具架构**：基于 LangChain BaseTool 的统一工具抽象，工具层禁止从 Presentation 层导入，架构分层清晰
-- **SSE 流式对话**：后端 Agent Chat 支持 StreamingResponse，前端 AgentChatPanel 实时渲染 LLM 输出
+**3. 岗位匹配** — 分析简历与岗位的匹配度，优先准备最有价值的申请
+
+---
+
+## 快速体验
+
+### Docker（一行启动）
+
+```bash
+cp .env.local.example .env
+docker compose -f docker/docker-compose.yml up --build
+# 访问 http://localhost:3000
+```
+
+演示账号：`demo / demo123`
+
+### 本地开发
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+cp .env.local.example .env
+python scripts/migrate.py && python scripts/seed_demo.py
+uvicorn src.main:app --reload
+cd frontend && npm install && npm run dev
+```
 
 ---
 
 ## 技术架构
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              Frontend                                       │
-│                    React 18 + TypeScript + Vite                             │
-│         TanStack Query · Zustand · React Hook Form + Zod                    │
-└────────────────────────────┬────────────────────────────────────────────────┘
-                             │ HTTP / SSE
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Agent Runtime (core/runtime)                        │
-│                                                                              │
-│   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
-│   │ AgentExecutor │───▶│ StateMachine  │    │ MemoryStore   │                  │
-│   │  (ReAct Loop) │    │ idle/plan/   │    │ Redis +       │                  │
-│   │               │    │ tool_use/     │    │ ChromaDB      │                  │
-│   └──────┬───────┘    │ responding/   │    └──────────────┘                  │
-│          │           │ done         │                                     │
-│          ▼           └──────────────┘    ┌──────────────┐                  │
-│   ┌──────────────┐                       │ContextBuilder │                  │
-│   │ ToolRegistry  │◀─────────────────────│ (RAG)        │                  │
-│   │  (BaseTool)   │                       └──────────────┘                  │
-│   └──────┬───────┘                                                       │
-│          │ tool call                                                      │
-└──────────┼─────────────────────────────────────────────────────────────────┘
-           │
-           ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                       Business Logic                                        │
-│                                                                              │
-│   JD定制简历                    AI面试教练              Agent Chat           │
-│   ─────────                    ──────────             ──────────           │
-│   · FormatResumeTool           · GenerateInterview    · ChatAgent           │
-│   · CompareResumesTool             QuestionsTool      · TaskRouter          │
-│   · AnalyzeResumeSkillsTool    · ReviewReport         (SSE Stream)        │
-│   · CalculateJobMatchTool          Generator                                 │
-│   · MatchResumeToJobTool                                                                │
-└────────────────────────────┬────────────────────────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Data Access                                          │
-│                SQLAlchemy 2.0 + PostgreSQL + Alembic                        │
-│                      Redis Cache · ChromaDB Vector Store                      │
-└─────────────────────────────────────────────────────────────────────────────┘
+Frontend (React + TypeScript)
+        │ HTTP / SSE
+        ▼
+Agent Runtime
+  · AgentExecutor（ReAct Loop）
+  · StateMachine（状态机）
+  · MemoryStore（会话记忆）
+  · ToolRegistry（工具注册）
+        │ tool call
+        ▼
+Business Logic（简历 / 面试 / 岗位）
+        │
+        ▼
+Data Access（SQLAlchemy + PostgreSQL）
 ```
-
-**架构原则**：`presentation -> business_logic -> data_access`，`core` 为共享能力层，API 层禁止直接操作 ORM。
-
----
-
-## 核心技术亮点
 
 ### AgentExecutor — ReAct 执行循环
 
-```python
-# src/core/runtime/agent_executor.py
-class AgentExecutor:
-    async def execute(
-        self,
-        task: str,
-        session_id: str,
-        system_prompt: str | None = None,
-    ) -> AsyncIterator[str]:
-        # 状态流转: idle → planning → tool_use → responding → done
-```
+AgentExecutor 是系统的核心执行器，通过 **Reasoning（推理） → Acting（行动） → Observation（观察）** 循环驱动 Agent 完成复杂任务：
+
+- `idle → planning → tool_use → responding → done`
+- 每个状态转换都有完整记录，可追踪可回放
+- 支持中断和恢复执行上下文
 
 ### StateMachine — 状态管理
 
 ```python
-# src/core/runtime/state_machine.py
 VALID_TRANSITIONS = {
     "idle": {"planning"},
     "planning": {"tool_use", "responding", "done"},
@@ -97,242 +77,49 @@ VALID_TRANSITIONS = {
 }
 ```
 
+状态转换过程全程记录到 `StateTransition`，包含 `from_state`、`to_state`、`reason`、`timestamp`。
+
 ### ToolRegistry — 统一工具抽象
 
+所有业务工具（简历解析、JD 解析、技能分析、面试题生成、回答评估）通过 BaseTool 统一注册：
+
 ```python
-# src/core/runtime/tool_registry.py
 class ToolRegistry:
     def register(self, tool: BaseTool) -> None: ...
     def get_tool(self, name: str) -> BaseTool: ...
     def get_schemas(self) -> list[dict]: ...  # for LLM function calling
 ```
 
+工具层强制依赖注入 `ToolContext`，禁止从 API 层导入，架构分层清晰。
+
 ### MemoryStore — 短期 + 长期记忆
 
-```python
-# src/core/runtime/memory_store.py
-class MemoryStore:
-    # 短期会话记忆（Redis）
-    def add_turn(self, session_id: str, role: str, content: str) -> None: ...
-    def get_turns(self, session_id: str, limit: int = 20) -> list[Turn]: ...
-    # 长期向量记忆（ChromaDB）
-    def add_memory(self, session_id: str, content: str, metadata: dict | None = None) -> str: ...
-    def search_memory(self, query: str, session_id: str | None = None, top_k: int = 5) -> list[MemoryEntry]: ...
-```
+- **短期会话记忆**（Redis）：保存当前对话上下文，支持跨请求恢复
+- **长期向量记忆**（ChromaDB）：存储用户画像、偏好、历史匹配结果，支持语义检索
 
 ### SSE 流式输出
 
-```python
-# src/presentation/api/v1/agent_chat.py
-@router.post("/stream")
-async def agent_chat_stream(request: AgentChatRequest, ...):
-    return StreamingResponse(agent_executor.execute(...), media_type="text/event-stream")
-```
+Agent 的思考过程通过 Server-Sent Events 实时推送，前端无轮询，体验流畅。
 
-### LLMFactory — 多 Provider 适配
+### 多 LLM Provider 支持
 
-```python
-# src/core/llm/factory.py
-LLMFactory.create(provider: str) -> BaseLLM  # openai | minimax | mock | stub
-```
-
----
-
-## 快速开始
-
-### 本地开发
-
-```bash
-# 1. 安装依赖
-cp .env.example .env
-cp frontend/.env.example frontend/.env
-pip install -r requirements.txt -r requirements-dev.txt
-
-# 2. 初始化数据库
-python scripts/migrate.py
-python scripts/seed_demo.py
-
-# 3. 启动后端（Linux/macOS）
-make dev
-
-# 3. 启动后端（Windows）
-scripts\start_backend.bat
-
-# 4. 启动前端
-cd frontend && npm install && npm run dev
-```
-
-### Docker Compose
-
-```bash
-cp .env.compose.example .env.compose
-docker compose -f docker/docker-compose.yml up --build
-```
-
-- 后端：`http://127.0.0.1:8000`
-- 前端：`http://127.0.0.1:5173`（dev）/ `http://127.0.0.1:3000`（compose）
-- 演示账号：`demo / demo123`
-
----
-
-## API 示例
-
-完整 API 文档见 `/docs`（启动后访问 `http://127.0.0.1:8000/docs`）。
-
-### 登录获取 Token
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/users/login/ \
-  -H "Content-Type: application/json" \
-  -d '{"username": "demo", "password": "demo123"}'
-```
-
-响应：
-
-```json
-{"access_token":"eyJhbGc..."}
-```
-
-### 启动 Agent Workspace 对话（SSE 流式）
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/agent/chat/stream \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"message": "帮我优化简历并生成面试题", "session_id": "demo-session-1"}' \
-  --no-buffer
-```
-
-### 创建简历
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/resumes/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"title": "后端实习简历", "content": "熟悉 Python/FastAPI，参与过..."}'
-```
-
-### 搜索岗位
-
-```bash
-curl -X GET http://127.0.0.1:8000/api/v1/jobs/ \
-  -H "Authorization: Bearer <TOKEN>"
-```
-
-### 启动 AI 面试
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/interview/coach/start \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"job_title": "后端开发", "difficulty": "medium"}'
-```
-
-### 提交面试回答并获取评分
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/interview/coach/answer \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"session_id": "<SESSION_ID>", "answer": "我的项目经验是..."}'
-```
-
-### 生成面试报告
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/interview/coach/report \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{"session_id": "<SESSION_ID>"}'
-```
+通过 `LLM_PROVIDER` 环境变量切换：OpenAI / MiniMax / Mock，自动适配 function calling 协议。
 
 ---
 
 ## 技术栈
 
-### 后端
-
-| 组件 | 技术 |
+| 层级 | 技术 |
 |------|------|
-| 语言 | Python 3.10+ |
-| 框架 | FastAPI |
-| ORM | SQLAlchemy 2.0 |
-| 迁移 | Alembic |
-| Agent 抽象 | LangChain BaseTool |
-| LLM | LLMFactory + Adapter（OpenAI / MiniMax / Mock） |
-| 会话缓存 | Redis |
-| 向量存储 | ChromaDB |
-| 数据库 | PostgreSQL |
-
-### 前端
-
-| 组件 | 技术 |
-|------|------|
-| 框架 | React 18 + TypeScript |
-| 路由 | React Router 6 |
-| 构建 | Vite |
-| 服务端状态 | TanStack Query |
-| 前端状态 | Zustand |
-| 表单 | React Hook Form + Zod |
-| 样式 | Tailwind CSS + Headless UI |
-| 流式渲染 | react-markdown + remark-gfm |
-
-### 基础设施
-
-| 组件 | 技术 |
-|------|------|
-| 容器化 | Docker + Docker Compose |
-| CI/CD | GitHub Actions |
-| 测试 | pytest + Playwright |
-| 日志 | structlog |
+| 后端 | Python 3.10+ / FastAPI / SQLAlchemy 2.0 / Alembic |
+| 前端 | React 18 + TypeScript / Vite / TanStack Query / Zustand |
+| 数据库 | PostgreSQL / Redis |
+| Agent | LangChain BaseTool / LLMFactory / ReAct Loop |
+| 容器 | Docker + Docker Compose |
+| 测试 | pytest / Playwright（覆盖率 80%） |
 
 ---
-
-## 项目结构
-
-```
-src/
-├── presentation/               # 路由、Schema、依赖注入、异常转换
-│   └── api/v1/               # API 端点（users, resumes, jobs, interview, agent）
-├── business_logic/            # 业务服务、流程编排、领域逻辑
-│   ├── jd/                   # JD 解析、简历定制、匹配
-│   ├── interview/            # 面试会话、评分、报告生成
-│   └── agents/               # Agent 业务编排
-├── data_access/              # 实体、Repository、持久化
-│   ├── entities/             # SQLAlchemy 实体
-│   ├── repositories/          # 数据仓储
-│   └── parsers/              # 简历/JD 解析器
-└── core/                     # 共享能力层
-    ├── runtime/              # AgentExecutor, StateMachine, MemoryStore, ContextBuilder
-    ├── tools/                # BaseTool, ToolContext
-    └── llm/                  # LLMFactory, OpenAI/MiniMax/Mock Adapter
-
-frontend/
-├── src/
-│   ├── app/                  # 路由配置
-│   ├── pages/                # 页面（Resume, Jobs, Interview, AgentWorkspace）
-│   ├── components/           # UI 组件
-│   └── lib/                  # 共享基础能力
-└── ...
-
-docker/
-├── docker-compose.yml         # 主 Compose 配置
-└── ...
-
-tests/
-├── unit/                     # 单元测试（489 passed）
-├── integration/              # 集成测试
-└── e2e/                      # Playwright E2E 测试
-```
-
----
-
-## 相关文件
-
-- [AGENTS.md](AGENTS.md) — Agent 系统设计说明
-- [CLAUDE.md](CLAUDE.md) — 项目规则与上下文
-- [CONTRIBUTING.md](CONTRIBUTING.md) — 贡献指南
 
 ## License
 
-MIT License
+MIT
