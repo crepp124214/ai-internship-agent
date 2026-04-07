@@ -40,8 +40,6 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: internship-agent-app
-    env_file:
-      - ../.env.compose
     environment:
       APP_ENV: production
       APP_DEBUG: "false"
