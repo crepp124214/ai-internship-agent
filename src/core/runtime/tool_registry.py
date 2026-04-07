@@ -4,9 +4,10 @@
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from src.core.tools.base_tool import BaseTool
+from src.core.tools.tool_context import ToolContext
 
 
 class ToolRegistry:
@@ -61,10 +62,18 @@ class ToolRegistry:
             for tool in self._tools.values()
         ]
 
-    def execute(self, name: str, tool_input: Dict[str, Any], runtime: Any = None) -> Any:
+    def execute(
+        self,
+        name: str,
+        tool_input: Dict[str, Any],
+        context: Optional[ToolContext] = None,
+        runtime: Any = None,
+    ) -> Any:
         """执行工具，返回结果"""
         import json
         tool = self.get_tool(name)
+        if context is not None:
+            tool._context = context
         result = tool._run(tool_input, runtime=runtime)
         if isinstance(result, str):
             try:
