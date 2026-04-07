@@ -4,6 +4,7 @@ import { AgentChatPanel } from './components/AgentChatPanel'
 import { ToolPalette } from './components/ToolPalette'
 import { TracePanel } from './components/TracePanel'
 import { QuickTaskCard } from './components/QuickTaskCard'
+import { DataImportModal } from './components/DataImportModal'
 
 interface TraceStep {
   step: 'planning' | 'tool_call' | 'observation' | 'final'
@@ -42,6 +43,7 @@ export function DashboardPage() {
   const [selectedTask, setSelectedTask] = useState<string | null>(null)
   const [traceSteps, setTraceSteps] = useState<TraceStep[]>([])
   const [traceOpen, setTraceOpen] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   const handleQuickTask = (task: string) => {
     setSelectedTask(task)
@@ -128,6 +130,17 @@ export function DashboardPage() {
         ))}
       </div>
 
+      {/* 数据导入入口 */}
+      <div className="mt-6">
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg
+                     hover:bg-green-600 transition-colors"
+        >
+          + 导入数据
+        </button>
+      </div>
+
       {/* 提示区 */}
       <div className="rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-panel)] p-6 text-center">
         <p className="text-sm text-[var(--color-muted)]">
@@ -137,6 +150,15 @@ export function DashboardPage() {
           AI 将根据你的上下文自动调用合适的工具处理
         </p>
       </div>
+
+      {/* 数据导入弹窗 */}
+      <DataImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportSuccess={() => {
+          setShowImportModal(false)
+        }}
+      />
     </div>
   )
 }
