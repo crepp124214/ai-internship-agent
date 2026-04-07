@@ -31,7 +31,7 @@ class SearchJobsTool(BaseTool):
         limit = tool_input.get("limit", 10)
 
         if context is None:
-            from src.presentation.api.deps import get_db
+            raise ValueError("ToolContext is required to execute this tool")
             db = next(get_db())
         else:
             db = context.db

@@ -31,7 +31,7 @@ class CompareResumesTool(BaseTool):
         resume_id_2 = tool_input.get("resume_id_2")
 
         if context is None:
-            from src.presentation.api.deps import get_db
+            raise ValueError("ToolContext is required to execute this tool")
             db = next(get_db())
         else:
             db = context.db

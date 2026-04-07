@@ -29,7 +29,7 @@ class AnalyzeJDTool(BaseTool):
         jd_id = tool_input.get("jd_id")
 
         if context is None:
-            from src.presentation.api.deps import get_db
+            raise ValueError("ToolContext is required to execute this tool")
             db = next(get_db())
         else:
             db = context.db

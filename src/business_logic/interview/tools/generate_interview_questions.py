@@ -33,7 +33,7 @@ class GenerateInterviewQuestionsTool(BaseTool):
         count = tool_input.get("count", 5)
 
         if context is None:
-            from src.presentation.api.deps import get_db
+            raise ValueError("ToolContext is required to execute this tool")
             db = next(get_db())
         else:
             db = context.db

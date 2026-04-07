@@ -29,7 +29,7 @@ class AnalyzeResumeSkillsTool(BaseTool):
         resume_id = tool_input.get("resume_id")
 
         if context is None:
-            from src.presentation.api.deps import get_db
+            raise ValueError("ToolContext is required to execute this tool")
             db = next(get_db())
         else:
             db = context.db
