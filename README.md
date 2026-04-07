@@ -11,12 +11,11 @@
 - 前端 Compose 地址：`http://127.0.0.1:3000`
 - 演示账号：`demo / demo123`
 
-当前项目覆盖 4 条核心业务线：
+当前项目覆盖 3 条核心业务线：
 
 - `/resume`：简历管理、AI 摘要、优化建议、历史记录
 - `/jobs`：岗位管理、岗位匹配、历史记录
 - `/interview`：面试题生成、回答评估、记录
-- `/tracker`：投递追踪、下一步建议、历史记录
 
 核心目标很明确：可运行、可演示、可验证、可维护。
 
@@ -148,14 +147,12 @@ Compose 会启动以下服务：
 - Resume：维护简历内容，并生成 AI 摘要与优化建议
 - Jobs：管理岗位信息，查看匹配结果与历史记录
 - Interview：生成面试题，评估回答质量，沉淀记录
-- Tracker：记录投递进度，并生成下一步行动建议
 
-如果后续要补对外展示素材，建议优先放这 4 张截图：
+如果后续要补对外展示素材，建议优先放这 3 张截图：
 
 1. Dashboard 或首页总览
 2. Resume 页的摘要/优化建议结果
 3. Jobs 页的岗位匹配结果
-4. Tracker 页的下一步建议
 
 ## 截图说明文案
 
@@ -165,7 +162,7 @@ Compose 会启动以下服务：
 
 建议配文：
 
-> 一个围绕实习求职流程组织的工作台首页，把简历、岗位、面试和投递追踪四条主线集中到同一个入口里，方便快速进入当前任务。
+> 一个围绕实习求职流程组织的工作台首页，把简历、岗位、面试三条主线集中到同一个入口里，方便快速进入当前任务。
 
 适合强调：
 
@@ -205,37 +202,18 @@ Compose 会启动以下服务：
 - 面试准备不是一次性输出，而是持续练习流程
 - 页面同时覆盖生成、评估、记录三个动作
 
-### 5. Tracker 页面
-
-建议配文：
-
-> Tracker 页面负责管理投递状态，并生成下一步行动建议，帮助用户把“已投递”变成“可持续推进”的求职流程。
-
-适合强调：
-
-- 不只记录状态，还提供下一步建议
-- 最能体现这个项目的流程闭环能力
-
 ### 推荐展示顺序
 
-如果你只放 3 张图，建议顺序是：
+如果你只放 2-3 张图，建议顺序是：
 
 1. Dashboard
 2. Resume 或 Jobs
-3. Tracker
-
-如果你放 4 到 5 张图，建议顺序是：
-
-1. Dashboard
-2. Resume
-3. Jobs
-4. Interview
-5. Tracker
+3. Interview
 
 ### 截图展示小建议
 
 - 首页截图优先展示全局导航和模块入口
-- Resume / Jobs / Tracker 截图优先展示“结果区”，不要只截空表单
+- Resume / Jobs 截图优先展示”结果区”，不要只截空表单
 - 如果页面里有 AI 输出，尽量保留一段真实结果，画面会更有说服力
 - GitHub 首页建议每张图只配一句话，控制在 1 到 2 行内
 
@@ -245,7 +223,6 @@ Compose 会启动以下服务：
 2. Resume：创建或更新简历，生成摘要或优化建议
 3. Jobs：查看岗位列表，执行岗位匹配
 4. Interview：生成题目，提交回答并查看评估
-5. Tracker：创建投递记录，生成下一步建议
 
 ## API 文档
 
@@ -260,7 +237,6 @@ Compose 会启动以下服务：
 - 简历：`POST /api/v1/resumes/`、`PUT /api/v1/resumes/{id}`、`POST /api/v1/resumes/{id}/summary/`、`POST /api/v1/resumes/{id}/improvements/`
 - 岗位：`POST /api/v1/jobs/`、`GET /api/v1/jobs/`、`POST /api/v1/jobs/{id}/match/`
 - 面试：`POST /api/v1/interview/questions/generate/`、`POST /api/v1/interview/answers/evaluate/`
-- 追踪：`POST /api/v1/tracker/applications/`、`POST /api/v1/tracker/applications/{id}/advice/`
 - 系统：`GET /health`、`GET /ready`
 
 ## 测试

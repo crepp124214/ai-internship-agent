@@ -2,17 +2,9 @@
 
 ## 当前阶段
 
-- 基础重构 ✅ 已完成
-- **Agent Runtime Phase 1 ✅ 已完成（2026-04-07）**
-
-## 已完成
-
-- 建立 `memory-bank/` 执行层目录
-- 恢复正式源文档入口
-- 重写规则层与执行层文档，使其对齐正式设计方案与技术栈文档
-- 澄清并固化四项关键决策（见 `implementation-plan.md` 决策记录）
-
----
+- Phase 10: 开源基础补充 - 进行中
+- Phase 8（API 集成 + Playwright）✅ 已完成
+- Phase 9（Docker 多环境）✅ 已完成
 
 ## Phase 1：基础重构 ✅ 完成
 
@@ -24,10 +16,9 @@
 | 4 | 旧 `interview_agent` 迁移到 `src/business_logic/interview/` | ✅ |
 | 5 | 新主线目录预留（jd/、interview/ 扩展、core/runtime/、core/tools/） | ✅ |
 
-**Step 1 完成记录：**
+**Step 1 完成记录（Phase 10 补做）：**
 - 前端 `frontend/src/app/router.tsx`：移除 `/tracker` 路由和 `TrackerPage` 导入
-- 后端 `src/main.py`：注释掉 tracker router 的 import 和 include_router
-- 后端 `src/presentation/api/v1/jobs.py`：更新 `TRACKER_APPLICATIONS_DETAIL` 常量
+- 后端 `src/main.py`：移除 tracker router 的 import 和 include_router
 - 验证：`python -c "from src.main import app"` ✅
 
 ---
@@ -36,85 +27,70 @@
 
 ### 实现清单
 
-| 模块 | 文件 | Commit | 测试 |
-|------|------|--------|------|
-| StateMachine | `src/core/runtime/state_machine.py` | `097b64d` | 5 passed |
-| LiteLLM Adapter | `src/core/llm/litellm_adapter.py` | `8633495` | 3 passed |
-| MemoryStore | `src/core/runtime/memory_store.py` | `ad3fccb` | 8 passed |
-| ContextBuilder | `src/core/runtime/context_builder.py` | `f98ff9c` | 6 passed |
-| ToolRegistry + BaseTool | `src/core/runtime/tool_registry.py` + `src/core/tools/base_tool.py` | `94d4a5a` | 6 passed |
-| AgentExecutor (ReAct Loop) | `src/core/runtime/agent_executor.py` | `54e27a2` | 7 passed |
-| 集成测试 | `tests/integration/runtime/test_agent_executor_integration.py` | `74340c1` | 2 passed |
-| 依赖 | `requirements.txt` (litellm, langchain-core, langchain-community) | `ced834f` | 37 total ✅ |
-
-**Agent Runtime 新增文件：**
-```
-src/core/llm/litellm_adapter.py          # LiteLLM 统一 adapter
-src/core/runtime/state_machine.py         # Agent 执行状态机
-src/core/runtime/memory_store.py          # Redis + ChromaDB 记忆存储
-src/core/runtime/context_builder.py       # RAG 上下文构建
-src/core/runtime/tool_registry.py         # 工具注册表
-src/core/runtime/agent_executor.py       # ReAct 执行循环
-src/core/tools/base_tool.py              # LangChain BaseTool 封装
-src/core/tools/langchain_tools.py         # @tool 装饰器辅助
-tests/unit/core/runtime/                  # 各模块单元测试
-tests/unit/core/test_litellm_adapter.py  # LiteLLM adapter 测试
-tests/integration/runtime/                # 集成测试
-```
-
-**设计文档：** `memory-bank/architecture.md`（Agent Runtime 详细设计）
+| 模块 | 文件 | 测试 |
+|------|------|------|
+| StateMachine | `src/core/runtime/state_machine.py` | 5 passed |
+| LiteLLM Adapter | `src/core/llm/litellm_adapter.py` | 3 passed |
+| MemoryStore | `src/core/runtime/memory_store.py` | 8 passed |
+| ContextBuilder | `src/core/runtime/context_builder.py` | 6 passed |
+| ToolRegistry + BaseTool | `src/core/runtime/tool_registry.py` + `src/core/tools/base_tool.py` | 6 passed |
+| AgentExecutor (ReAct Loop) | `src/core/runtime/agent_executor.py` | 7 passed |
+| 集成测试 | `tests/integration/runtime/test_agent_executor_integration.py` | 2 passed |
+| **总计** | | **37 passed** ✅ |
 
 ---
 
 ## Phase 3：JD 定制简历 ✅ 完成（2026-04-07）
 
-| 模块 | 文件 | Commit | 测试 |
-|------|------|--------|------|
-| JD Schemas | `src/presentation/schemas/jd.py` | `556a0a7` | — |
-| JdParserService | `src/business_logic/jd/jd_parser_service.py` + `schemas.py` | `f3cff4d` | 3 passed |
-| ResumeMatchService | `src/business_logic/jd/resume_match_service.py` | `4e556ad` | 4 passed |
-| JD package exports | `src/business_logic/jd/__init__.py` | `edaf5c4` | — |
-| read_resume Tool | `src/business_logic/jd/tools/read_resume.py` | `db83366` | — |
-| match_resume_to_job Tool | `src/business_logic/jd/tools/match_resume_to_job.py` | `0dc40c4` | — |
-| ResumeCustomizerAgent | `src/business_logic/jd/resume_customizer_agent.py` | `c7e54d7` | — |
-| API Endpoint | `src/presentation/api/v1/resume.py` | `d8364b1` | — |
-| Frontend API Client | `frontend/src/lib/api.ts` | (merged) | — |
-| MatchReportCard | `frontend/src/pages/components/MatchReportCard.tsx` | `14983fc` | — |
-| JdCustomizePage | `frontend/src/pages/jd-customize-page.tsx` + router | `e40eafa` | — |
-| Integration Test | `tests/integration/test_customize_endpoint.py` | `d0bb6b9` | — |
-| **总计** | | | **377 passed** ✅ |
+| 模块 | 测试 |
+|------|------|
+| JD 业务逻辑单元测试 | 3 passed |
+| ResumeMatchService | 4 passed |
+| API 集成测试 | 通过 |
+| **总计** | **377 passed** ✅ |
 
-**JD Feature 新增文件：**
-```
-src/business_logic/jd/
-  __init__.py                          # 包导出
-  schemas.py                           # ParsedJD, MatchReport NamedTuple
-  jd_parser_service.py                  # JD 文本解析
-  resume_match_service.py               # 匹配度计算
-  resume_customizer_agent.py           # AgentExecutor ReAct 循环
-  tools/
-    __init__.py
-    read_resume.py                     # BaseTool: 读取简历
-    match_resume_to_job.py             # BaseTool: JD 匹配分析
-src/presentation/schemas/jd.py         # API request/response schemas
-src/presentation/api/v1/resume.py      # POST /{id}/customize-for-jd 端点
-frontend/src/pages/jd-customize-page.tsx        # 定制简历页面
-frontend/src/pages/components/MatchReportCard.tsx # 匹配报告卡片
-tests/unit/business_logic/jd/                     # JD 业务逻辑单元测试
-tests/integration/test_customize_endpoint.py       # API 集成测试
-```
+---
 
-**设计文档：** `docs/superpowers/specs/2026-04-07-jd-customized-resume-design.md`
-**实施计划：** `docs/superpowers/plans/2026-04-07-jd-customized-resume-plan.md`
+## Phase 8：API 集成 + Playwright 测试 ✅ 完成
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| Docker 测试环境 | `docker-compose.test.yml` | PostgreSQL + Redis + Backend + Frontend |
+| Playwright 配置 | `tests/e2e/conftest.py` | browser, page, api_client fixtures |
+| Resume API 测试 | `tests/e2e/test_resume_api.py` | 3 tests |
+| Job API 测试 | `tests/e2e/test_job_api.py` | 2 tests |
+| Interview API 测试 | `tests/e2e/test_interview_api.py` | 1 test |
+| Agent API 测试 | `tests/e2e/test_agent_api.py` | 2 tests |
+
+**测试收集：** 18 tests collected
+
+---
+
+## Phase 9：Docker 多环境配置 ✅ 完成
+
+| 文件 | 说明 |
+|------|------|
+| `.env.dev` | 开发环境（mock LLM、热重载） |
+| `.env.prod` | 生产环境（真实 LLM） |
+| `.env.local.example` | 本地默认配置示例 |
+| `docker/README.md` | 使用指南 |
+| `docker/docker-compose.yml` | 移除 env_file 引用，支持 --env-file |
+
+---
+
+## 已砍掉的功能
+
+| 功能 | 原因 |
+|------|------|
+| 搜索增强（外部 JD 聚合） | 无可用的外部 JD 数据源 API |
 
 ---
 
 ## 当前阶段
 
-- Phase 1（基础重构）✅ 完成
-- Phase 2（Agent Runtime）✅ 完成
-- Phase 3（JD 定制简历）✅ 完成
-- 下一阶段：AI 面试官对练
+- Phase 10（开源基础补充）🔄 进行中
+  - MIT LICENSE
+  - Issue Templates (Bug Report + Feature Request)
 
 ## 更新要求
 
