@@ -1,6 +1,8 @@
 # AI 实习求职 Agent 系统 — 重构设计文档
 
-> 版本: v0.3.0 | 状态: 设计中 | 日期: 2026-04-06
+> 版本: v0.4.0 | 状态: 主体已完成 | 日期: 2026-04-07
+
+> **说明：** 本文档记录设计目标与实际实现的映射。Phase 编号与实现不一致时，以实际实现为准。
 
 ---
 
@@ -489,16 +491,31 @@ Agent.plan() (分解任务，选择工具)
 
 ## 八、实施计划
 
-| 阶段 | 内容 | 周期 |
-|------|------|------|
-| **Phase 1** | Agent Runtime 基础设施（Executor, ToolRegistry, BaseTool） | 4 周 |
-| **Phase 2** | JD 定制简历（JD解析 + 匹配度评分 + 基础重写） | 2 周 |
-| **Phase 3** | AI 面试对练（单轮 Q&A + 立即评分 + 基本复盘） | 2 周 |
-| **Phase 4** | AI 面试对练（多轮追问 + 维度评分 + 完整报告） | 2 周 |
-| **Phase 5** | Memory & State（MemoryStore, StateMachine, ContextBuilder） | 3 周 |
-| **Phase 6** | Frontend Agent Workspace（流式 UI、ToolPalette、Trace） | 3 周 |
-| **Phase 7** | JD 定制简历（对比视图 + 关键词注入优化 + 批量优化） | 1 周 |
-| **Phase 8** | 企业特性（多租户、审计、Webhook） | 2 周 |
+> **重要更新（v0.4.0）：** 设计与实现阶段的编号不一致，以下列表为**实际实现顺序**，设计原意标注在括号中。
+
+### 实际实现阶段（按时间顺序）
+
+| 阶段 | 内容 | 状态 | 对应设计 |
+|------|------|------|----------|
+| **Phase 1** | 基础重构（Tracker断开、越层调用修复、基础域稳定） | ✅ | - |
+| **Phase 2** | Agent Runtime 基础设施（Executor, ToolRegistry, StateMachine, MemoryStore, ContextBuilder） | ✅ | 含设计 Phase 5 |
+| **Phase 3** | JD 定制简历（JD解析 + 匹配度评分） | ✅ | 设计 Phase 2 |
+| **Phase 4** | AI 面试教练（多轮对练、维度评分、Review报告） | ✅ | 设计 Phase 3+4 |
+| **Phase 5** | Test & Tools 增强（各类工具实现） | ✅ | - |
+| **Phase 6** | Agent Workspace 前端（SSE流式、AgentChatPanel、ToolPalette） | ✅ | 设计 Phase 6 |
+| **Phase 7.5** | 数据初始化（ResumeParser、JDParser、导入API） | ✅ | - |
+| **Phase 8** | API 集成 + Playwright 测试 | ✅ | - |
+| **Phase 9** | Docker 多环境配置 | ✅ | - |
+| **Phase 10** | 开源基础补充（CLAUDE.md、Issue Templates） | ✅ | - |
+| **Phase 11** | P0 紧急修复（架构违规、Exception swallowing） | ✅ | - |
+
+### 待实现
+
+| 阶段 | 内容 | 优先级 |
+|------|------|--------|
+| P1 | Tracker 残留代码物理删除 | 高 |
+| P1 | 基础测试覆盖率提升（79% → 85%） | 高 |
+| P2 | 企业特性（多租户、审计、Webhook） | 中 |
 
 ---
 
@@ -530,62 +547,137 @@ Agent.plan() (分解任务，选择工具)
 
 ## 十一、文件变更清单
 
-### 删除模块
+### 已删除模块
 
 ```
-删除:
-  src/business_logic/tracker/
-  src/business_logic/agents/tracker_agent/
-  src/presentation/api/v1/tracker.py
-  src/data_access/entities/tracker.py
-  src/data_access/repositories/tracker_repository.py
-  src/data_access/repositories/tracker_advice_repository.py
-  frontend/src/pages/tracker-page.tsx
+已删除（Tracker路由）:
+  frontend/src/pages/tracker-page.tsx     # 前端路由移除
+  src/presentation/api/v1/tracker.py      # 后端路由移除（代码保留待清理）
+  src/main.py                             # tracker router 注册移除
+  frontend/src/app/router.tsx            # tracker 路由移除
 ```
 
-### 新增目录与文件
+### 已新增目录与文件（按Phase）
+
+#### Phase 2: Agent Runtime
 
 ```
-新增目录:
-  src/business_logic/jd/
-  src/business_logic/interview/
+src/core/runtime/
+  ├── agent_executor.py      # ReAct 执行循环
+  ├── tool_registry.py       # 工具注册表
+  ├── state_machine.py       # 状态机
+  ├── memory_store.py        # 记忆存储（Redis + ChromaDB）
+  └── context_builder.py    # RAG 上下文构建
 
-新增后端文件:
-  src/business_logic/jd/
-    ├── __init__.py
-    ├── parser_service.py
-    ├── match_service.py
-    └── customizer_service.py
+src/core/tools/
+  ├── base_tool.py          # 统一工具基类
+  └── tool_context.py       # 工具执行上下文
+```
 
-  src/business_logic/interview/
-    ├── __init__.py
-    ├── coach_service.py
-    ├── question_generator.py
-    └── scoring_service.py
+#### Phase 3: JD 定制简历
 
-  src/data_access/entities/
-    ├── interview_session.py
-    └── interview_record.py
+```
+src/business_logic/jd/
+  ├── jd_parser_service.py      # JD 解析
+  └── resume_match_service.py   # 简历匹配
+```
 
-新增前端文件:
-  frontend/src/pages/
-    ├── jd-customize-page.tsx
-    └── interview-coach-page.tsx
+#### Phase 4: AI 面试教练
 
-  frontend/src/components/
-    ├── jd-input-panel.tsx
-    ├── resume-diff-view.tsx
-    ├── match-report.tsx
-    ├── interview-chat.tsx
-    ├── question-card.tsx
-    ├── answer-input.tsx
-    ├── evaluation-panel.tsx
-    └── interview-report.tsx
+```
+src/business_logic/interview/
+  ├── session_manager.py              # 会话管理
+  └── review_report_generator.py     # 报告生成
 
-重构前端文件:
-  frontend/src/app/router.tsx
+src/presentation/api/v1/
+  └── interview_coach.py              # 面试教练API
+```
+
+#### Phase 5: Tools
+
+```
+src/business_logic/jd/tools/
+  ├── read_resume.py
+  ├── update_resume.py
+  ├── format_resume.py
+  ├── analyze_resume_skills.py
+  ├── compare_resumes.py
+  └── match_resume_to_job.py
+
+src/business_logic/job/tools/
+  ├── analyze_jd.py
+  ├── search_jobs.py
+  └── calculate_job_match.py
+
+src/business_logic/interview/tools/
+  └── generate_interview_questions.py
+```
+
+#### Phase 6: Agent Workspace
+
+```
+src/presentation/api/v1/
+  └── agent_chat.py              # SSE 流式端点
+
+frontend/src/components/agent/
+  ├── AgentChatPanel.tsx         # 流式聊天面板
+  └── ToolPalette.tsx            # 工具面板
+```
+
+#### Phase 7.5: 数据初始化
+
+```
+src/data_access/parsers/
+  ├── resume_parser.py
+  └── jd_parser.py
+
+src/presentation/api/v1/
+  └── import_api.py             # 导入API
+```
+
+#### Phase 8: Playwright 测试
+
+```
+docker-compose.test.yml
+tests/e2e/
+  ├── conftest.py
+  ├── test_resume_api.py
+  ├── test_job_api.py
+  ├── test_interview_api.py
+  └── test_agent_api.py
+```
+
+#### Phase 9: Docker 多环境
+
+```
+.env.dev
+.env.prod
+.env.local.example
+.env.test
+docker/
+  ├── README.md
+  └── docker-compose.yml
+```
+
+#### Phase 10: 开源基础
+
+```
+CLAUDE.md
+docs/internal/README.md
+scripts/start_frontend.bat
 ```
 
 ---
 
-*文档版本: v0.3.0 | 待实现*
+### 待清理（Tracker代码）
+
+> Tracker 模块路由已断开，代码物理删除待后续执行。
+
+```
+src/business_logic/tracker/          # 待删除
+src/business_logic/agents/tracker_agent/  # 待删除
+```
+
+---
+
+*文档版本: v0.4.0 | 主体已完成，部分待清理*

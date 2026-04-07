@@ -1,6 +1,6 @@
 # 技术栈选型文档
 
-> 版本: v1.0.0 | 状态: 候选 | 日期: 2026-04-06
+> 版本: v1.1.0 | 状态: 已采纳 | 日期: 2026-04-07
 
 ---
 
@@ -38,13 +38,14 @@
 
 ### 2.3 LLM 集成
 
-| 组件 | 选择 | 理由 |
-|------|------|------|
-| **LLM 客户端** | OpenAI SDK / 各 Provider SDK | 官方 SDK 稳定 |
-| **多模型路由** | LiteLLM | 统一模型接口 |
-| **向量数据库** | ChromaDB / Qdrant | 开发与生产兼顾 |
-| **嵌入模型** | text-embedding-3-small | 性价比高 |
-| **缓存** | Redis | 响应缓存与会话缓存 |
+| 组件 | 选择 | 状态 | 理由 |
+|------|------|------|------|
+| **LLM 客户端** | OpenAI SDK / 各 Provider SDK | ✅ 已采纳 | 官方 SDK 稳定 |
+| **多模型路由** | LLMFactory + Adapter 模式 | ✅ 已采纳 | 统一接口，支持 mock/openai/minimax |
+| **向量数据库** | ChromaDB | ✅ 已采纳 | 开发友好 |
+| **嵌入模型** | text-embedding-3-small | 🔄 待集成 | 性价比高 |
+| **缓存** | Redis | ✅ 已采纳 | 响应缓存与会话缓存 |
+| **备选方案** | LiteLLM | 🔄 评估中 | 后续可考虑迁移 |
 
 ### 2.4 流式输出
 
@@ -106,21 +107,34 @@
 
 ## 五、关键决策
 
-- 必须采纳：
-  - LangChain + LangGraph
-  - LiteLLM
-  - Redis
-  - PostgreSQL
-  - SSE
-  - Zustand
-- 可选：
-  - Qdrant
-  - PromptLayer
-  - Kubernetes
-- 不推荐：
-  - AutoGen / CrewAI
-  - LlamaIndex
-  - Elasticsearch
+### 已采纳（v1.1.0）
+
+| 决策 | 实现 | 说明 |
+|------|------|------|
+| LangChain BaseTool | ✅ | `src/core/tools/base_tool.py` |
+| LLMFactory + Adapter | ✅ | `src/core/llm/factory.py` + adapters |
+| Redis | ✅ | 会话缓存 + MemoryStore |
+| PostgreSQL | ✅ | 生产数据库 |
+| SSE 流式 | ✅ | `src/presentation/api/v1/agent_chat.py` |
+| Zustand | ✅ | 前端 Agent 状态 |
+| ChromaDB | ✅ | 向量存储 |
+| Docker Compose 多环境 | ✅ | `.env.dev` / `.env.prod` |
+
+### 可选（待评估）
+
+| 决策 | 状态 |
+|------|------|
+| LiteLLM 替代 LLMFactory | 🔄 评估中 |
+| Qdrant 替代 ChromaDB | 🔄 评估中 |
+| LangChain + LangGraph 完整迁移 | 🔄 后续考虑 |
+| PromptLayer | 🔄 评估中 |
+| Kubernetes | 🔄 预发布/生产 |
+
+### 不推荐
+
+- AutoGen / CrewAI（复杂度高，定制性低）
+- LlamaIndex（RAG 场景当前不需要完整框架）
+- Elasticsearch（当前规模无需）
 
 ---
 
@@ -129,10 +143,20 @@
 | 环境 | 用途 | 数据库 | 缓存 | LLM |
 |------|------|--------|------|-----|
 | 开发 | 本地开发 | SQLite | Memory | Mock |
-| 测试 | CI/CD | SQLite | Redis | Mock |
-| 预发布 | 集成测试 | PostgreSQL | Redis | DeepSeek |
-| 生产 | 正式环境 | PostgreSQL | Redis | OpenAI/DeepSeek |
+| 测试 | CI/CD + Playwright | SQLite | Redis | Mock |
+| 预发布 | 集成测试 | PostgreSQL | Redis | MiniMax/DeepSeek |
+| 生产 | 正式环境 | PostgreSQL | Redis | OpenAI/MiniMax |
+
+### 已实现的环境配置
+
+```
+.env              # 本地开发（LLM_PROVIDER=mock）
+.env.dev          # Docker开发环境（mock LLM、热重载）
+.env.prod         # Docker生产环境（真实LLM）
+.env.test         # 测试环境（Mock LLM）
+.env.local.example # 本地默认示例
+```
 
 ---
 
-*文档版本: v1.0.0 | 待确认*
+*文档版本: v1.1.0 | 已采纳*

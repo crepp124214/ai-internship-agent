@@ -1,6 +1,6 @@
 # AI 实习求职 Agent 系统 — 开发规则
 
-> 版本: v2.0.0 | 来源: `internship-design-document.md` + `tech-stack.md`
+> 版本: v2.1.0 | 来源: `docs/planning/memory-bank/internship-design-document.md` + `docs/design/tech-stack.md`
 
 ---
 
@@ -8,40 +8,39 @@
 
 按以下顺序理解和执行任务：
 
-1. `internship-design-document.md`
-2. `tech-stack.md`
+1. `docs/planning/memory-bank/internship-design-document.md`
+2. `docs/design/tech-stack.md`
 3. `AGENTS.md`
-4. `memory-bank/architecture.md`
-5. `memory-bank/implementation-plan.md`
-6. `memory-bank/progress.md`
+4. `docs/planning/memory-bank/architecture.md`
+5. `docs/planning/memory-bank/implementation-plan.md`
+6. `docs/planning/memory-bank/progress.md`
 
 如果执行层文档与设计方案冲突，以设计方案和技术栈文档为准。
 
 ## 必读规则
 
-- 写任何代码前，必须完整阅读 `internship-design-document.md`
-- 写任何代码前，必须完整阅读 `tech-stack.md`
-- 写任何代码前，必须完整阅读 `memory-bank/architecture.md`
-- 执行任务前，必须先对照 `memory-bank/implementation-plan.md`
-- 每完成一个重要步骤，必须更新 `memory-bank/progress.md`
-- 每完成一个重要功能或重构里程碑，必须更新 `memory-bank/architecture.md`
+- 写任何代码前，必须完整阅读 `docs/planning/memory-bank/internship-design-document.md`
+- 写任何代码前，必须完整阅读 `docs/design/tech-stack.md`
+- 写任何代码前，必须完整阅读 `docs/planning/memory-bank/architecture.md`
+- 执行任务前，必须先对照 `docs/planning/memory-bank/implementation-plan.md`
+- 每完成一个重要步骤，必须更新 `docs/planning/memory-bank/progress.md`
+- 每完成一个重要功能或重构里程碑，必须更新 `docs/planning/memory-bank/architecture.md`
 
-## 当前项目定位
+## 当前项目状态
 
 - 项目：AI 实习求职 Agent 系统
-- 目标：将当前项目从“伪 Agent 应用”重构为真正可演进的 Agent 系统
-- 当前主线：先完成基础重构与基础能力收敛，再逐步实现完整 Agent Runtime 与高级功能
+- 状态：主体已完成（Phase 1-11），部分待清理
+- 已完成：Agent Runtime、JD定制简历、AI面试教练、Test&Tools、Agent Workspace、数据初始化、Docker多环境、开源基础
+- 待处理：Tracker残留代码清理、测试覆盖率提升
 
 ## 当前阶段判断
 
-当前处于重构阶段，不是发布收尾阶段。
+重构主体已完成，进入收尾阶段。
 
 当前优先级：
-
-1. 收敛架构
-2. 清理旧模块
-3. 稳定基础域
-4. 为后续 Agent 化扩展预留正确边界
+1. 清理旧模块（Tracker代码物理删除）
+2. 提升测试覆盖率（79% → 85%）
+3. 修复旧测试失败
 
 ## 架构红线
 
@@ -51,27 +50,32 @@
 - 数据层不得反向依赖上层
 - 路由层不得堆积业务逻辑
 - 前端不得直接调用 LLM
+- **工具层禁止从 `presentation` 层导入**（P0 修复要求）
 
 ## Agent 重构原则
 
-- 当前问题核心是“伪 Agent”，所以重构方向必须围绕：
-  - Agent Runtime
-  - Tool Registry
-  - State Machine
-  - Memory Store
-- 新的 Agent 相关能力优先遵循 `LangChain + LangGraph`
+- 已实现：Agent Runtime（AgentExecutor、ToolRegistry、StateMachine、MemoryStore、ContextBuilder）
+- 已实现：BaseTool 统一工具抽象 + ToolContext 依赖注入
 - 不继续扩写旧式 `execute() -> LLM generate()` 模式
+- 新增工具必须遵循 ToolRegistry 模式
 
-## 功能优先级
+## 功能状态
 
-### 旧能力处理
+### 已上线功能
 
-- `Tracker` 视为低价值旧模块，应逐步退场
+| 功能 | 阶段 | 状态 |
+|------|------|------|
+| JD 定制简历 | Phase 3 | ✅ |
+| AI 面试教练（多轮） | Phase 4 | ✅ |
+| Agent Workspace 前端 | Phase 6 | ✅ |
+| 数据初始化 | Phase 7.5 | ✅ |
+| Docker 多环境 | Phase 9 | ✅ |
 
-### 新能力主线
+### 待清理
 
-1. JD 定制简历
-2. AI 面试官对练
+| 功能 | 说明 |
+|------|------|
+| Tracker 模块 | 路由已断开，代码待物理删除 |
 
 ## 技术栈约束
 
@@ -81,10 +85,10 @@
 - FastAPI
 - SQLAlchemy 2.0
 - Alembic
-- LangChain + LangGraph
-- LiteLLM
+- LangChain BaseTool（工具抽象）
+- LLMFactory + Adapter（OpenAI/MiniMax/Mock）
 - Redis
-- PostgreSQL（重构目标）
+- PostgreSQL
 
 ### 前端
 
@@ -113,15 +117,15 @@
 - 测试分层：`unit / integration / e2e`
 - 修改功能必须补测试
 - 修复 bug 优先补回归
-- 目标覆盖率：至少达到设计目标，重构过程中不能倒退
+- 目标覆盖率：至少达到 85%，当前约 79%
 
 ## 文档职责
 
-- `internship-design-document.md`：正式设计源文档
-- `tech-stack.md`：正式技术栈源文档
-- `memory-bank/architecture.md`：执行层架构映射
-- `memory-bank/implementation-plan.md`：当前可执行步骤
-- `memory-bank/progress.md`：执行进度记录
+- `docs/planning/memory-bank/internship-design-document.md`：正式设计源文档
+- `docs/design/tech-stack.md`：正式技术栈源文档
+- `docs/planning/memory-bank/architecture.md`：执行层架构映射
+- `docs/planning/memory-bank/implementation-plan.md`：当前可执行步骤
+- `docs/planning/memory-bank/progress.md`：执行进度记录
 
 ## 回复要求
 
@@ -129,4 +133,4 @@
 
 ---
 
-*版本: v2.0.0*
+*版本: v2.1.0 | 主体已完成*
