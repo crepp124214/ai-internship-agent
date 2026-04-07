@@ -63,8 +63,11 @@
 |------|------|------|
 | Tracker 路由入口断开 | ✅ | `c760ee2` |
 | 基础域稳定（用户/简历/岗位/面试） | ✅ | Phase 1 |
-| Agent Runtime Phase 1 实现 | ✅ | Phase 2 |
+| Agent Runtime Phase 1 实现（含 Memory & State） | ✅ | Phase 2 |
 | JD 定制简历功能 | ✅ | Phase 3 |
+| Interview Coach 多轮对练 | ✅ | Phase 4 |
+| Test & Tools 增强 | ✅ | Phase 5 |
+| Agent Workspace 前端 | ✅ | Phase 6 |
 | Docker 多环境配置 | ✅ | Phase 9 |
 | P0: 架构违规修复（工具层禁止从 presentation 导入） | ✅ | `db57d6f` |
 | P0: Exception swallowing 修复 | ✅ | `d2ad37c` |

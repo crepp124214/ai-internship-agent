@@ -99,6 +99,75 @@
 
 ---
 
+## Phase 4：AI 面试教练（多轮对练）✅ 完成
+
+### 实现内容
+
+| 功能 | 文件/提交 | 说明 |
+|------|----------|------|
+| 面试会话管理 | `src/business_logic/interview/session_manager.py` | 多轮对话编排 |
+| Review 报告生成 | `src/business_logic/interview/review_report_generator.py` | 维度评分 |
+| Coach Agent | `src/business_logic/agents/interview_agent/interview_agent.py` | LLM 驱动 |
+| API 端点 | `src/presentation/api/v1/interview_coach.py` | start/answer/followup/end/report |
+| 前端 UI | `frontend/src/pages/interview-coach-page.tsx` | ChatBubble + 评分展示 |
+| 集成测试 | `tests/integration/interview/test_interview_coach_flow.py` | 2 passed |
+
+### 核心流程
+
+```
+用户开始面试 → 生成首题 → 用户回答 → 评分 → 追问(可选) → 循环 → 结束 → 生成报告
+```
+
+### 提交记录
+
+- `61708d4` - Merge branch 'codex/interview-coach'
+- `07974ef` - feat(api): add Interview Coach endpoints
+- `d30534d` - feat(interview): add InterviewSessionManager
+- `22645d4` - feat(interview): add InterviewCoachAgent
+- `fabb2b0` - feat(interview): add ReviewReportGenerator
+
+---
+
+## Phase 5：Test & Tools 增强 ✅ 完成（2026-04-07）
+
+### 实现内容
+
+| 工具 | 文件 |
+|------|------|
+| GenerateInterviewQuestionsTool | `src/business_logic/interview/tools/` |
+| FormatResumeTool | `src/business_logic/jd/tools/` |
+| CompareResumesTool | `src/business_logic/jd/tools/` |
+| CalculateJobMatchTool | `src/business_logic/job/tools/` |
+| AnalyzeResumeSkillsTool | `src/business_logic/jd/tools/` |
+
+### 提交记录
+
+- `4284f48` - Merge branch 'feature/phase7-test-tools'
+- `3b47b4d` - feat(phase2_tools): 添加 FormatResumeTool, CompareResumesTool
+- `862261a` - feat(phase2_tools): 添加 CalculateJobMatchTool
+- `d891181` - feat(interview_common_tools): 添加 GenerateInterviewQuestionsTool
+
+---
+
+## Phase 6：Agent Workspace 前端 ✅ 完成
+
+### 实现内容
+
+| 功能 | 文件 | 说明 |
+|------|------|------|
+| AgentChatService | `src/business_logic/agents/chat_agent.py` | 任务路由 |
+| SSE 流式端点 | `src/presentation/api/v1/agent_chat.py` | `/api/v1/agent/chat/stream` |
+| AgentChatPanel | `frontend/src/components/agent/AgentChatPanel.tsx` | 流式聊天 |
+| ToolPalette | `frontend/src/components/agent/ToolPalette.tsx` | 工具选择 |
+
+### 提交记录
+
+- `53c6404` - feat(frontend): transform dashboard into Agent Workspace
+- `9b90070` - feat(frontend): add AgentChatPanel with SSE streaming
+- `184cdcf` - feat(api): add SSE streaming agent chat endpoint
+
+---
+
 ## Phase 7.5：数据初始化 ✅ 完成
 
 | 功能 | 文件 |
@@ -107,6 +176,12 @@
 | JD 解析器 | `src/data_access/parsers/jd_parser.py` |
 | 导入 API | `src/presentation/api/v1/import_api.py` |
 | 增强 seed_demo | `scripts/seed_demo.py` |
+
+### 提交记录
+
+- `c8e66eb` - Merge branch 'feature/phase7.5-data-init'
+- `106e286` - feat(api): 添加简历和 JD 导入 API 端点
+- `8f0fc9a` - feat(data_init): 添加 JDParser JD 解析器
 
 ---
 
@@ -162,11 +237,11 @@
 
 | 计划文档 | 对应阶段 |
 |----------|----------|
-| `2026-04-07-agent-runtime-implementation.md` | Phase 2 |
+| `2026-04-07-agent-runtime-implementation.md` | Phase 2（含 Memory & State） |
 | `2026-04-07-jd-customized-resume-plan.md` | Phase 3 |
 | `2026-04-07-interview-coach-plan.md` | Phase 4 |
-| `2026-04-07-agent-workspace-plan.md` | Phase 6/7 |
 | `2026-04-07-test-and-tools-enhancement-plan.md` | Phase 5 |
+| `2026-04-07-agent-workspace-plan.md` | Phase 6 |
 | `2026-04-07-data-initialization-plan.md` | Phase 7.5 |
 | `2026-04-07-api-integration-plan.md` | Phase 8 |
 | `2026-04-07-docker-multi-env-plan.md` | Phase 9 |
