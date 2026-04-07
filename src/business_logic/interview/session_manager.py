@@ -1,4 +1,5 @@
 """InterviewSessionManager — 管理面试对练会话流程"""
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -8,6 +9,8 @@ from src.business_logic.interview.review_report_generator import (
     ReviewReportGenerator,
     ReviewReport,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -250,8 +253,8 @@ class InterviewSessionManager:
                     count=count,
                 )
                 return result.get("opening", ""), result.get("questions", [])
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(f"Coach flow generation failed, using fallback: {exc}")
         # Fallback
         opening = f"你好，我是 {job_title} 的面试官，我会对你的技术能力进行考察。"
         questions = [
@@ -274,8 +277,8 @@ class InterviewSessionManager:
                     answer=answer,
                     job_context=jd_text,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(f"Answer scoring failed, using fallback: {exc}")
         # Fallback
         score = min(100, max(0, 60 + hash(answer) % 30))
         return {"score": score, "feedback": "评分暂不可用"}
@@ -304,8 +307,8 @@ class InterviewSessionManager:
             )
             db.add(record)
             db.commit()
-        except Exception:
-            pass  # 不阻塞主流程
+        except Exception as exc:
+            logger.warning(f"Failed to save answer record, not blocking main flow: {exc}")
 
     def _generate_end_result(
         self, db: Session, session_id: int, state: CoachSessionState
@@ -321,8 +324,8 @@ class InterviewSessionManager:
                 if state.answers:
                     session.average_score = sum(a.score for a in state.answers) / len(state.answers)
                 db.commit()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(f"Failed to update session status: {exc}")
 
         answers_for_report = [
             {"question": a.question, "answer": a.answer, "score": a.score}
