@@ -238,3 +238,34 @@ class TestUserService:
         payload = self.service.decode_access_token(token)
 
         assert payload["sub"] == "123"
+
+    def test_create_refresh_token(self):
+        token = self.service.create_refresh_token(user_id=42)
+        assert token is not None
+        assert isinstance(token, str)
+
+    def test_verify_refresh_token_valid(self):
+        token = self.service.create_refresh_token(user_id=42)
+        user_id = self.service.verify_refresh_token(token)
+        assert user_id == 42
+
+    def test_verify_refresh_token_invalid(self):
+        user_id = self.service.verify_refresh_token("invalid.token.here")
+        assert user_id is None
+
+    def test_revoke_refresh_token(self):
+        mock_user = MagicMock()
+        self.mock_db.query.return_value.filter.return_value.first.return_value = mock_user
+        self.service.revoke_refresh_token(self.mock_db, user_id=1)
+        assert mock_user.refresh_token_hash is None
+        self.mock_db.add.assert_called_once()
+        self.mock_db.commit.assert_called_once()
+
+    def test_get_password_hash(self):
+        hashed = self.service.get_password_hash("testpassword")
+        assert hashed != "testpassword"
+        assert self.service.verify_password("testpassword", hashed)
+
+    def test_verify_password_wrong(self):
+        hashed = self.service.get_password_hash("testpassword")
+        assert not self.service.verify_password("wrongpassword", hashed)

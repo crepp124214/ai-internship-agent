@@ -19,6 +19,12 @@ def test_invalid_transition_raises():
         sm.transition("done")  # idle cannot go directly to done
 
 
+def test_unknown_state_raises():
+    sm = StateMachine()
+    with pytest.raises(ValueError, match="Unknown state"):
+        sm.transition("invalid_state")
+
+
 def test_history_records_transitions():
     sm = StateMachine()
     sm.transition("planning", reason="starting task")
