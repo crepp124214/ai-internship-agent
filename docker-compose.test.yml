@@ -38,7 +38,7 @@ services:
 
   backend:
     build:
-      context: ..
+      context: ../..
       dockerfile: docker/Dockerfile
     container_name: internship-agent-test-backend
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
@@ -59,14 +59,14 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ../src:/app/src
-      - ../tests:/app/tests
+      - ../../src:/app/src
+      - ../../tests:/app/tests
     networks:
       - agent-test-network
 
   frontend:
     build:
-      context: ..
+      context: ../..
       dockerfile: docker/frontend.Dockerfile
       args:
         VITE_API_BASE_URL: http://localhost:8000
