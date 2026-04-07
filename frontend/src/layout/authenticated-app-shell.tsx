@@ -7,7 +7,6 @@ const navigationItems = [
   { to: '/resume', label: '简历' },
   { to: '/jobs', label: '岗位' },
   { to: '/interview', label: '面试' },
-  { to: '/tracker', label: '投递追踪' },
 ]
 
 export function AuthenticatedAppShell() {
@@ -36,7 +35,7 @@ export function AuthenticatedAppShell() {
                   都更清楚
                 </h1>
                 <p className="max-w-[18rem] text-sm leading-6 text-white/68">
-                  把简历、岗位匹配、面试准备和投递建议统一收进一个 AI 工作台。
+                  让求职准备更清晰高效。
                 </p>
               </div>
             </div>
