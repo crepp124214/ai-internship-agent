@@ -16,6 +16,21 @@ from src.presentation.schemas.resume import (
     ResumeUpdate,
 )
 from src.business_logic.resume import resume_service
+from unittest.mock import MagicMock
+from src.presentation.schemas.jd import (
+    ResumeCustomizeRequest,
+    ResumeCustomizeResponse,
+    MatchReportSchema,
+)
+from src.business_logic.jd import (
+    JdParserService,
+    ResumeMatchService,
+    ResumeCustomizerAgent,
+)
+from src.core.llm.litellm_adapter import LiteLLMAdapter
+from src.core.runtime.memory_store import MemoryStore
+from src.core.runtime.tool_registry import ToolRegistry
+from src.business_logic.jd.tools import ReadResumeTool, MatchResumeToJobTool
 
 router = APIRouter()
 
@@ -269,5 +284,81 @@ async def list_resume_optimizations(
         raise
     except Exception:
         raise_ai_internal_error("List resume optimizations failed")
+
+
+@router.post("/{resume_id}/customize-for-jd", response_model=ResumeCustomizeResponse)
+async def customize_resume_for_jd(
+    resume_id: int,
+    req: ResumeCustomizeRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    为指定简历生成针对目标岗位定制的简历内容。
+    - 解析 JD 关键词和要求
+    - 计算简历与 JD 的匹配度
+    - Agent 生成定制简历
+    """
+    import uuid
+    from src.data_access.repositories import resume_repository, job_repository
+
+    # 1. 验证简历存在且属于当前用户
+    resume = resume_repository.get_by_id_and_user_id(db, resume_id, current_user.id)
+    if not resume:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resume not found")
+
+    # 2. 验证 JD 存在
+    job = job_repository.get_by_id(db, req.jd_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job description not found")
+
+    # 3. 解析 JD
+    jd_text = job.description or ""
+    parser = JdParserService()
+    parsed_jd = parser.parse(jd_text)
+
+    # 4. 计算匹配度（仅当 enable_match_report）
+    match_report = None
+    if req.enable_match_report:
+        resume_text = resume.processed_content or resume.resume_text or ""
+        matcher = ResumeMatchService()
+        match = matcher.compute_match(resume_text, parsed_jd)
+        match_report = MatchReportSchema(
+            keyword_coverage=match.keyword_coverage,
+            match_score=match.match_score,
+            gaps=match.gaps,
+            suggestions=match.suggestions,
+        )
+
+    # 5. 构建 Agent
+    session_id = str(uuid.uuid4())
+    tool_registry = ToolRegistry()
+    tool_registry.register(ReadResumeTool())
+    tool_registry.register(MatchResumeToJobTool())
+
+    mock_memory = MagicMock()
+    mock_memory.search_memory.return_value = []
+    mock_memory.get_turns.return_value = []
+
+    llm = LiteLLMAdapter()
+    agent = ResumeCustomizerAgent(
+        llm=llm,
+        tool_registry=tool_registry,
+        memory=mock_memory,
+    )
+
+    # 6. 执行定制
+    customized_text = await agent.customize(
+        resume_id=resume_id,
+        jd_id=req.jd_id,
+        custom_instructions=req.custom_instructions,
+        session_id=session_id,
+    )
+
+    return ResumeCustomizeResponse(
+        customized_resume=customized_text,
+        match_report=match_report,
+        session_id=session_id,
+    )
 
 

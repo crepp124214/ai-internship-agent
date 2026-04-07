@@ -66,11 +66,55 @@ tests/integration/runtime/                # 集成测试
 
 ---
 
+## Phase 3：JD 定制简历 ✅ 完成（2026-04-07）
+
+| 模块 | 文件 | Commit | 测试 |
+|------|------|--------|------|
+| JD Schemas | `src/presentation/schemas/jd.py` | `556a0a7` | — |
+| JdParserService | `src/business_logic/jd/jd_parser_service.py` + `schemas.py` | `f3cff4d` | 3 passed |
+| ResumeMatchService | `src/business_logic/jd/resume_match_service.py` | `4e556ad` | 4 passed |
+| JD package exports | `src/business_logic/jd/__init__.py` | `edaf5c4` | — |
+| read_resume Tool | `src/business_logic/jd/tools/read_resume.py` | `db83366` | — |
+| match_resume_to_job Tool | `src/business_logic/jd/tools/match_resume_to_job.py` | `0dc40c4` | — |
+| ResumeCustomizerAgent | `src/business_logic/jd/resume_customizer_agent.py` | `c7e54d7` | — |
+| API Endpoint | `src/presentation/api/v1/resume.py` | `d8364b1` | — |
+| Frontend API Client | `frontend/src/lib/api.ts` | (merged) | — |
+| MatchReportCard | `frontend/src/pages/components/MatchReportCard.tsx` | `14983fc` | — |
+| JdCustomizePage | `frontend/src/pages/jd-customize-page.tsx` + router | `e40eafa` | — |
+| Integration Test | `tests/integration/test_customize_endpoint.py` | `d0bb6b9` | — |
+| **总计** | | | **377 passed** ✅ |
+
+**JD Feature 新增文件：**
+```
+src/business_logic/jd/
+  __init__.py                          # 包导出
+  schemas.py                           # ParsedJD, MatchReport NamedTuple
+  jd_parser_service.py                  # JD 文本解析
+  resume_match_service.py               # 匹配度计算
+  resume_customizer_agent.py           # AgentExecutor ReAct 循环
+  tools/
+    __init__.py
+    read_resume.py                     # BaseTool: 读取简历
+    match_resume_to_job.py             # BaseTool: JD 匹配分析
+src/presentation/schemas/jd.py         # API request/response schemas
+src/presentation/api/v1/resume.py      # POST /{id}/customize-for-jd 端点
+frontend/src/pages/jd-customize-page.tsx        # 定制简历页面
+frontend/src/pages/components/MatchReportCard.tsx # 匹配报告卡片
+tests/unit/business_logic/jd/                     # JD 业务逻辑单元测试
+tests/integration/test_customize_endpoint.py       # API 集成测试
+```
+
+**设计文档：** `docs/superpowers/specs/2026-04-07-jd-customized-resume-design.md`
+**实施计划：** `docs/superpowers/plans/2026-04-07-jd-customized-resume-plan.md`
+
+---
+
 ## 当前阶段
 
 - Phase 1（基础重构）✅ 完成
 - Phase 2（Agent Runtime）✅ 完成
-- 下一阶段：JD 定制简历 或 AI 面试官对练 功能开发
+- Phase 3（JD 定制简历）✅ 完成
+- 下一阶段：AI 面试官对练
 
 ## 更新要求
 
