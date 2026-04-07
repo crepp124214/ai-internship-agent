@@ -129,7 +129,7 @@ async def test_execute_with_tool_call(executor, mock_llm, mock_memory, mock_cont
         description: str = "A fake tool"
         args_schema: type[FakeToolInput] = FakeToolInput
 
-        def _execute_sync(self, tool_input, runtime=None):
+        def _execute_sync(self, tool_input, runtime=None, context=None):
             return {"result": "executed!"}
 
     executor._tools.register(FakeToolForTest())

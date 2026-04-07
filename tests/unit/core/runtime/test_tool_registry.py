@@ -11,7 +11,7 @@ class FakeTool(BaseTool):
     name: str = "fake_tool"
     description: str = "A fake tool for testing"
 
-    def _execute_sync(self, tool_input: dict, runtime=None) -> dict:
+    def _execute_sync(self, tool_input: dict, runtime=None, context=None) -> dict:
         return {"result": f"fake result for {tool_input.get('input', '')}"}
 
 

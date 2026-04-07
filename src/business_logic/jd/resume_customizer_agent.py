@@ -1,12 +1,15 @@
 # src/business_logic/jd/resume_customizer_agent.py
 """AI 简历定制 Agent — 基于 AgentExecutor ReAct 循环"""
 
+from typing import Optional
+
 from src.core.llm.litellm_adapter import LiteLLMAdapter
 from src.core.runtime.agent_executor import AgentExecutor
 from src.core.runtime.context_builder import ContextBuilder
 from src.core.runtime.memory_store import MemoryStore
 from src.core.runtime.state_machine import StateMachine
 from src.core.runtime.tool_registry import ToolRegistry
+from src.core.tools.tool_context import ToolContext
 
 
 class ResumeCustomizerAgent:
@@ -61,6 +64,50 @@ class ResumeCustomizerAgent:
             full_text += chunk
 
         return full_text
+
+    async def customize_react(
+        self,
+        resume_id: int,
+        jd_id: int,
+        context: ToolContext,
+    ) -> dict:
+        """
+        ReAct 模式：使用 AgentExecutor 调用工具完成简历定制
+
+        Args:
+            resume_id: 简历 ID
+            jd_id: 岗位 ID
+            context: 工具执行上下文
+
+        Returns:
+            定制后的简历内容和匹配报告
+        """
+        task = f"""
+请为简历 {resume_id} 定制匹配岗位 {jd_id} 的版本。
+
+步骤：
+1. 使用 read_resume 读取简历内容
+2. 使用 analyze_jd 分析岗位要求
+3. 使用 analyze_resume_skills 提取简历技能
+4. 使用 match_resume_to_job 计算匹配度
+5. 使用 update_resume 更新简历，添加针对该岗位的定制内容
+
+最终输出定制后的简历摘要和改进建议。
+"""
+
+        result = await self._executor.run(
+            task=task,
+            context=context,
+            available_tools=[
+                "read_resume",
+                "analyze_jd",
+                "match_resume_to_job",
+                "analyze_resume_skills",
+                "update_resume",
+            ],
+        )
+
+        return result
 
     def _build_user_message(
         self, resume_id: int, jd_id: int, custom_instructions: str | None

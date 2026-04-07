@@ -10,6 +10,8 @@ from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool as LangChainBaseTool
 from pydantic import BaseModel, Field
 
+from src.core.tools.tool_context import ToolContext
+
 
 class BaseTool(LangChainBaseTool):
     """
@@ -28,7 +30,9 @@ class BaseTool(LangChainBaseTool):
         """
         同步执行入口，由父类调用
         """
-        result = self._execute_sync(tool_input, runtime=runtime)
+        # 兼容旧调用方式（无 context）
+        context = getattr(self, '_context', None)
+        result = self._execute_sync(tool_input, runtime=runtime, context=context)
         if isinstance(result, dict):
             import json
             return json.dumps(result)
@@ -38,6 +42,7 @@ class BaseTool(LangChainBaseTool):
         self,
         tool_input: Dict[str, Any],
         runtime: Optional[Any] = None,
+        context: Optional[ToolContext] = None,
     ) -> Dict[str, Any]:
         """
         子类覆盖此方法实现同步逻辑
