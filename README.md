@@ -193,19 +193,6 @@ curl -X POST http://127.0.0.1:8000/api/v1/users/login/ \
 {"access_token":"eyJhbGc..."}
 ```
 
-### 创建简历
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/v1/resumes/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -d '{
-    "title": "后端实习简历",
-    "content": "熟悉 Python/FastAPI，参与过...",
-    "target_jd": "后端开发实习 - Python"
-  }'
-```
-
 ### 启动 Agent Workspace 对话（SSE 流式）
 
 ```bash
@@ -214,6 +201,22 @@ curl -X POST http://127.0.0.1:8000/api/v1/agent/chat/stream \
   -H "Authorization: Bearer <TOKEN>" \
   -d '{"message": "帮我优化简历并生成面试题", "session_id": "demo-session-1"}' \
   --no-buffer
+```
+
+### 创建简历
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/resumes/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d '{"title": "后端实习简历", "content": "熟悉 Python/FastAPI，参与过..."}'
+```
+
+### 搜索岗位
+
+```bash
+curl -X GET http://127.0.0.1:8000/api/v1/jobs/ \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
 ### 启动 AI 面试
@@ -323,6 +326,12 @@ tests/
 ```
 
 ---
+
+## 相关文件
+
+- [AGENTS.md](AGENTS.md) — Agent 系统设计说明
+- [CLAUDE.md](CLAUDE.md) — 项目规则与上下文
+- [CONTRIBUTING.md](CONTRIBUTING.md) — 贡献指南
 
 ## License
 
