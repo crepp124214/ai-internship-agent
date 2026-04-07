@@ -47,6 +47,144 @@ from src.presentation.schemas.tracker import ApplicationTrackerCreate
 from src.presentation.schemas.user import UserCreate
 
 
+def seed_example_data(db: Session):
+    """创建示例简历和 JD 数据"""
+    from src.data_access.repositories.resume_repository import resume_repository
+    from src.data_access.repositories.job_repository import job_repository
+
+    # 示例简历
+    resumes = [
+        {
+            "title": "张三 - Python 开发工程师",
+            "original_file_path": "demo/zhangsan_resume.txt",
+            "resume_text": """姓名：张三
+学历：本科 - 计算机科学 - 清华大学 2016-2020
+
+技能：
+- Python、Django、FastAPI
+- PostgreSQL、Redis、MongoDB
+- Docker、Kubernetes
+- AWS 云服务
+- Git、JIRA
+
+经历：
+百度 - 后端开发工程师 2020-至今
+- 负责搜索服务开发，使用 Python + FastAPI
+- 优化查询性能，提升 50% 响应速度
+- 设计并实现微服务架构""",
+            "processed_content": """姓名：张三
+学历：本科 - 计算机科学 - 清华大学 2016-2020
+
+技能：Python, Django, FastAPI, PostgreSQL, Redis, MongoDB, Docker, Kubernetes, AWS
+
+经历：百度 - 后端开发工程师 2020-至今
+- 负责搜索服务开发，使用 Python + FastAPI
+- 优化查询性能，提升 50% 响应速度
+- 设计并实现微服务架构""",
+        },
+        {
+            "title": "李四 - 数据分析师",
+            "original_file_path": "demo/lisi_resume.txt",
+            "resume_text": """姓名：李四
+学历：硕士 - 数据科学 - 上海交通大学 2018-2021
+
+技能：
+- Python、R、SQL
+- Pandas、NumPy、Matplotlib
+- TensorFlow、PyTorch
+- Tableau、PowerBI
+- Spark、Hadoop
+
+经历：字节跳动 - 数据分析师 2021-至今
+- 分析用户行为数据，提供业务洞察
+- 建立数据管道，处理 TB 级数据
+- 使用机器学习预测用户留存""",
+            "processed_content": """姓名：李四
+学历：硕士 - 数据科学 - 上海交通大学 2018-2021
+
+技能：Python, R, SQL, Pandas, NumPy, TensorFlow, PyTorch, Spark, Hadoop
+
+经历：字节跳动 - 数据分析师 2021-至今
+- 分析用户行为数据，提供业务洞察
+- 建立数据管道，处理 TB 级数据""",
+        },
+    ]
+
+    # 示例 JD
+    jobs = [
+        {
+            "title": "Python 后端开发工程师",
+            "company": "字节跳动",
+            "description": "负责抖音后端服务开发，使用 Python + Go 语言",
+            "requirements": "3年以上 Python 开发经验，熟悉 Django 或 FastAPI",
+            "location": "北京",
+            "salary": "30-50K",
+            "source": "demo",
+        },
+        {
+            "title": "AI 算法工程师",
+            "company": "商汤科技",
+            "description": "负责计算机视觉算法研发，推动 AI 技术落地",
+            "requirements": "硕士及以上，熟悉 PyTorch/TensorFlow，有顶会论文优先",
+            "location": "上海",
+            "salary": "40-60K",
+            "source": "demo",
+        },
+        {
+            "title": "前端开发工程师",
+            "company": "腾讯",
+            "description": "负责微信小程序和 Web 端开发",
+            "requirements": "3年以上前端经验，熟悉 React 或 Vue",
+            "location": "深圳",
+            "salary": "25-45K",
+            "source": "demo",
+        },
+        {
+            "title": "数据分析师",
+            "company": "美团",
+            "description": "挖掘用户数据，提供商业洞察",
+            "requirements": "熟练使用 SQL 和 Python，有数据分析经验",
+            "location": "北京",
+            "salary": "20-35K",
+            "source": "demo",
+        },
+        {
+            "title": "DevOps 工程师",
+            "company": "阿里云",
+            "description": "负责云原生基础设施建设",
+            "requirements": "熟悉 Docker、Kubernetes，有大规模运维经验",
+            "location": "杭州",
+            "salary": "35-55K",
+            "source": "demo",
+        },
+    ]
+
+    # 检查是否已有数据
+    existing_resumes = resume_repository.get_all(db)
+    if len(existing_resumes) >= 2:
+        print(f"简历数据已存在 ({len(existing_resumes)} 条)，跳过示例简历创建")
+    else:
+        for resume_data in resumes:
+            try:
+                resume_repository.create(db, {**resume_data, "user_id": 1})
+                print(f"  Created resume: {resume_data['title']}")
+            except Exception as e:
+                print(f"  Failed to create resume {resume_data['title']}: {e}")
+
+    existing_jobs = job_repository.get_all(db)
+    if len(existing_jobs) >= 5:
+        print(f"JD 数据已存在 ({len(existing_jobs)} 条)，跳过示例 JD 创建")
+    else:
+        for job_data in jobs:
+            try:
+                job_repository.create(db, job_data)
+                print(f"  Created job: {job_data['title']}")
+            except Exception as e:
+                print(f"  Failed to create job {job_data['title']}: {e}")
+
+    return len(resumes), len(jobs)
+
+
 DEMO_USERNAME = "demo"
 DEMO_PASSWORD = "demo123"
 DEMO_EMAIL = "demo@example.com"
@@ -359,6 +497,11 @@ def main() -> None:
         record = ensure_interview_record(db, current_user, job, question)
         application = ensure_application(db, current_user, job, resume)
         advice = ensure_tracker_advice(db, current_user, application)
+
+        # 创建示例数据
+        print("\nCreating example data...")
+        r_count, j_count = seed_example_data(db)
+        print(f"Created {r_count} resumes and {j_count} jobs")
 
         print("Demo seed completed.")
         print(f"User: {DEMO_USERNAME} / {DEMO_PASSWORD}")
