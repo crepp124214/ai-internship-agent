@@ -56,16 +56,17 @@ def test_readme_declares_demo_flow():
 
     assert "demo / demo123" in readme
     assert "docker compose" in readme
-    assert "ReAct" in readme
-    assert "StateMachine" in readme
-    assert "ToolRegistry" in readme
-    assert "MemoryStore" in readme
+    assert "FastAPI" in readme
+    assert "React" in readme
+    assert "MIT" in readme
+    assert "CONTRIBUTING.md" in readme
 
 
 def test_readme_contains_demo_walkthrough():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "JD 定制简历" in readme
-    assert "AI 面试对练" in readme
-    assert "岗位匹配" in readme
-    assert "MIT" in readme
+    assert "pip install" in readme
+    assert "npm install" in readme
+    assert "python scripts/seed_demo.py" in readme
+    assert "Agent 运行时" in readme
+    assert "License" in readme
