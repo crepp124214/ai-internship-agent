@@ -10,10 +10,9 @@
 
 1. `docs/planning/memory-bank/internship-design-document.md`
 2. `docs/design/tech-stack.md`
-3. `AGENTS.md`
-4. `docs/planning/memory-bank/architecture.md`
-5. `docs/planning/memory-bank/implementation-plan.md`
-6. `docs/planning/memory-bank/progress.md`
+3. `docs/planning/memory-bank/architecture.md`
+4. `docs/planning/memory-bank/implementation-plan.md`
+5. `docs/planning/memory-bank/progress.md`
 
 如果执行层文档与设计方案冲突，以设计方案和技术栈文档为准。
 
