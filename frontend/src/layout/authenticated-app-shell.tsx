@@ -7,6 +7,7 @@ const navigationItems = [
   { to: '/resume', label: '简历' },
   { to: '/jobs', label: '岗位' },
   { to: '/interview', label: '面试' },
+  { to: '/settings/agent-config', label: 'Agent 配置' },
 ]
 
 export function AuthenticatedAppShell() {

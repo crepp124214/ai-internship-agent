@@ -8,6 +8,7 @@ import { JdCustomizePage } from '../pages/jd-customize-page'
 import { JobsPage } from '../pages/jobs-page'
 import { LoginPage } from '../pages/login-page'
 import { ResumePage } from '../pages/resume-page'
+import { AgentConfigPage } from '../pages/settings/agent-config-page'
 
 export function AppRouter() {
   return (
@@ -26,6 +27,7 @@ export function AppRouter() {
         <Route path="/jd-customize" element={<JdCustomizePage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/interview" element={<InterviewPage />} />
+        <Route path="/settings/agent-config" element={<AgentConfigPage />} />
       </Route>
       <Route path="*" element={<Navigate replace to="/dashboard" />} />
     </Routes>
