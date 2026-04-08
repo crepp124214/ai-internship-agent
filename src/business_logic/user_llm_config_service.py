@@ -1,13 +1,15 @@
 """UserLlmConfig 业务逻辑层。"""
 
 from typing import List, Optional
+
+from src.data_access.entities.user_llm_config import UserLlmConfig
 from sqlalchemy.orm import Session
 from src.data_access.repositories.user_llm_config_repository import user_llm_config_repository
 from src.presentation.schemas.user_llm_config import UserLlmConfigCreate
 from src.utils.crypto import decrypt_api_key, encrypt_api_key
 
 class UserLlmConfigService:
-    def get_user_configs(self, db: Session, user_id: int) -> List:
+    def get_user_configs(self, db: Session, user_id: int) -> List[UserLlmConfig]:
         """获取用户所有启用的 Agent 配置。"""
         return user_llm_config_repository.get_active_by_user(db, user_id)
 

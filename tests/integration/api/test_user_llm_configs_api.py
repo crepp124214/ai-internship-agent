@@ -200,7 +200,7 @@ def test_delete_llm_config_returns_404_when_not_found(client):
         "src.presentation.api.v1.user_llm_configs.user_llm_config_service.delete_config",
         return_value=False,
     ):
-        response = client.delete("/api/v1/users/llm-configs/nonexistent_agent")
+        response = client.delete("/api/v1/users/llm-configs/resume_agent")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Config not found"
