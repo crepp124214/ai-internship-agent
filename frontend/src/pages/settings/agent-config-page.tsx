@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { getUserLlmConfigs, saveUserLlmConfig, deleteUserLlmConfig, type UserLlmConfig, type UserLlmConfigInput } from '../../lib/api'
@@ -61,47 +60,54 @@ function AgentCard({
   saving: boolean
   message: { type: 'success' | 'error'; text: string } | null
 }) {
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<ConfigFormData>({
-    defaultValues: {
-      agent: agent.id,
-      provider: config?.provider ?? 'OpenAI',
-      model: config?.model ?? '',
-      api_key: config?.api_key ?? '',
-      base_url: config?.base_url ?? '',
-      temperature: config?.temperature ?? 0.7,
-    },
-  })
-
-  const watchedTemperature = watch('temperature')
+  const [formProvider, setFormProvider] = useState(config?.provider ?? 'OpenAI')
+  const [formModel, setFormModel] = useState(config?.model ?? '')
+  const [formApiKey, setFormApiKey] = useState(config?.api_key ?? '')
+  const [formBaseUrl, setFormBaseUrl] = useState(config?.base_url ?? '')
+  const [formTemperature, setFormTemperature] = useState(config?.temperature ?? 0.7)
 
   useEffect(() => {
     if (isEditing && config) {
-      reset({
-        agent: agent.id,
-        provider: config.provider ?? 'OpenAI',
-        model: config.model ?? '',
-        api_key: config.api_key ?? '',
-        base_url: config.base_url ?? '',
-        temperature: config.temperature ?? 0.7,
-      })
+      setFormProvider(config.provider ?? 'OpenAI')
+      setFormModel(config.model ?? '')
+      setFormApiKey(config.api_key ?? '')
+      setFormBaseUrl(config.base_url ?? '')
+      setFormTemperature(config.temperature ?? 0.7)
     } else if (isEditing) {
-      reset({
-        agent: agent.id,
-        provider: 'OpenAI',
-        model: '',
-        api_key: '',
-        base_url: '',
-        temperature: 0.7,
-      })
+      setFormProvider('OpenAI')
+      setFormModel('')
+      setFormApiKey('')
+      setFormBaseUrl('')
+      setFormTemperature(0.7)
     }
-  }, [isEditing, config, agent.id, reset])
+  }, [isEditing, config])
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (!formModel.trim()) {
+      return
+    }
+    if (!formApiKey.trim()) {
+      return
+    }
+
+    onSave({
+      agent: agent.id,
+      provider: formProvider,
+      model: formModel,
+      api_key: formApiKey,
+      base_url: formBaseUrl,
+      temperature: formTemperature,
+    })
+  }
 
   if (isEditing) {
     return (
       <SectionCard title={agent.label} subtitle={agent.description}>
-        <form onSubmit={handleSubmit(onSave)} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <FormField label="Provider">
-            <Select {...register('provider', { required: '请选择 Provider' })}>
+            <Select value={formProvider} onChange={(e) => setFormProvider(e.target.value)}>
               {PROVIDERS.map((p) => (
                 <option key={p} value={p}>{p}</option>
               ))}
@@ -110,7 +116,8 @@ function AgentCard({
 
           <FormField label="Model">
             <Input
-              {...register('model', { required: '请输入模型名称' })}
+              value={formModel}
+              onChange={(e) => setFormModel(e.target.value)}
               placeholder="例如：gpt-4o-mini"
             />
           </FormField>
@@ -118,25 +125,28 @@ function AgentCard({
           <FormField label="API Key">
             <Input
               type="password"
-              {...register('api_key', { required: '请输入 API Key' })}
+              value={formApiKey}
+              onChange={(e) => setFormApiKey(e.target.value)}
               placeholder="sk-..."
             />
           </FormField>
 
           <FormField label="Base URL（可选）">
             <Input
-              {...register('base_url')}
+              value={formBaseUrl}
+              onChange={(e) => setFormBaseUrl(e.target.value)}
               placeholder="https://api.openai.com/v1"
             />
           </FormField>
 
-          <FormField label={`Temperature: ${watchedTemperature}`}>
+          <FormField label={`Temperature: ${formTemperature}`}>
             <input
               type="range"
               min="0"
               max="2"
               step="0.1"
-              {...register('temperature', { valueAsNumber: true })}
+              value={formTemperature}
+              onChange={(e) => setFormTemperature(parseFloat(e.target.value))}
               className="w-full"
             />
             <span className="text-xs text-[var(--color-muted)]">控制输出的随机性，值越低越确定性</span>
