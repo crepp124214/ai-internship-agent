@@ -3,10 +3,10 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/use-auth'
 
 const navigationItems = [
-  { to: '/dashboard', label: '仪表盘' },
-  { to: '/resume', label: '简历' },
-  { to: '/jobs', label: '岗位' },
-  { to: '/interview', label: '面试' },
+  { to: '/', label: '仪表盘' },
+  { to: '/jobs-explore', label: '岗位探索' },
+  { to: '/resume', label: '简历优化' },
+  { to: '/interview', label: '面试准备' },
   { to: '/settings/agent-config', label: 'Agent 配置' },
 ]
 
@@ -82,17 +82,17 @@ export function AuthenticatedAppShell() {
         </aside>
 
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="border-b border-[var(--color-stroke)]/70 bg-[var(--color-surface)]/80 px-5 py-4 backdrop-blur md:px-8">
+          <header className="border-b border-[var(--color-border)]/70 bg-[var(--color-surface)]/80 px-5 py-4 backdrop-blur md:px-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--color-muted)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-[var(--color-ink-muted)]">
                   AI 求职工作台
                 </p>
                 <h2 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-ink)]">
                   {navigationItems.find((item) => item.to === location.pathname)?.label ?? '仪表盘'}
                 </h2>
               </div>
-              <div className="flex items-center gap-3 rounded-full border border-[var(--color-stroke)] bg-white px-4 py-2 text-sm text-[var(--color-muted)] shadow-[0_10px_30px_rgba(30,43,40,0.06)]">
+              <div className="flex items-center gap-3 rounded-full border border-[var(--color-border)] bg-white px-4 py-2 text-sm text-[var(--color-ink-muted)] shadow-[0_10px_30px_rgba(30,43,40,0.06)]">
                 <span className="hidden md:inline">当前登录</span>
                 <span className="font-medium text-[var(--color-ink)]">{user?.username}</span>
               </div>

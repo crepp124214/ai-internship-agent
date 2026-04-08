@@ -77,6 +77,19 @@ export type ResumeOptimization = {
   updated_at: string
 }
 
+export type MatchReportData = {
+  keyword_coverage: number
+  match_score: number
+  gaps: string[]
+  suggestions: string[]
+}
+
+export type ResumeCustomizeResponse = {
+  customized_resume: string
+  match_report: MatchReportData | null
+  session_id: string
+}
+
 export type Job = {
   id: number
   title: string
@@ -116,6 +129,15 @@ export type JobCreatePayload = {
   source: string
   source_url?: string | null
   source_id?: string | null
+}
+
+export type JobSaveExternalPayload = {
+  title: string
+  company: string
+  location: string
+  description: string
+  requirements?: string | null
+  source_url?: string | null
 }
 
 export type JobMatchPayload = {
@@ -487,6 +509,14 @@ export const resumeApi = {
     const response = await api.get<ResumeOptimization[]>(`/resumes/${resumeId}/optimizations/`)
     return response.data
   },
+  async customizeForJd(resumeId: number, jdId: number, customInstructions?: string) {
+    const response = await api.post<ResumeCustomizeResponse>(`/resumes/${resumeId}/customize-for-jd`, {
+      jd_id: jdId,
+      custom_instructions: customInstructions,
+      enable_match_report: true,
+    })
+    return response.data
+  },
 }
 
 export const jobsApi = {
@@ -496,6 +526,10 @@ export const jobsApi = {
   },
   async create(payload: JobCreatePayload) {
     const response = await api.post<Job>('/jobs/', payload)
+    return response.data
+  },
+  async saveExternal(payload: JobSaveExternalPayload) {
+    const response = await api.post<Job>('/jobs/save-external', payload)
     return response.data
   },
   async previewMatch(jobId: number, payload: JobMatchPayload) {

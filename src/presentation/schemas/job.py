@@ -108,6 +108,17 @@ class JobApplication(JobApplicationBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class JobSaveExternalRequest(BaseModel):
+    """Save external job request model."""
+
+    title: str = Field(..., min_length=1, max_length=200)
+    company: str = Field(..., min_length=1, max_length=100)
+    location: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(..., min_length=1)
+    requirements: Optional[str] = None
+    source_url: Optional[str] = None
+
+
 class JobMatchRequest(BaseModel):
     """Job match request model."""
 

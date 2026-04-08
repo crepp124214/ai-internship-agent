@@ -1,8 +1,8 @@
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { AgentAssistantPanel } from './components/agent/AgentAssistantPanel'
-import { readApiError, resumeApi, type Resume } from '../lib/api'
+import { jobsApi, readApiError, resumeApi, type MatchReportData, type Resume } from '../lib/api'
 import {
   EmptyHint,
   FormField,
@@ -15,6 +15,7 @@ import {
   Select,
   Textarea,
 } from './page-primitives'
+import { MatchReportCard } from './components/MatchReportCard'
 
 function getFileExtension(fileName: string) {
   const lastDotIndex = fileName.lastIndexOf('.')
@@ -70,9 +71,23 @@ async function readTextFile(file: File) {
   })
 }
 
+type JobFlowState = {
+  fromJob?: {
+    jobId: number
+    title: string
+    company: string
+    location: string
+    description: string
+    requirements: string
+  }
+}
+
 export function ResumePage() {
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const resumesQuery = useQuery({ queryKey: ['resume', 'list'], queryFn: resumeApi.list })
+  const jobsQuery = useQuery({ queryKey: ['jobs', 'list'], queryFn: jobsApi.list })
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
   const [createTitle, setCreateTitle] = useState('')
   const [targetRole, setTargetRole] = useState('')
@@ -82,12 +97,46 @@ export function ResumePage() {
   const [importInputKey, setImportInputKey] = useState(0)
   const [summaryPreview, setSummaryPreview] = useState<string | null>(null)
   const [improvementsPreview, setImprovementsPreview] = useState<string | null>(null)
+  const [flowHint, setFlowHint] = useState<string | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
+  const [jdInstructions, setJdInstructions] = useState('')
+  const [customizedResume, setCustomizedResume] = useState<string | null>(null)
+  const [matchReport, setMatchReport] = useState<MatchReportData | null>(null)
 
   const effectiveSelectedResumeId = selectedResumeId ?? resumesQuery.data?.[0]?.id ?? null
   const effectiveSelectedResume =
     resumesQuery.data?.find((resume) => resume.id === effectiveSelectedResumeId) ?? null
 
   const resumeText = effectiveSelectedResume?.processed_content ?? effectiveSelectedResume?.resume_text ?? ''
+
+  useEffect(() => {
+    const state = location.state as JobFlowState | null
+    const flowTargetRole = searchParams.get('targetRole')
+
+    if (flowTargetRole && !targetRole.trim()) {
+      setTargetRole(flowTargetRole)
+    }
+
+    if (state?.fromJob) {
+      const fromJob = state.fromJob
+      setFlowHint(`已从岗位探索带入：${fromJob.title} / ${fromJob.company}（${fromJob.location}）`)
+      setSelectedJobId(fromJob.jobId)
+      if (!targetRole.trim()) {
+        setTargetRole(`${fromJob.title}（${fromJob.company}）`)
+      }
+      return
+    }
+
+    if (!flowTargetRole) {
+      setFlowHint(null)
+    }
+  }, [location.state, searchParams, targetRole])
+
+  useEffect(() => {
+    if (!selectedJobId && jobsQuery.data?.length) {
+      setSelectedJobId(jobsQuery.data[0].id)
+    }
+  }, [jobsQuery.data, selectedJobId])
 
   const createResumeMutation = useMutation({
     mutationFn: ({ title, filePath }: { title: string; filePath: string }) =>
@@ -177,6 +226,21 @@ export function ResumePage() {
     onError: (error) => setFeedback(readApiError(error)),
   })
 
+  const customizeForJdMutation = useMutation({
+    mutationFn: () => {
+      if (!effectiveSelectedResumeId || !selectedJobId) {
+        throw new Error('请先选择简历和目标岗位。')
+      }
+      return resumeApi.customizeForJd(effectiveSelectedResumeId, selectedJobId, jdInstructions || undefined)
+    },
+    onSuccess: (data) => {
+      setCustomizedResume(data.customized_resume)
+      setMatchReport(data.match_report)
+      setFeedback('JD 定向优化完成。')
+    },
+    onError: (error) => setFeedback(readApiError(error)),
+  })
+
   const handleImportFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.currentTarget.files?.[0] ?? null
     setFeedback(null)
@@ -196,18 +260,17 @@ export function ResumePage() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* 左侧：现有内容 */}
-      <div className="flex-1 space-y-6 overflow-y-auto pr-6">
-        <PageHeader
-          eyebrow="简历工作台"
-          title="一次整理，持续优化简历内容"
-          description="创建或导入简历，预览 AI 摘要与优化建议。"
-        />
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="简历优化"
+        title="选择简历并进行 JD 定向优化"
+        description="从已有简历中选择版本，结合目标岗位生成摘要与优化建议。"
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
-        <SectionCard title="创建 / 导入简历" subtitle="整理出一份基础简历，再进行 AI 优化。">
-          <div className="space-y-4">
+      <div className="grid gap-6 xl:grid-cols-2">
+        {/* 左侧：创建/导入 */}
+        <SectionCard title="创建 / 导入简历" subtitle="整理出一份基础简历，再进行 AI 分析。">
+          <div className="space-y-5">
             <FormField label="新建简历">
               <div className="flex flex-col gap-3 md:flex-row">
                 <Input
@@ -229,22 +292,20 @@ export function ResumePage() {
                 </PrimaryButton>
               </div>
             </FormField>
-            <FormField
-              label="导入本地简历"
-              helper="支持 txt、md 和 json 文件。"
-            >
+
+            <FormField label="导入本地简历" helper="支持 txt、md 和 json 文件。">
               <div className="space-y-3">
                 <input
                   key={importInputKey}
                   type="file"
                   accept=".txt,.md,.json,text/plain,application/json"
                   onChange={handleImportFileChange}
-                  className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[var(--color-accent)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(199,107,79,0.14)]"
+                  className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[var(--color-accent)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(199,107,79,0.14)]"
                 />
                 {selectedImportFile ? (
                   <p className="text-sm text-[var(--color-ink)]">已选择：{selectedImportFile.name}</p>
                 ) : (
-                  <p className="text-sm text-[var(--color-muted)]">选择文件后点击"导入并创建"</p>
+                  <p className="text-sm text-[var(--color-ink-muted)]">选择文件后点击"导入并创建"</p>
                 )}
                 <PrimaryButton
                   type="button"
@@ -258,10 +319,65 @@ export function ResumePage() {
                   {importResumeMutation.isPending ? '导入中...' : '导入并创建'}
                 </PrimaryButton>
                 {importStatus ? (
-                  <p className="text-xs leading-5 text-[var(--color-muted)]">{importStatus}</p>
+                  <p className="text-xs leading-5 text-[var(--color-ink-muted)]">{importStatus}</p>
                 ) : null}
               </div>
             </FormField>
+
+            <FormField label="目标岗位（可选）">
+              <Input
+                value={targetRole}
+                onChange={(event) => setTargetRole(event.target.value)}
+                placeholder="例如：后端开发实习生"
+              />
+            </FormField>
+
+            <FormField label="目标 JD 岗位">
+              <Select
+                value={selectedJobId ?? ''}
+                onChange={(event) => setSelectedJobId(Number(event.target.value))}
+              >
+                {jobsQuery.data?.map((job) => (
+                  <option key={job.id} value={job.id}>
+                    #{job.id} - {job.title} @ {job.company}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+
+            <FormField label="JD 优化指令（可选）" helper="例如：突出 Python + FastAPI 项目经历">
+              <Textarea
+                value={jdInstructions}
+                onChange={(event) => setJdInstructions(event.target.value)}
+                className="min-h-24"
+              />
+            </FormField>
+
+            <PrimaryButton
+              type="button"
+              onClick={() => customizeForJdMutation.mutate()}
+              disabled={!effectiveSelectedResumeId || !selectedJobId || customizeForJdMutation.isPending}
+            >
+              {customizeForJdMutation.isPending ? '优化中...' : '开始 JD 定向优化'}
+            </PrimaryButton>
+
+            {flowHint ? (
+              <div className="rounded-2xl bg-[rgba(86,128,99,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]">
+                {flowHint}
+              </div>
+            ) : null}
+
+            {feedback ? (
+              <div className="rounded-2xl bg-[var(--color-surface-sunken)] px-4 py-3 text-sm text-[var(--color-ink)]">
+                {feedback}
+              </div>
+            ) : null}
+          </div>
+        </SectionCard>
+
+        {/* 右侧：简历列表 */}
+        <SectionCard title="简历列表" subtitle="选择简历后可预览内容。">
+          <div className="space-y-4">
             <FormField label="选择简历">
               <Select
                 value={selectedResumeId ?? ''}
@@ -274,95 +390,67 @@ export function ResumePage() {
                 ))}
               </Select>
             </FormField>
-            <FormField label="目标岗位">
-              <Input
-                value={targetRole}
-                onChange={(event) => setTargetRole(event.target.value)}
-                placeholder="例如：后端开发实习生"
-              />
-            </FormField>
-            {feedback ? (
-              <div className="rounded-[22px] bg-[var(--color-panel)] px-4 py-3 text-sm text-[var(--color-ink)]">
-                {feedback}
-              </div>
-            ) : null}
+
+            {effectiveSelectedResume ? (
+              <>
+                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                  <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--color-ink)]">
+                    {resumeText || '（简历内容为空）'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => summaryPreviewMutation.mutate()}
+                    disabled={!effectiveSelectedResumeId || !resumeText}
+                  >
+                    预览摘要
+                  </SecondaryButton>
+                  <SecondaryButton
+                    type="button"
+                    onClick={() => improvementsPreviewMutation.mutate()}
+                    disabled={!effectiveSelectedResumeId || !resumeText}
+                  >
+                    预览优化
+                  </SecondaryButton>
+                </div>
+              </>
+            ) : (
+              <EmptyHint>请先创建或导入一份简历。</EmptyHint>
+            )}
           </div>
         </SectionCard>
-
-        <SectionCard title="简历内容" subtitle="选择简历后可预览摘要和优化建议。">
-          {effectiveSelectedResume ? (
-            <div className="space-y-4">
-              <div className="rounded-[24px] border border-[var(--color-stroke)] bg-[var(--color-surface)] p-5">
-                <p className="text-sm leading-7 whitespace-pre-wrap text-[var(--color-ink)]">
-                  {resumeText || '（简历内容为空）'}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <SecondaryButton
-                  type="button"
-                  onClick={() => summaryPreviewMutation.mutate()}
-                  disabled={!effectiveSelectedResumeId || !resumeText}
-                >
-                  预览摘要
-                </SecondaryButton>
-                <SecondaryButton
-                  type="button"
-                  onClick={() => summaryPersistMutation.mutate()}
-                  disabled={!effectiveSelectedResumeId || !resumeText}
-                >
-                  保存摘要
-                </SecondaryButton>
-                <SecondaryButton
-                  type="button"
-                  onClick={() => improvementsPreviewMutation.mutate()}
-                  disabled={!effectiveSelectedResumeId || !resumeText}
-                >
-                  预览优化建议
-                </SecondaryButton>
-                <SecondaryButton
-                  type="button"
-                  onClick={() => improvementsPersistMutation.mutate()}
-                  disabled={!effectiveSelectedResumeId || !resumeText}
-                >
-                  保存优化建议
-                </SecondaryButton>
-              </div>
-            </div>
-          ) : (
-            <EmptyHint>请先创建或导入一份简历。</EmptyHint>
-          )}
-        </SectionCard>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <SectionCard title="摘要" subtitle="预览或保存 AI 生成的简历摘要。">
-          {summaryPreview ? (
-            <ResultPanel label="摘要" content={summaryPreview} />
-          ) : (
-            <EmptyHint>先预览或保存摘要，这里才会显示内容。</EmptyHint>
-          )}
-        </SectionCard>
-        <SectionCard title="优化建议" subtitle="AI 提供的简历改写和增强建议。">
-          {improvementsPreview ? (
-            <ResultPanel label="优化建议" content={improvementsPreview} />
-          ) : (
-            <EmptyHint>先预览或保存优化建议，这里才会显示内容。</EmptyHint>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* 右侧：Agent 助手面板 */}
-      <div className="w-[400px] flex-shrink-0">
-        <AgentAssistantPanel
-          page="resume"
-          resourceId={effectiveSelectedResumeId ?? undefined}
-          quickActions={[
-            { label: '分析简历', message: '请分析我选中的这份简历，指出优势和不足。' },
-            { label: '我适合什么岗位？', message: '根据我的简历，我适合什么类型的岗位？' },
-            { label: '简历有什么问题？', message: '这份简历有什么问题？如何改进？' },
-          ]}
-        />
-      </div>
+      {/* 下方：摘要和优化建议 */}
+      {(summaryPreview || improvementsPreview || customizedResume || matchReport) && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <SectionCard title="简历摘要" subtitle="AI 生成的简历摘要。">
+            {summaryPreview ? (
+              <ResultPanel label="摘要" content={summaryPreview} />
+            ) : (
+              <EmptyHint>点击上方「预览摘要」</EmptyHint>
+            )}
+          </SectionCard>
+          <SectionCard title="优化建议" subtitle="AI 提供的简历改写建议。">
+            {improvementsPreview ? (
+              <ResultPanel label="优化建议" content={improvementsPreview} />
+            ) : (
+              <EmptyHint>点击上方「预览优化」</EmptyHint>
+            )}
+          </SectionCard>
+          <SectionCard title="JD 定向优化结果" subtitle="基于目标岗位重写后的简历内容。">
+            {customizedResume ? (
+              <ResultPanel label="定向优化简历" content={customizedResume} />
+            ) : (
+              <EmptyHint>点击上方「开始 JD 定向优化」</EmptyHint>
+            )}
+          </SectionCard>
+          <SectionCard title="匹配报告" subtitle="当前简历与目标岗位的匹配分析。">
+            {matchReport ? <MatchReportCard report={matchReport} /> : <EmptyHint>完成定向优化后显示报告</EmptyHint>}
+          </SectionCard>
+        </div>
+      )}
     </div>
   )
 }

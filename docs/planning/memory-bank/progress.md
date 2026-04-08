@@ -2,6 +2,7 @@
 
 ## 当前阶段
 
+- Phase 15: 前端页面重构 + 体验流程 v2.0 ✅ 已完成（2026-04-08）
 - Phase 13: 测试修复 ✅ 已完成（2026-04-07）
 - Phase 12: Tracker 残留代码清理 ✅ 已完成（2026-04-07）
 - Phase 11: P0 紧急修复 ✅ 已完成（2026-04-07）
@@ -323,6 +324,18 @@
 - `feat(job): rewrite SearchJobsTool to return company recruitment URLs`
 - `feat(frontend): embed AgentAssistantPanel in jobs page`
 - `feat(frontend): make ToolPalette fetch tools from API dynamically`
+
+### 2026-04-08 增量（Phase 15 完成）
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 路由与导航重构 | `frontend/src/app/router.tsx`、`frontend/src/layout/authenticated-app-shell.tsx` | 路由统一到 v2.0：`/`、`/jobs-explore`，并完成侧边栏顺序调整 |
+| 仪表盘流程入口 | `frontend/src/pages/dashboard-page.tsx` | 岗位入口统一为“岗位探索”，跳转新流程 |
+| 岗位探索页增强 | `frontend/src/pages/jobs-page.tsx` | 支持岗位导入/创建、收藏、匹配预览/保存、一键流转简历优化 |
+| 收藏岗位 API | `src/presentation/api/v1/jobs.py`、`src/presentation/schemas/job.py`、`src/business_logic/job/service.py` | 新增 `POST /api/v1/jobs/save-external`，支持保存外部岗位 |
+| 前端岗位 API 封装 | `frontend/src/lib/api.ts` | 新增 `jobsApi.saveExternal` |
+| 简历优化页增强 | `frontend/src/pages/resume-page.tsx` | 接收岗位上下文、选择目标 JD、执行 JD 定向优化、展示优化结果与匹配报告 |
+| 简历定向优化 API 封装 | `frontend/src/lib/api.ts` | 新增 `resumeApi.customizeForJd` 及响应类型定义 |
 
 ---
 

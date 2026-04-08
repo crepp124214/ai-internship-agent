@@ -18,7 +18,7 @@ from src.data_access.repositories.job_match_result_repository import (
     job_match_result_repository,
 )
 from src.data_access.repositories.job_repository import job_repository
-from src.presentation.schemas.job import JobCreate, JobUpdate
+from src.presentation.schemas.job import JobCreate, JobSaveExternalRequest, JobUpdate
 
 
 class JobService:
@@ -73,6 +73,35 @@ class JobService:
 
     async def delete_job(self, db: Session, job_id: int) -> bool:
         return job_repository.delete(db, job_id)
+
+    async def save_external_job(
+        self,
+        db: Session,
+        payload: JobSaveExternalRequest,
+    ) -> JobModel:
+        if not payload.title.strip():
+            raise ValueError("title is required")
+        if not payload.company.strip():
+            raise ValueError("company is required")
+        if not payload.location.strip():
+            raise ValueError("location is required")
+        if not payload.description.strip():
+            raise ValueError("description is required")
+
+        return job_repository.create(
+            db,
+            {
+                "title": payload.title.strip(),
+                "company": payload.company.strip(),
+                "location": payload.location.strip(),
+                "description": payload.description.strip(),
+                "requirements": (payload.requirements or "").strip() or None,
+                "source": "saved_external",
+                "source_url": (payload.source_url or "").strip() or None,
+                "source_id": None,
+                "is_active": True,
+            },
+        )
 
     async def search_jobs(
         self, db: Session, keyword: str = None, location: str = None

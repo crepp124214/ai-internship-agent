@@ -21,11 +21,13 @@ export function AppRouter() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate replace to="/dashboard" />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route index element={<Navigate replace to="/" />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/jobs-explore" element={<JobsPage />} />
         <Route path="/resume" element={<ResumePage />} />
         <Route path="/jd-customize" element={<JdCustomizePage />} />
-        <Route path="/jobs" element={<JobsPage />} />
+        <Route path="/jobs" element={<Navigate replace to="/jobs-explore" />} />
+        <Route path="/dashboard" element={<Navigate replace to="/" />} />
         <Route path="/interview" element={<InterviewPage />} />
         <Route path="/settings/agent-config" element={<AgentConfigPage />} />
       </Route>

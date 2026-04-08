@@ -14,6 +14,7 @@ from src.presentation.schemas.job import (
     JobMatchRecord,
     JobMatchRequest,
     JobMatchResponse,
+    JobSaveExternalRequest,
     JobUpdate,
 )
 
@@ -106,6 +107,31 @@ async def delete_job(
 @router.get("/", response_model=list[Job])
 async def list_jobs(db: Session = Depends(get_db)):
     return await job_service.get_jobs(db)
+
+
+@router.post("/save-external", response_model=Job)
+async def save_external_job(
+    payload: JobSaveExternalRequest,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        _ = current_user
+        return await job_service.save_external_job(db, payload)
+    except ValueError as exc:
+        raise_ai_value_error(
+            str(exc),
+            bad_request={
+                "title is required",
+                "company is required",
+                "location is required",
+                "description is required",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise_ai_internal_error(f"Save external job failed: {exc}")
 
 
 @router.post("/{job_id}/match/", response_model=JobMatchResponse)
