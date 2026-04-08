@@ -594,3 +594,48 @@ export const trackerApi = {
     return response.data
   },
 }
+
+// User LLM Config types and functions
+export interface UserLlmConfig {
+  agent: string
+  provider: string
+  model: string
+  base_url: string | null
+  temperature: number
+  is_active: boolean
+  updated_at: string
+}
+
+export interface UserLlmConfigInput {
+  agent: string
+  provider: string
+  model: string
+  api_key: string
+  base_url?: string | null
+  temperature?: number
+}
+
+export async function getUserLlmConfigs(): Promise<UserLlmConfig[]> {
+  const res = await fetch('/api/v1/users/llm-configs', { credentials: 'include' })
+  if (!res.ok) throw new Error('Failed to fetch LLM configs')
+  return res.json()
+}
+
+export async function saveUserLlmConfig(data: UserLlmConfigInput): Promise<UserLlmConfig> {
+  const res = await fetch('/api/v1/users/llm-configs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to save LLM config')
+  return res.json()
+}
+
+export async function deleteUserLlmConfig(agent: string): Promise<void> {
+  const res = await fetch(`/api/v1/users/llm-configs/${agent}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error('Failed to delete LLM config')
+}
