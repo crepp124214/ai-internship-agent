@@ -17,7 +17,7 @@
 | id | Integer, PK | 主键 |
 | user_id | Integer, FK | 用户外键 |
 | agent | String(50) | resume_agent / job_agent / interview_agent |
-| provider | String(30) | openai / anthropic / minimax / deepseek / zhipu / dashscope / moonshot / siliconflow |
+| provider | String(100) | 支持自定义填入（任意兼容 API 的 provider 标识） |
 | model | String(100) | 模型名称，如 gpt-4o-mini |
 | api_key_encrypted | String(500) | 加密后的 API Key |
 | base_url | String(255), nullable | 可选，自定义 endpoint |
@@ -80,7 +80,7 @@
 **布局：** 三个 Agent 卡片（简历 Agent / 岗位 Agent / 面试 Agent），每个卡片显示当前配置的 Provider + Model，点击编辑展开表单。
 
 **表单字段：**
-- Provider 选择（OpenAI / Anthropic / MiniMax / DeepSeek / 智谱 / 通义 / Moonshot / SiliconFlow）
+- Provider（可选择也可自定义填入，下拉包含常用选项：OpenAI / Anthropic / MiniMax / DeepSeek / 智谱 / 通义 / Moonshot / SiliconFlow，也支持手动输入其他兼容 OpenAI API 的 provider）
 - API Key（密码输入，加密传输）
 - Model（根据 Provider 联动，可选可填）
 - Base URL（非必填）
