@@ -64,6 +64,52 @@ async def _generate_stream(
     yield _build_sse_event("done", {})
 
 
+from src.core.runtime.tool_registry import ToolRegistry
+
+_global_tool_registry = None
+
+
+def _get_global_tool_registry() -> ToolRegistry:
+    global _global_tool_registry
+    if _global_tool_registry is None:
+        from src.business_logic.jd.tools.read_resume import ReadResumeTool
+        from src.business_logic.jd.tools.analyze_resume_skills import AnalyzeResumeSkillsTool
+        from src.business_logic.jd.tools.format_resume import FormatResumeTool
+        from src.business_logic.job.tools.search_jobs import SearchJobsTool
+        from src.business_logic.job.tools.analyze_jd import AnalyzeJDTool
+        from src.business_logic.common.tools.web_search import WebSearchTool
+
+        registry = ToolRegistry()
+        for tool_cls in [
+            ReadResumeTool,
+            AnalyzeResumeSkillsTool,
+            FormatResumeTool,
+            SearchJobsTool,
+            AnalyzeJDTool,
+            WebSearchTool,
+        ]:
+            registry.register(tool_cls())
+        _global_tool_registry = registry
+    return _global_tool_registry
+
+
+class ToolInfo(BaseModel):
+    name: str
+    description: str
+    category: str
+
+
+@router.get("/tools")
+async def get_agent_tools(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """返回当前用户可用的 Agent 工具列表。"""
+    registry = _get_global_tool_registry()
+    tools = registry.list_tools()
+    return {"tools": tools}
+
+
 @router.post("/chat")
 async def agent_chat(
     req: AgentChatRequest,
