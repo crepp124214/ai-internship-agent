@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { AgentAssistantPanel } from './components/agent/AgentAssistantPanel'
 import { jobsApi, readApiError, resumeApi } from '../lib/api'
 import {
   EmptyHint,
@@ -179,14 +180,16 @@ export function JobsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="岗位匹配工作台"
-        title="把目标岗位和简历放在同一张桌面上"
-        description="录入岗位、选择简历、预览匹配结果并保存。"
-      />
+    <div className="flex h-full">
+      {/* 左侧：现有内容 */}
+      <div className="flex-1 space-y-6 overflow-y-auto pr-6">
+        <PageHeader
+          eyebrow="岗位匹配工作台"
+          title="把目标岗位和简历放在同一张桌面上"
+          description="录入岗位、选择简历、预览匹配结果并保存。"
+        />
 
-      <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
+        <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
         <SectionCard title="创建岗位" subtitle="先录入岗位信息，再执行匹配。">
           <div className="space-y-4">
             <FormField
@@ -321,6 +324,20 @@ export function JobsPage() {
             )}
           </div>
         </SectionCard>
+      </div>
+      </div>
+
+      {/* 右侧：Agent 助手面板 */}
+      <div className="w-[400px] flex-shrink-0">
+        <AgentAssistantPanel
+          page="job"
+          resourceId={selectedJobId ?? undefined}
+          quickActions={[
+            { label: '🔍 搜索岗位', message: '帮我搜索公司招聘官网' },
+            { label: '分析 JD', message: '请分析这个岗位的 JD 要求' },
+            { label: '与简历匹配', message: '这个岗位和我的简历匹配吗？' },
+          ]}
+        />
       </div>
     </div>
   )
