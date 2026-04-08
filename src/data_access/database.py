@@ -25,10 +25,10 @@ def _engine_options_for_url(database_url: str, *, echo: bool) -> dict[str, Any]:
 
 
 def _import_all_entities() -> tuple[str, ...]:
-    from src.data_access.entities import interview, job, resume, tracker, user
+    from src.data_access.entities import interview, job, resume, user, user_llm_config
 
-    _ = (interview, job, resume, tracker, user)
-    return ("user", "resume", "job", "interview", "tracker")
+    _ = (interview, job, resume, user, user_llm_config)
+    return ("user", "resume", "job", "interview", "user_llm_config")
 
 
 # 创建数据库引擎
