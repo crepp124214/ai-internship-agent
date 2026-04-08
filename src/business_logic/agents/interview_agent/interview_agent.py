@@ -37,9 +37,10 @@ class InterviewAgent(BaseAgent):
         config: Optional[Dict[str, Any]] = None,
         llm: Optional[BaseLLM] = None,
         allow_mock_fallback: bool = False,
+        user_id: Optional[int] = None,
     ):
         super().__init__(config)
-        self.config = self._merge_runtime_config(self.config)
+        self.config = self._merge_runtime_config(self.config, user_id=user_id)
         self.allow_mock_fallback = allow_mock_fallback
         self.llm = llm or self._build_llm()
         self._prompt_pack = self._load_prompt_pack()
@@ -80,10 +81,23 @@ class InterviewAgent(BaseAgent):
         return {key: value for key, value in default_config.items() if value is not None}
 
     @classmethod
-    def _merge_runtime_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_runtime_config(cls, config: Optional[Dict[str, Any]], user_id: Optional[int] = None) -> Dict[str, Any]:
         merged = cls._load_default_config()
         merged.update(config or {})
-        return merged
+
+        # 查询用户自定义配置，优先使用
+        if user_id is not None:
+            from src.business_logic.user_llm_config_service import user_llm_config_service
+            from src.data_access.database import SessionLocal
+            db = SessionLocal()
+            try:
+                user_config = user_llm_config_service.get_config_for_agent(db, user_id, "interview_agent")
+                if user_config:
+                    merged.update(user_config)
+            finally:
+                db.close()
+
+        return {key: value for key, value in merged.items() if value is not None}
 
     def _build_llm(self) -> BaseLLM:
         provider = (self.config.get("provider") or "mock").lower()
