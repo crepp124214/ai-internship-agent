@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { AgentAssistantPanel } from './components/agent/AgentAssistantPanel'
 import { readApiError, resumeApi, type Resume } from '../lib/api'
 import {
   EmptyHint,
@@ -195,12 +196,14 @@ export function ResumePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="简历工作台"
-        title="一次整理，持续优化简历内容"
-        description="创建或导入简历，预览 AI 摘要与优化建议。"
-      />
+    <div className="flex h-full">
+      {/* 左侧：现有内容 */}
+      <div className="flex-1 space-y-6 overflow-y-auto pr-6">
+        <PageHeader
+          eyebrow="简历工作台"
+          title="一次整理，持续优化简历内容"
+          description="创建或导入简历，预览 AI 摘要与优化建议。"
+        />
 
       <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
         <SectionCard title="创建 / 导入简历" subtitle="整理出一份基础简历，再进行 AI 优化。">
@@ -346,6 +349,19 @@ export function ResumePage() {
             <EmptyHint>先预览或保存优化建议，这里才会显示内容。</EmptyHint>
           )}
         </SectionCard>
+      </div>
+
+      {/* 右侧：Agent 助手面板 */}
+      <div className="w-[400px] flex-shrink-0">
+        <AgentAssistantPanel
+          page="resume"
+          resourceId={effectiveSelectedResumeId ?? undefined}
+          quickActions={[
+            { label: '分析简历', message: '请分析我选中的这份简历，指出优势和不足。' },
+            { label: '我适合什么岗位？', message: '根据我的简历，我适合什么类型的岗位？' },
+            { label: '简历有什么问题？', message: '这份简历有什么问题？如何改进？' },
+          ]}
+        />
       </div>
     </div>
   )
