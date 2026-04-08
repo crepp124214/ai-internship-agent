@@ -616,26 +616,26 @@ export interface UserLlmConfigInput {
 }
 
 export async function getUserLlmConfigs(): Promise<UserLlmConfig[]> {
-  const res = await fetch('/api/v1/users/llm-configs', { credentials: 'include' })
-  if (!res.ok) throw new Error('Failed to fetch LLM configs')
-  return res.json()
+  const response = await api.get<UserLlmConfig[]>('/users/llm-configs/')
+  return response.data
 }
 
 export async function saveUserLlmConfig(data: UserLlmConfigInput): Promise<UserLlmConfig> {
-  const res = await fetch('/api/v1/users/llm-configs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(data),
-  })
-  if (!res.ok) throw new Error('Failed to save LLM config')
-  return res.json()
+  const response = await api.post<UserLlmConfig>('/users/llm-configs/', data)
+  return response.data
 }
 
 export async function deleteUserLlmConfig(agent: string): Promise<void> {
-  const res = await fetch(`/api/v1/users/llm-configs/${agent}`, {
-    method: 'DELETE',
-    credentials: 'include',
-  })
-  if (!res.ok) throw new Error('Failed to delete LLM config')
+  await api.delete(`/users/llm-configs/${agent}`)
+}
+
+export interface AgentTool {
+  name: string
+  description: string
+  category: string
+}
+
+export async function getAgentTools(): Promise<AgentTool[]> {
+  const response = await api.get<{ tools: AgentTool[] }>('/agent/tools/')
+  return response.data.tools
 }

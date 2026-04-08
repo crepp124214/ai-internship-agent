@@ -1,19 +1,7 @@
 // frontend/src/pages/components/ToolPalette.tsx
 import { useState } from 'react'
-
-interface Tool {
-  name: string
-  description: string
-  category: 'resume' | 'job' | 'interview' | 'generic'
-}
-
-const TOOLS: Tool[] = [
-  { name: 'read_resume', description: '读取简历内容', category: 'resume' },
-  { name: 'jd_parser', description: '解析 JD 关键词', category: 'job' },
-  { name: 'match_resume_to_job', description: '简历与岗位匹配分析', category: 'job' },
-  { name: 'generate_interview_questions', description: '生成面试问题', category: 'interview' },
-  { name: 'evaluate_answer', description: '评估回答质量', category: 'interview' },
-]
+import { useQuery } from '@tanstack/react-query'
+import { getAgentTools, type AgentTool } from '../../lib/api'
 
 interface ToolPaletteProps {
   onInsertTask: (task: string) => void
@@ -22,16 +10,24 @@ interface ToolPaletteProps {
 export function ToolPalette({ onInsertTask }: ToolPaletteProps) {
   const [open, setOpen] = useState(false)
 
-  const byCategory = TOOLS.reduce((acc, tool) => {
-    if (!acc[tool.category]) acc[tool.category] = []
-    acc[tool.category].push(tool)
+  const { data: tools = [] } = useQuery({
+    queryKey: ['agent-tools'],
+    queryFn: getAgentTools,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  const byCategory = tools.reduce((acc, tool) => {
+    const cat = tool.category || 'generic'
+    if (!acc[cat]) acc[cat] = []
+    acc[cat].push(tool)
     return acc
-  }, {} as Record<string, Tool[]>)
+  }, {} as Record<string, AgentTool[]>)
 
   const categoryLabels: Record<string, string> = {
     resume: '简历工具',
     job: '岗位工具',
     interview: '面试工具',
+    common: '通用工具',
     generic: '通用工具',
   }
 
@@ -57,30 +53,34 @@ export function ToolPalette({ onInsertTask }: ToolPaletteProps) {
               ✕
             </button>
           </div>
-          <div className="space-y-4">
-            {Object.entries(byCategory).map(([cat, tools]) => (
-              <div key={cat}>
-                <p className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider mb-2">
-                  {categoryLabels[cat] || cat}
-                </p>
-                <div className="space-y-2">
-                  {tools.map(tool => (
-                    <button
-                      key={tool.name}
-                      onClick={() => {
-                        onInsertTask(`使用 ${tool.name} 工具：${tool.description}`)
-                        setOpen(false)
-                      }}
-                      className="w-full text-left rounded-xl border border-[var(--color-stroke)] bg-[var(--color-panel)] px-3 py-2 text-sm hover:border-[var(--color-accent)] hover:bg-white transition"
-                    >
-                      <p className="font-medium text-[var(--color-ink)]">{tool.name}</p>
-                      <p className="text-xs text-[var(--color-muted)]">{tool.description}</p>
-                    </button>
-                  ))}
+          {tools.length === 0 ? (
+            <p className="text-sm text-[var(--color-muted)]">加载工具中...</p>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(byCategory).map(([cat, catTools]) => (
+                <div key={cat}>
+                  <p className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider mb-2">
+                    {categoryLabels[cat] || cat}
+                  </p>
+                  <div className="space-y-2">
+                    {catTools.map(tool => (
+                      <button
+                        key={tool.name}
+                        onClick={() => {
+                          onInsertTask(`使用 ${tool.name} 工具：${tool.description}`)
+                          setOpen(false)
+                        }}
+                        className="w-full text-left rounded-xl border border-[var(--color-stroke)] bg-[var(--color-panel)] px-3 py-2 text-sm hover:border-[var(--color-accent)] hover:bg-white transition"
+                      >
+                        <p className="font-medium text-[var(--color-ink)]">{tool.name}</p>
+                        <p className="text-xs text-[var(--color-muted)]">{tool.description}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>
