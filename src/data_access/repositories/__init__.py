@@ -6,8 +6,7 @@ from . import (
     job_repository,
     resume_optimization_repository,
     resume_repository,
-    tracker_advice_repository,
-    tracker_repository,
+    user_llm_config_repository,
     user_repository,
 )
 
@@ -17,7 +16,6 @@ __all__ = [
     "job_repository",
     "resume_optimization_repository",
     "resume_repository",
-    "tracker_advice_repository",
-    "tracker_repository",
+    "user_llm_config_repository",
     "user_repository",
 ]
