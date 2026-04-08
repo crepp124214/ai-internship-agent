@@ -19,7 +19,7 @@ def test_decrypt_none_returns_none():
 
 
 def test_different_ciphertexts():
-    """每次加密结果不同（IV）"""
+    """Fernet 使用随机 IV，即使相同明文也会产生不同密文"""
     enc1 = encrypt_api_key("sk-test")
     enc2 = encrypt_api_key("sk-test")
     assert enc1 != enc2

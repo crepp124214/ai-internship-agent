@@ -15,6 +15,9 @@ from src.utils.config_loader import get_settings
 # 模块级 Fernet 实例缓存
 _fernet_instance: Optional[Fernet] = None
 
+# 固定盐值，用于从 SECRET_KEY 派生确定性加密密钥
+_FERNET_SALT = b"ai-internship-agent-v1"
+
 
 def _get_fernet() -> Fernet:
     """延迟初始化 Fernet 实例"""
@@ -23,14 +26,15 @@ def _get_fernet() -> Fernet:
         secret_key = get_settings().SECRET_KEY
         key_bytes = secret_key.encode("utf-8")
 
-        # 密钥处理：不足32字节用urandom补足，超长截断
-        if len(key_bytes) < 32:
-            key_bytes = key_bytes + os.urandom(32 - len(key_bytes))
-        elif len(key_bytes) > 32:
-            key_bytes = key_bytes[:32]
+        # 使用固定盐派生确定性密钥，确保相同 SECRET_KEY 始终产生相同加密密钥
+        combined = _FERNET_SALT + key_bytes
+        if len(combined) < 32:
+            combined = combined + os.urandom(32 - len(combined))
+        elif len(combined) > 32:
+            combined = combined[:32]
 
         # 转换为 URL-safe base64 作为 Fernet 密钥
-        fernet_key = base64.urlsafe_b64encode(key_bytes)
+        fernet_key = base64.urlsafe_b64encode(combined)
         _fernet_instance = Fernet(fernet_key)
 
     return _fernet_instance
