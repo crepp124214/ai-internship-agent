@@ -28,10 +28,10 @@ def _get_fernet() -> Fernet:
 
         # 使用固定盐派生确定性密钥，确保相同 SECRET_KEY 始终产生相同加密密钥
         combined = _FERNET_SALT + key_bytes
-        if len(combined) < 32:
-            combined = combined + os.urandom(32 - len(combined))
-        elif len(combined) > 32:
+        if len(combined) > 32:
             combined = combined[:32]
+        else:
+            combined = combined.ljust(32, b'\0')
 
         # 转换为 URL-safe base64 作为 Fernet 密钥
         fernet_key = base64.urlsafe_b64encode(combined)
