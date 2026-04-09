@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+// frontend/src/pages/resume-page.tsx
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -16,6 +17,8 @@ import {
   Textarea,
 } from './page-primitives'
 import { MatchReportCard } from './components/MatchReportCard'
+import { FloatingToolbar } from './components/FloatingToolbar'
+import { ResumeDiffView } from './components/ResumeDiffView'
 
 function getFileExtension(fileName: string) {
   const lastDotIndex = fileName.lastIndexOf('.')
@@ -102,6 +105,14 @@ export function ResumePage() {
   const [jdInstructions, setJdInstructions] = useState('')
   const [customizedResume, setCustomizedResume] = useState<string | null>(null)
   const [matchReport, setMatchReport] = useState<MatchReportData | null>(null)
+
+  // Diff view state
+  const [diffOriginal, setDiffOriginal] = useState<string>('')
+  const [diffModified, setDiffModified] = useState<string>('')
+  const [showDiff, setShowDiff] = useState(false)
+
+  // Ref for resume content area (for FloatingToolbar)
+  const resumeContentRef = useRef<HTMLDivElement>(null)
 
   const effectiveSelectedResumeId = selectedResumeId ?? resumesQuery.data?.[0]?.id ?? null
   const effectiveSelectedResume =
@@ -198,7 +209,13 @@ export function ResumePage() {
 
   const summaryPreviewMutation = useMutation({
     mutationFn: () => resumeApi.previewSummary(effectiveSelectedResumeId!, { target_role: targetRole || null }),
-    onSuccess: (data) => setSummaryPreview(data.content),
+    onSuccess: (data) => {
+      setSummaryPreview(data.content)
+      // Show diff view for summary
+      setDiffOriginal(resumeText)
+      setDiffModified(data.content)
+      setShowDiff(true)
+    },
     onError: (error) => setFeedback(readApiError(error)),
   })
 
@@ -213,7 +230,13 @@ export function ResumePage() {
 
   const improvementsPreviewMutation = useMutation({
     mutationFn: () => resumeApi.previewImprovements(effectiveSelectedResumeId!, { target_role: targetRole || null }),
-    onSuccess: (data) => setImprovementsPreview(data.content),
+    onSuccess: (data) => {
+      setImprovementsPreview(data.content)
+      // Show diff view for improvements
+      setDiffOriginal(resumeText)
+      setDiffModified(data.content)
+      setShowDiff(true)
+    },
     onError: (error) => setFeedback(readApiError(error)),
   })
 
@@ -257,6 +280,36 @@ export function ResumePage() {
     }
     setSelectedImportFile(file)
     setImportStatus(`已选择 ${file.name}。`)
+  }
+
+  // Floating toolbar handlers
+  const handleFloatingOptimize = (selectedText: string) => {
+    // For now, just show the text being optimized
+    setFeedback(`正在优化：${selectedText.slice(0, 50)}...`)
+  }
+
+  const handleFloatingSummarize = (selectedText: string) => {
+    setFeedback(`正在摘要：${selectedText.slice(0, 50)}...`)
+  }
+
+  const handleFloatingExplain = (selectedText: string) => {
+    setFeedback(`正在解释：${selectedText.slice(0, 50)}...`)
+  }
+
+  // Diff view handlers
+  const handleDiffAccept = () => {
+    if (improvementsPreview) {
+      improvementsPersistMutation.mutate()
+    } else if (summaryPreview) {
+      summaryPersistMutation.mutate()
+    }
+    setShowDiff(false)
+  }
+
+  const handleDiffReject = () => {
+    setShowDiff(false)
+    setDiffOriginal('')
+    setDiffModified('')
   }
 
   return (
@@ -393,7 +446,10 @@ export function ResumePage() {
 
             {effectiveSelectedResume ? (
               <>
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                <div
+                  ref={resumeContentRef}
+                  className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+                >
                   <p className="whitespace-pre-wrap text-sm leading-7 text-[var(--color-ink)]">
                     {resumeText || '（简历内容为空）'}
                   </p>
@@ -402,14 +458,14 @@ export function ResumePage() {
                   <SecondaryButton
                     type="button"
                     onClick={() => summaryPreviewMutation.mutate()}
-                    disabled={!effectiveSelectedResumeId || !resumeText}
+                    disabled={!effectiveSelectedResumeId || !resumeText || summaryPreviewMutation.isPending}
                   >
                     预览摘要
                   </SecondaryButton>
                   <SecondaryButton
                     type="button"
                     onClick={() => improvementsPreviewMutation.mutate()}
-                    disabled={!effectiveSelectedResumeId || !resumeText}
+                    disabled={!effectiveSelectedResumeId || !resumeText || improvementsPreviewMutation.isPending}
                   >
                     预览优化
                   </SecondaryButton>
@@ -422,8 +478,29 @@ export function ResumePage() {
         </SectionCard>
       </div>
 
+      {/* Floating Toolbar - appears when text is selected */}
+      <FloatingToolbar
+        targetRef={resumeContentRef}
+        onOptimize={handleFloatingOptimize}
+        onSummarize={handleFloatingSummarize}
+        onExplain={handleFloatingExplain}
+      />
+
+      {/* Diff 视图 - Cursor 风格 */}
+      {showDiff && diffOriginal && diffModified && (
+        <SectionCard title="AI 修改建议" subtitle="查看并决定是否接受 AI 的修改。">
+          <ResumeDiffView
+            original={diffOriginal}
+            modified={diffModified}
+            onAccept={handleDiffAccept}
+            onReject={handleDiffReject}
+            loading={summaryPreviewMutation.isPending || improvementsPreviewMutation.isPending}
+          />
+        </SectionCard>
+      )}
+
       {/* 下方：摘要和优化建议 */}
-      {(summaryPreview || improvementsPreview || customizedResume || matchReport) && (
+      {(summaryPreview || improvementsPreview || customizedResume || matchReport) && !showDiff && (
         <div className="grid gap-6 xl:grid-cols-2">
           <SectionCard title="简历摘要" subtitle="AI 生成的简历摘要。">
             {summaryPreview ? (
