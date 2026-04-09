@@ -22,8 +22,8 @@
 
 | 内容 | 移到哪里 |
 |------|----------|
-| 架构 ASCII 图 | AGENTS.md |
-| ReAct Loop / StateMachine / ToolRegistry 代码 | AGENTS.md |
+| 架构 ASCII 图 | `docs/planning/memory-bank/architecture.md` |
+| ReAct Loop / StateMachine / ToolRegistry 代码 | `docs/planning/memory-bank/architecture.md` |
 | 完整 API 示例 | /docs（启动后访问） |
 | 快速开始详细步骤 | CONTRIBUTING.md |
 
@@ -32,7 +32,7 @@
 ```
 ## 想了解更多？
 
-- [架构与 Agent 系统设计](AGENTS.md) — 技术架构图、ReAct Loop、ToolRegistry 详解
+- [架构与 Agent 系统设计](docs/planning/memory-bank/architecture.md) — 技术架构图、ReAct Loop、ToolRegistry 详解
 - [完整 API 文档](http://localhost:8000/docs) — 启动后访问
 - [本地开发指南](CONTRIBUTING.md) — 环境搭建、测试运行
 - [贡献指南](CONTRIBUTING.md) — Fork/PR 流程

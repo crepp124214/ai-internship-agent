@@ -56,6 +56,7 @@ class AgentExecutor:
         self._memory.add_turn(session_id, "user", task)
 
         try:
+            self._state_machine.reset()
             self._state_machine.transition("planning", reason="start")
             messages = self._context_builder.build_sync(
                 session_id=session_id,

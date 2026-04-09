@@ -122,7 +122,7 @@ export function AgentChatPanel({ initialTask }: AgentChatPanelProps) {
       </div>
 
       {/* 输入框 */}
-      <form onSubmit={handleSubmit} className="border-t border-[var(--color-stroke)] p-4">
+      <form onSubmit={handleSubmit} className="border-t border-[var(--color-border)] p-4">
         <div className="flex gap-3">
           <input
             type="text"
@@ -130,7 +130,7 @@ export function AgentChatPanel({ initialTask }: AgentChatPanelProps) {
             onChange={e => setInput(e.target.value)}
             placeholder="输入你的求职问题..."
             disabled={streaming}
-            className="flex-1 rounded-full border border-[var(--color-stroke)] bg-white px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50"
+            className="flex-1 rounded-full border border-[var(--color-border)] bg-white px-5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50"
           />
           <button
             type="submit"

@@ -17,17 +17,17 @@ export function MatchReportCard({ report }: MatchReportCardProps) {
         <div className="text-3xl font-semibold text-[var(--color-accent)]">
           {scorePercent}%
         </div>
-        <div className="text-sm text-[var(--color-muted)]">匹配度</div>
+        <div className="text-sm text-[var(--color-ink-muted)]">匹配度</div>
       </div>
 
       {/* Keyword coverage bar */}
       {totalCount > 0 && (
         <div>
-          <div className="mb-1 flex justify-between text-xs text-[var(--color-muted)]">
+          <div className="mb-1 flex justify-between text-xs text-[var(--color-ink-muted)]">
             <span>关键词覆盖</span>
             <span>{coveredCount}/{totalCount}</span>
           </div>
-          <div className="h-2 w-full rounded-full bg-[var(--color-panel)]">
+          <div className="h-2 w-full rounded-full bg-[var(--color-surface-sunken)]">
             <div
               className="h-2 rounded-full bg-[var(--color-accent)] transition-all"
               style={{ width: `${scorePercent}%` }}
@@ -57,7 +57,7 @@ export function MatchReportCard({ report }: MatchReportCardProps) {
       {/* Gaps */}
       {report.gaps.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
             差距项
           </p>
           <ul className="space-y-1">
@@ -74,7 +74,7 @@ export function MatchReportCard({ report }: MatchReportCardProps) {
       {/* Suggestions */}
       {report.suggestions.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
             改进建议
           </p>
           <ul className="space-y-1">

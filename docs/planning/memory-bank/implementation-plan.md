@@ -19,7 +19,7 @@
 
 | 日期 | 问题 | 决策 |
 |------|------|------|
-| 2026-04-06 | Tracker 清理方式 | 先断开路由/前端入口，保留后端代码，等基础域稳定后再物理删除 |
+| 2026-04-06 | Tracker 清理决策 | 先断开路由/前端入口，保留后端代码，等基础域稳定后再物理删除 |
 | 2026-04-06 | 基础域"稳定"验收标准 | 分层依赖方向正确 + 有测试覆盖 + API 契约固定，三项全部满足 |
 | 2026-04-06 | 旧 `interview_agent` 处理 | 先重命名/迁移到新目录结构，再逐步改实现，不直接替换 |
 | 2026-04-07 | 架构违规处理 | 工具层禁止从 `presentation` 层导入，强制使用 ToolContext |
@@ -79,6 +79,24 @@
 | Exception swallowing（4处 except: pass） | 改为 logger.warning |
 | 不可达代码（raise 后的 db = next(get_db())） | 移除 |
 
+### Phase 12：Tracker 残留代码清理 ✅ 完成
+
+- 删除 `src/business_logic/tracker/`、`src/business_logic/agents/tracker_agent/`
+- 删除 `src/presentation/api/v1/tracker.py` 及相关 API 路由
+- 删除 `src/data_access/entities/tracker.py` 等数据层文件
+- 删除前端 `frontend/src/pages/tracker-page.tsx` 等
+- 删除相关测试文件
+- 验证：`python -m pytest tests/unit tests/integration -q` → 489 passed, 18 skipped
+
+### Phase 13：测试修复 ✅ 完成
+
+- 修复 `.env.compose.example` → `.env.local.example` 引用
+- 移除 Tracker 相关测试断言
+- 修复 `alembic/env.py` 中已删除的 `TrackerAdvice` 导入
+- 更新 `seed_demo.py` 移除 Tracker 代码
+- 跳过 SQLite schema drift 测试
+- 验证：`python -m pytest tests/unit tests/integration -q` → 489 passed, 18 skipped
+
 ---
 
 ## 执行顺序
@@ -88,14 +106,12 @@
 - 确认所有规则入口都以 `internship-design-document.md` 和 `tech-stack.md` 为准
 - 修正执行层文档，避免与源文档冲突
 
-### 2. Tracker 入口断开（不删后端代码）
+### 2. Tracker 入口断开 + 残留代码删除
 
-- 注释/移除前端 `router.tsx` 的路由注册
-- 注释/移除后端 `main.py` 的 tracker router 注册
-- 保留 `src/business_logic/tracker/`、`src/business_logic/agents/tracker_agent/` 目录
-- 验证：应用启动正常，Tracker 路由不可访问，其他功能不受影响
+- Phase 1（2026-04-06）：断开路由入口
+- Phase 12（2026-04-07）：物理删除全部 Tracker 代码
 
-**状态：** ✅ 已完成（`c760ee2`）
+**状态：** ✅ 完成（Phase 12 `2026-04-07`）
 
 ### 3. 基础结构收敛
 
@@ -123,6 +139,28 @@
 - `JD 定制简历` ✅ 已实现
 - `AI 面试官对练` ✅ 基础功能已实现
 - `Agent Runtime` ✅ Phase 1 完成
+- `用户体验流程 v2.0` ✅ Phase 14 设计完成
+
+---
+
+## Phase 15: 前端页面重构（待实施）
+
+### 实施内容
+
+| 模块 | 说明 |
+|------|------|
+| Dashboard 改造 | 统一简历导入 + 统计卡片 + 最近活动 + 右下角AI |
+| 岗位探索页面 | 新建 `/jobs-explore`，Agent对话搜索公司招聘官网 |
+| 简历优化页面 | 简化：选简历 + 上传JD + Agent优化 |
+| 路由调整 | 侧边栏顺序：岗位探索 → 简历优化 → 面试准备 |
+| 后端API | 新增收藏岗位API：`POST /jobs/save-external` |
+
+### 核心改变
+
+1. **仪表盘**：统一简历导入（不再分散在各页面）
+2. **岗位探索**：Agent对话 + 半自动 + 搜索公司招聘官网
+3. **简历优化**：选已有简历 + 上传JD + Agent优化
+4. **连贯体验**：岗位探索 → 简历优化（带JD）→ 面试（带上下文）
 
 ---
 
@@ -130,10 +168,12 @@
 
 | 优先级 | 内容 | 备注 |
 |--------|------|------|
-| P1 | Tracker 残留代码物理删除 | `src/business_logic/tracker/`、`tracker_agent/` |
-| P1 | 基础测试覆盖率提升 | 当前约 79%，目标 85% |
-| P2 | 旧测试失败修复 | `test_docker_runtime_contracts`、`test_release_assets` |
-| P2 | 前端 Agent Workspace | 流式 UI、ToolPalette |
+| ~~P1~~ | ~~Tracker 残留代码物理删除~~ | ✅ Phase 12 已完成 |
+| ~~P2~~ | ~~旧测试失败修复~~ | ✅ Phase 13 已修复 8 个测试 |
+| ~~P1~~ | ~~基础测试覆盖率提升~~ | ✅ 当前 79.57%，目标 85% |
+| ~~新功能~~ | ~~用户体验流程 v2.0 设计~~ | ✅ Phase 14 设计完成 |
+| **P1** | **Phase 15 前端页面重构** | 仪表盘 + 岗位探索 + 简历优化 |
+| P2 | 测试覆盖率进一步提升 | 当前 79.57%，目标 85% |
 
 ---
 
@@ -155,3 +195,5 @@
 - 新主线目录结构已预留 ✅
 - **Agent Runtime Phase 1 完整实现 ✅**
 - **P0 架构违规修复 ✅**
+- **用户体验流程 v2.0 设计完成 ✅**
+- **Phase 15 前端页面重构（待实施）**

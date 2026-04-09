@@ -455,7 +455,7 @@ export function readApiError(error: unknown): string {
 
 export const authApi = {
   async login(payload: LoginPayload) {
-    const response = await api.post<TokenResponse>('/auth/login/', payload)
+    const response = await api.post<TokenResponse>('/auth/login', payload)
     return response.data
   },
   async refreshToken() {

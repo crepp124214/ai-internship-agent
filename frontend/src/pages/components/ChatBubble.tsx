@@ -29,7 +29,7 @@ export function ChatBubble({ role, message, score, timestamp }: ChatBubbleProps)
             </span>
           )}
           {timestamp && (
-            <span className="text-xs text-[var(--color-muted)]">{timestamp}</span>
+            <span className="text-xs text-[var(--color-ink-muted)]">{timestamp}</span>
           )}
         </div>
         <p className="whitespace-pre-wrap">{message}</p>

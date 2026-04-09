@@ -19,7 +19,6 @@ class AgentChatService:
     ROUTE_KEYWORDS = {
         "jd_customizer": ["简历", "jd", "定制", "匹配度", "岗位"],
         "interview_coach": ["面试", "对练", "练习", "问题", "评分"],
-        "tracker": ["投递", "进度", "追踪", "offer", "面试进度"],
     }
 
     def route_task(self, task: str) -> str:
@@ -60,7 +59,6 @@ class AgentChatService:
         prompts = {
             "jd_customizer": "你是一个简历定制专家，擅长根据岗位分析简历并给出优化建议。",
             "interview_coach": "你是一个资深面试官，擅长评估候选人的技术能力和沟通表达。",
-            "tracker": "你是一个求职进度顾问，擅长分析投递状态并给出下一步建议。",
             "generic": "你是一个求职助手，擅长回答各类求职相关问题。",
         }
         return prompts.get(task_type, prompts["generic"])

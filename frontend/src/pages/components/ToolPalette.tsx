@@ -36,7 +36,7 @@ export function ToolPalette({ onInsertTask }: ToolPaletteProps) {
       {/* 切换按钮 */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed right-4 top-24 z-50 rounded-full bg-[var(--color-surface)] p-3 shadow-lg border border-[var(--color-stroke)] hover:bg-[var(--color-panel)] transition"
+        className="fixed right-4 top-24 z-50 rounded-full bg-[var(--color-surface)] p-3 shadow-lg border border-[var(--color-border)] hover:bg-[var(--color-surface-sunken)] transition"
         title="工具面板"
       >
         <svg className="w-5 h-5 text-[var(--color-ink)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,20 +46,20 @@ export function ToolPalette({ onInsertTask }: ToolPaletteProps) {
 
       {/* 抽屉 */}
       {open && (
-        <div className="fixed right-4 top-32 z-50 w-72 rounded-2xl bg-white shadow-xl border border-[var(--color-stroke)] p-4">
+        <div className="fixed right-4 top-32 z-50 w-72 rounded-2xl bg-white shadow-xl border border-[var(--color-border)] p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-[var(--color-ink)]">工具面板</h3>
-            <button onClick={() => setOpen(false)} className="text-[var(--color-muted)] hover:text-[var(--color-ink)]">
+            <button onClick={() => setOpen(false)} className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]">
               ✕
             </button>
           </div>
           {tools.length === 0 ? (
-            <p className="text-sm text-[var(--color-muted)]">加载工具中...</p>
+            <p className="text-sm text-[var(--color-ink-muted)]">加载工具中...</p>
           ) : (
             <div className="space-y-4">
               {Object.entries(byCategory).map(([cat, catTools]) => (
                 <div key={cat}>
-                  <p className="text-xs font-medium text-[var(--color-muted)] uppercase tracking-wider mb-2">
+                  <p className="text-xs font-medium text-[var(--color-ink-muted)] uppercase tracking-wider mb-2">
                     {categoryLabels[cat] || cat}
                   </p>
                   <div className="space-y-2">
@@ -70,10 +70,10 @@ export function ToolPalette({ onInsertTask }: ToolPaletteProps) {
                           onInsertTask(`使用 ${tool.name} 工具：${tool.description}`)
                           setOpen(false)
                         }}
-                        className="w-full text-left rounded-xl border border-[var(--color-stroke)] bg-[var(--color-panel)] px-3 py-2 text-sm hover:border-[var(--color-accent)] hover:bg-white transition"
+                        className="w-full text-left rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-2 text-sm hover:border-[var(--color-accent)] hover:bg-white transition"
                       >
                         <p className="font-medium text-[var(--color-ink)]">{tool.name}</p>
-                        <p className="text-xs text-[var(--color-muted)]">{tool.description}</p>
+                        <p className="text-xs text-[var(--color-ink-muted)]">{tool.description}</p>
                       </button>
                     ))}
                   </div>

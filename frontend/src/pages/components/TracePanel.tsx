@@ -26,11 +26,11 @@ const STEP_LABELS: Record<string, string> = {
 
 export function TracePanel({ steps, open, onToggle }: TracePanelProps) {
   return (
-    <div className="border-t border-[var(--color-stroke)]">
+    <div className="border-t border-[var(--color-border)]">
       {/* 折叠头部 */}
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-2 text-xs font-medium text-[var(--color-muted)] hover:bg-[var(--color-panel)] transition"
+        className="flex w-full items-center justify-between px-4 py-2 text-xs font-medium text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-sunken)] transition"
       >
         <span>推理过程 Trace ({steps.length} 步)</span>
         <span>{open ? '▼' : '▲'}</span>
@@ -40,7 +40,7 @@ export function TracePanel({ steps, open, onToggle }: TracePanelProps) {
       {open && (
         <div className="max-h-48 overflow-y-auto bg-[var(--color-canvas)] px-4 pb-3">
           {steps.length === 0 ? (
-            <p className="py-2 text-xs text-[var(--color-muted)]">暂无推理步骤</p>
+            <p className="py-2 text-xs text-[var(--color-ink-muted)]">暂无推理步骤</p>
           ) : (
             <div className="space-y-1">
               {steps.map((s, i) => (

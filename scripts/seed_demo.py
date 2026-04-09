@@ -32,18 +32,15 @@ os.environ.setdefault("APP_DEBUG", "False")
 from src.business_logic.interview import interview_service
 from src.business_logic.job import job_service
 from src.business_logic.resume import resume_service
-from src.business_logic.tracker import tracker_service
 from src.business_logic.user import user_service
 from src.data_access.database import SessionLocal
 from src.data_access.entities.interview import InterviewQuestion, InterviewRecord, InterviewSession
-from src.data_access.entities.job import Job, JobApplication, JobMatchResult
+from src.data_access.entities.job import Job, JobMatchResult
 from src.data_access.entities.resume import Resume, ResumeOptimization
-from src.data_access.entities.tracker import TrackerAdvice
 from src.data_access.entities.user import User
 from src.presentation.schemas.interview import InterviewQuestionCreate, InterviewRecordCreate, InterviewSessionCreate
 from src.presentation.schemas.job import JobCreate
 from src.presentation.schemas.resume import ResumeCreate, ResumeUpdate
-from src.presentation.schemas.tracker import ApplicationTrackerCreate
 from src.presentation.schemas.user import UserCreate
 
 
@@ -194,7 +191,7 @@ DEMO_RESUME_TITLE = "2026 Internship Master Resume"
 DEMO_RESUME_TEXT = """Portfolio Demo User
 Backend engineer intern focused on FastAPI, React, SQLAlchemy, and AI workflow tooling.
 Built an internship application platform with resume optimization, job matching,
-interview prep, and tracker advice flows. Comfortable with Python, TypeScript,
+and interview prep flows. Comfortable with Python, TypeScript,
 REST APIs, async services, and product-oriented delivery.
 """
 
@@ -210,8 +207,6 @@ DEMO_QUESTION_TEXT = "Tell me how you would design a FastAPI service that suppor
 DEMO_ANSWER_TEXT = """I would separate the HTTP layer, business services, and persistence layer,
 use a provider abstraction for the AI model, store durable job state, and expose status and history
 through stable API contracts so the workflow remains traceable and recoverable."""
-
-DEMO_APPLICATION_NOTES = "Applied after tailoring resume and persisting job match."
 
 
 def ensure_data_dir() -> None:
@@ -437,49 +432,6 @@ def ensure_interview_record(db, current_user, job: Job, question: InterviewQuest
     return record
 
 
-def ensure_application(db, current_user, job: Job, resume: Resume) -> JobApplication:
-    application = (
-        db.query(JobApplication)
-        .filter(
-            JobApplication.user_id == current_user.id,
-            JobApplication.job_id == job.id,
-            JobApplication.resume_id == resume.id,
-        )
-        .first()
-    )
-    if application is None:
-        application = asyncio.run(
-            tracker_service.create_application(
-                db,
-                ApplicationTrackerCreate(
-                    job_id=job.id,
-                    resume_id=resume.id,
-                    status="applied",
-                    notes=DEMO_APPLICATION_NOTES,
-                ),
-                current_user.id,
-            )
-        )
-    return application
-
-
-def ensure_tracker_advice(db, current_user, application: JobApplication) -> TrackerAdvice:
-    advice = (
-        db.query(TrackerAdvice)
-        .filter(TrackerAdvice.application_id == application.id)
-        .first()
-    )
-    if advice is None:
-        advice = asyncio.run(
-            tracker_service.persist_application_advice(
-                db,
-                application.id,
-                current_user.id,
-            )
-        )
-    return advice
-
-
 def main() -> None:
     ensure_data_dir()
     db = SessionLocal()
@@ -495,8 +447,6 @@ def main() -> None:
         question = ensure_interview_question(db)
         ensure_interview_session(db, current_user, job)
         record = ensure_interview_record(db, current_user, job, question)
-        application = ensure_application(db, current_user, job, resume)
-        advice = ensure_tracker_advice(db, current_user, application)
 
         # 创建示例数据
         print("\nCreating example data...")
@@ -509,8 +459,6 @@ def main() -> None:
         print(f"Job ID: {job.id}")
         print(f"Question ID: {question.id}")
         print(f"Interview Record ID: {record.id}")
-        print(f"Application ID: {application.id}")
-        print(f"Tracker Advice ID: {advice.id}")
     finally:
         db.close()
 

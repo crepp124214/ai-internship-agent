@@ -28,7 +28,7 @@ export function CoachReviewReportCard({ report, averageScore }: CoachReviewRepor
       <div className="flex items-center gap-4">
         <div className="text-4xl font-bold text-[var(--color-accent)]">{scorePercent}</div>
         <div>
-          <div className="text-sm text-[var(--color-muted)]">综合评分</div>
+          <div className="text-sm text-[var(--color-ink-muted)]">综合评分</div>
           <div className="text-lg">
             {'★'.repeat(Math.ceil(scorePercent / 20))}{'☆'.repeat(5 - Math.ceil(scorePercent / 20))}
           </div>
@@ -38,18 +38,18 @@ export function CoachReviewReportCard({ report, averageScore }: CoachReviewRepor
       {/* Dimensions */}
       <div className="grid gap-3 sm:grid-cols-2">
         {report.dimensions.map((dim: ReviewReportDimension) => (
-          <div key={dim.name} className="rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-surface)] p-4">
+          <div key={dim.name} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-medium text-[var(--color-ink)]">{dim.name}</span>
               <span className="text-sm font-bold text-[var(--color-accent)]">{dim.score}分</span>
             </div>
-            <div className="mb-2 h-1.5 w-full rounded-full bg-[var(--color-panel)]">
+            <div className="mb-2 h-1.5 w-full rounded-full bg-[var(--color-surface-sunken)]">
               <div
                 className="h-1.5 rounded-full bg-[var(--color-accent)] transition-all"
                 style={{ width: `${dim.score}%` }}
               />
             </div>
-            <p className="text-xs text-[var(--color-muted)]">{dim.suggestion}</p>
+            <p className="text-xs text-[var(--color-ink-muted)]">{dim.suggestion}</p>
           </div>
         ))}
       </div>

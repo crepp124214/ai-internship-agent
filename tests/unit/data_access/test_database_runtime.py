@@ -17,9 +17,3 @@ def test_engine_options_include_pool_args_for_postgres():
     assert options["pool_size"] == 20
     assert options["max_overflow"] == 10
     assert options["pool_recycle"] == 3600
-
-
-def test_import_all_entities_registers_tracker_tables():
-    imported = _import_all_entities()
-
-    assert "tracker" in imported

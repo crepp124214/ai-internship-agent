@@ -1,6 +1,6 @@
 # AI 实习求职 Agent 系统 — 开发规则
 
-> 版本: v2.1.0 | 来源: `docs/planning/memory-bank/internship-design-document.md` + `docs/design/tech-stack.md`
+> 版本: v2.2.0 | 来源: `docs/planning/memory-bank/internship-design-document.md` + `docs/design/tech-stack.md`
 
 ---
 
@@ -25,22 +25,6 @@
 - 每完成一个重要步骤，必须更新 `docs/planning/memory-bank/progress.md`
 - 每完成一个重要功能或重构里程碑，必须更新 `docs/planning/memory-bank/architecture.md`
 
-## 当前项目状态
-
-- 项目：AI 实习求职 Agent 系统
-- 状态：主体已完成（Phase 1-11），部分待清理
-- 已完成：Agent Runtime、JD定制简历、AI面试教练、Test&Tools、Agent Workspace、数据初始化、Docker多环境、开源基础
-- 待处理：Tracker残留代码清理、测试覆盖率提升
-
-## 当前阶段判断
-
-重构主体已完成，进入收尾阶段。
-
-当前优先级：
-1. 清理旧模块（Tracker代码物理删除）
-2. 提升测试覆盖率（78.65% → 80%）
-3. 修复旧测试失败
-
 ## 架构红线
 
 - 依赖方向必须保持：`presentation -> business_logic -> data_access`
@@ -58,6 +42,16 @@
 - 不继续扩写旧式 `execute() -> LLM generate()` 模式
 - 新增工具必须遵循 ToolRegistry 模式
 
+## 架构原则
+
+- 依赖方向必须保持：`presentation -> business_logic -> data_access`
+- `core` 只承载共享能力，不承载领域业务
+- API 层不得直接操作 ORM / Repository
+- 数据层不得反向依赖上层
+- 路由层不得堆积业务逻辑
+- 前端不得直接调用 LLM
+- 工具层禁止从 `presentation` 层导入
+
 ## 功能状态
 
 ### 已上线功能
@@ -69,12 +63,13 @@
 | Agent Workspace 前端 | Phase 6 | ✅ |
 | 数据初始化 | Phase 7.5 | ✅ |
 | Docker 多环境 | Phase 9 | ✅ |
+| 用户体验流程 v2.0 设计 | Phase 14 | ✅ 设计完成，待 Phase 15 实施 |
 
-### 待清理
+### 待实施
 
 | 功能 | 说明 |
 |------|------|
-| Tracker 模块 | 路由已断开，代码待物理删除 |
+| Phase 15 前端页面重构 | 仪表盘 + 岗位探索 + 简历优化 |
 
 ## 技术栈约束
 
@@ -85,7 +80,7 @@
 - SQLAlchemy 2.0
 - Alembic
 - LangChain BaseTool（工具抽象）
-- LLMFactory + Adapter（OpenAI/MiniMax/Mock）
+- LLMFactory + Adapter（OpenAI/Minimax/Mock）
 - Redis
 - PostgreSQL
 
@@ -116,7 +111,7 @@
 - 测试分层：`unit / integration / e2e`
 - 修改功能必须补测试
 - 修复 bug 优先补回归
-- 目标覆盖率：至少达到 80%，当前 78.65%
+- 目标覆盖率：至少达到 80%
 
 ## 文档职责
 
@@ -132,4 +127,4 @@
 
 ---
 
-*版本: v2.1.0 | 主体已完成*
+*版本: v2.2.0*

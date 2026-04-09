@@ -81,8 +81,8 @@ export function JdCustomizePage() {
               </Select>
             </FormField>
             {selectedResume && (
-              <div className="rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-surface)] p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
                   简历预览
                 </p>
                 <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--color-ink)]">
@@ -109,8 +109,8 @@ export function JdCustomizePage() {
               </Select>
             </FormField>
             {selectedJob && (
-              <div className="rounded-2xl border border-[var(--color-stroke)] bg-[var(--color-surface)] p-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-ink-muted)]">
                   JD 预览
                 </p>
                 <p className="mb-2 text-sm font-medium text-[var(--color-ink)]">

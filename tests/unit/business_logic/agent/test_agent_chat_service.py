@@ -14,10 +14,6 @@ class TestAgentChatService:
         result = self.service.route_task("我想练习面试")
         assert result == "interview_coach"
 
-    def test_route_to_tracker(self):
-        result = self.service.route_task("投递建议")
-        assert result == "tracker"
-
     def test_route_to_generic(self):
         result = self.service.route_task("今天天气怎么样")
         assert result == "generic"

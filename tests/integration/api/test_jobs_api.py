@@ -165,23 +165,6 @@ def test_jobs_create_succeeds_with_authenticated_user(db_session, client):
     assert payload["company"] == "Test Co"
 
 
-def test_jobs_applications_endpoints_are_delegated_to_tracker(client):
-    response = client.post(
-        "/api/v1/jobs/applications/",
-        json={
-            "job_id": 1,
-            "resume_id": 1,
-            "notes": "test",
-        },
-    )
-    assert response.status_code == 410
-    assert "tracker" in response.json()["detail"].lower()
-
-    response = client.get("/api/v1/jobs/applications/")
-    assert response.status_code == 410
-    assert "tracker" in response.json()["detail"].lower()
-
-
 def test_jobs_update_propagates_not_found(client):
     _set_current_user(999)
     with patch("src.presentation.api.v1.jobs.job_service.update_job", new=AsyncMock(return_value=None)):

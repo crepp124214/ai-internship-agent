@@ -508,18 +508,128 @@ Agent.plan() (分解任务，选择工具)
 | **Phase 9** | Docker 多环境配置 | ✅ | - |
 | **Phase 10** | 开源基础补充（CLAUDE.md、Issue Templates） | ✅ | - |
 | **Phase 11** | P0 紧急修复（架构违规、Exception swallowing） | ✅ | - |
+| **Phase 12** | Tracker 残留代码物理删除 | ✅ | - |
+| **Phase 13** | 测试修复（.env 引用、Tracker 断言、alembic、seed_demo） | ✅ | - |
 
 ### 待实现
 
 | 阶段 | 内容 | 优先级 |
 |------|------|--------|
-| P1 | Tracker 残留代码物理删除 | 高 |
-| P1 | 基础测试覆盖率提升（79% → 85%） | 高 |
+| ~~P1~~ | ~~Tracker 残留代码物理删除~~ | ✅ Phase 12 已完成 |
+| ~~P2~~ | ~~旧测试失败修复~~ | ✅ Phase 13 已修复 |
+| P1 | 基础测试覆盖率提升（78.65% → 85%） | 高 |
 | P2 | 企业特性（多租户、审计、Webhook） | 中 |
 
 ---
 
-## 九、重构验收标准
+## 九、用户体验流程（v2.0）
+
+### 9.1 核心用户流程
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    用户体验流程 v2.0                              │
+│                                                                 │
+│  ┌──────────┐                                                   │
+│  │  仪表盘   │ ← 统一简历导入 + 统计 + 最近活动 + AI入口          │
+│  └────┬─────┘                                                   │
+│       ↓                                                          │
+│  ┌──────────┐                                                   │
+│  │ 岗位探索  │ ← Agent分析简历 → 搜索招聘官网 → 返回公司链接      │
+│  └────┬─────┘       用户可主动询问问题（半自动化）                │
+│       ↓ 收藏岗位                                                  │
+│  ┌──────────┐                                                   │
+│  │ 简历优化  │ ← 上传JD → Agent优化简历 + 推荐岗位               │
+│  └────┬─────┘       一键跳转：带着JD去优化                       │
+│       ↓                                                          │
+│  ┌──────────┐                                                   │
+│  │ 面试准备  │ ← 独立完整流程                                    │
+│  └──────────┘                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 9.2 页面职责
+
+| 页面 | 路由 | 核心职责 |
+|------|------|----------|
+| 仪表盘 | `/` | 导入简历 + 统计卡片 + 最近活动 + 右下角AI入口 |
+| 岗位探索 | `/jobs-explore` | Agent对话搜索公司招聘官网 + 岗位卡片列表 + 收藏 |
+| 简历优化 | `/resume` | 选择简历（已导入）+ 上传JD + Agent优化 + 跳转面试 |
+| 面试准备 | `/interview` | 生成题目 + AI教练对练（独立流程） |
+| 设置 | `/settings` | LLM配置 |
+
+### 9.3 岗位探索页面
+
+**定位：** 帮用户探索求职方向，搜索相关公司的招聘官网
+
+**交互模式：** 半自动化 + 对话问答
+
+```
+用户上传简历 / 描述技能
+    ↓
+Agent自动分析 → 搜索 → 返回结构化岗位卡片列表
+    ↓
+用户可主动询问：
+  "这些岗位需要掌握哪些技能？"
+  "我的背景适合投这些吗？"
+  "这些公司还在招人吗？"
+    ↓
+收藏感兴趣的岗位 → 跳转简历优化
+```
+
+**岗位卡片结构：**
+```
+┌────────────────────────────────────┐
+│ 🏢 公司名称          [收藏] [详情] │
+│ 岗位名称                              │
+│ 要求摘要：Python, FastAPI, ...       │
+│ 招聘链接：https://...               │
+└────────────────────────────────────┘
+```
+
+### 9.4 简历优化页面
+
+**定位：** 精准投递前的简历准备
+
+**交互流程：**
+```
+选择简历（从仪表盘导入的）
+    ↓
+上传JD / 粘贴JD描述
+    ↓
+Agent分析 → 输出：
+  1. 简历优化建议
+  2. 推荐匹配的已收藏岗位
+    ↓
+一键"去优化简历"（跳转面试准备，带岗位上下文）
+```
+
+### 9.5 轻量投递记录
+
+**定位：** 替代Tracker的简化版投递管理
+
+**数据模型：**
+- `SavedJob`：用户收藏的外部岗位（source='saved'）
+- `JobApplication`：投递状态记录（status: 收藏/已投递/面试中...）
+
+**Dashboard统计：**
+- 已收藏岗位数
+- 已投递数
+
+### 9.6 Agent能力
+
+**工作模式：** 半自动 + 持续对话
+
+| 能力 | 说明 |
+|------|------|
+| 自动分析 | Agent根据简历自动搜索并推荐 |
+| 主动建议 | "检测到简历缺少XX，建议补充" |
+| 对话问答 | 用户可随时询问相关问题 |
+| 多轮推理 | ReAct循环，执行多步任务 |
+
+---
+
+## 十、重构验收标准
 
 | 指标 | 目标 |
 |------|------|
@@ -533,7 +643,7 @@ Agent.plan() (分解任务，选择工具)
 
 ---
 
-## 十、风险与依赖
+## 十一、风险与依赖
 
 | 风险 | 影响 | 应对 |
 |------|------|------|
@@ -545,16 +655,26 @@ Agent.plan() (分解任务，选择工具)
 
 ---
 
-## 十一、文件变更清单
+## 十二、文件变更清单
 
 ### 已删除模块
 
 ```
-已删除（Tracker路由）:
-  frontend/src/pages/tracker-page.tsx     # 前端路由移除
-  src/presentation/api/v1/tracker.py      # 后端路由移除（代码保留待清理）
-  src/main.py                             # tracker router 注册移除
-  frontend/src/app/router.tsx            # tracker 路由移除
+已删除（Tracker 全部代码，Phase 12 完成）:
+  frontend/src/pages/tracker-page.tsx
+  frontend/src/pages/tracker-page.test.tsx
+  src/presentation/api/v1/tracker.py
+  src/business_logic/tracker/
+  src/business_logic/agents/tracker_agent/
+  src/data_access/entities/tracker.py
+  src/data_access/repositories/tracker_repository.py
+  src/data_access/repositories/tracker_advice_repository.py
+  src/presentation/schemas/tracker.py
+  tests/integration/api/test_tracker_api.py
+  tests/unit/business_logic/test_tracker_service.py
+  tests/unit/data_access/test_tracker_advice_repository.py
+  tests/unit/core/test_tracker_agent.py
+  tests/e2e/test_demo_chain.py
 ```
 
 ### 已新增目录与文件（按Phase）
@@ -671,13 +791,8 @@ scripts/start_frontend.bat
 
 ### 待清理（Tracker代码）
 
-> Tracker 模块路由已断开，代码物理删除待后续执行。
-
-```
-src/business_logic/tracker/          # 待删除
-src/business_logic/agents/tracker_agent/  # 待删除
-```
+> Tracker 模块全部代码已于 Phase 12（2026-04-07）物理删除。
 
 ---
 
-*文档版本: v0.4.0 | 主体已完成，部分待清理*
+*文档版本: v0.5.0 | 主体已完成，用户体验流程 v2.0 设计完成*

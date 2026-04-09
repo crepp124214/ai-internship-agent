@@ -1,10 +1,9 @@
-import type { ChangeEvent, KeyboardEvent } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { AgentAssistantPanel } from '../components/agent/AgentAssistantPanel'
-import { JobCard } from './components/JobCard'
 import { jobsApi, readApiError, resumeApi } from '../lib/api'
 import {
   EmptyHint,
@@ -15,6 +14,7 @@ import {
   ResultPanel,
   SectionCard,
   SecondaryButton,
+  Select,
   Textarea,
 } from './page-primitives'
 
@@ -133,51 +133,6 @@ export function JobsPage() {
     }
   }, [resumesQuery.data, selectedResumeId])
 
-  // Keyboard navigation: J/K to move up/down, Enter to view, Cmd+Enter to flow
-  const handleKeyboardNav = useCallback(
-    (e: KeyboardEvent<HTMLDivElement>) => {
-      if (!jobsQuery.data?.length) return
-
-      const currentIndex = jobsQuery.data.findIndex((j) => j.id === selectedJobId)
-      if (currentIndex === -1) return
-
-      if (e.key === 'j' || e.key === 'J') {
-        e.preventDefault()
-        const nextIndex = Math.min(currentIndex + 1, jobsQuery.data.length - 1)
-        setSelectedJobId(jobsQuery.data[nextIndex].id)
-      } else if (e.key === 'k' || e.key === 'K') {
-        e.preventDefault()
-        const prevIndex = Math.max(currentIndex - 1, 0)
-        setSelectedJobId(jobsQuery.data[prevIndex].id)
-      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        goToResumeOptimize()
-      }
-    },
-    [jobsQuery.data, selectedJobId, navigate, selectedJob],
-  )
-
-  const goToResumeOptimize = useCallback(() => {
-    if (!selectedJob) {
-      setFeedback('请先选择一个岗位，再执行一键流转。')
-      return
-    }
-
-    const payload = {
-      jobId: selectedJob.id,
-      title: selectedJob.title,
-      company: selectedJob.company,
-      location: selectedJob.location,
-      description: selectedJob.description ?? '',
-      requirements: selectedJob.requirements ?? '',
-    }
-
-    navigate(
-      `/resume?fromJob=${selectedJob.id}&targetRole=${encodeURIComponent(`${selectedJob.title}（${selectedJob.company}）`)}`,
-      { state: { fromJob: payload } },
-    )
-  }, [selectedJob, navigate])
-
   const createJobMutation = useMutation({
     mutationFn: jobsApi.create,
     onSuccess: async (job) => {
@@ -253,6 +208,27 @@ export function JobsPage() {
         message: '文件导入失败，请选择有效的 txt、md 或 json 文本文件。',
       })
     }
+  }
+
+  const goToResumeOptimize = () => {
+    if (!selectedJob) {
+      setFeedback('请先在右侧选择一个岗位，再执行一键流转。')
+      return
+    }
+
+    const payload = {
+      jobId: selectedJob.id,
+      title: selectedJob.title,
+      company: selectedJob.company,
+      location: selectedJob.location,
+      description: selectedJob.description ?? '',
+      requirements: selectedJob.requirements ?? '',
+    }
+
+    navigate(
+      `/resume?fromJob=${selectedJob.id}&targetRole=${encodeURIComponent(`${selectedJob.title}（${selectedJob.company}）`)}`,
+      { state: { fromJob: payload } },
+    )
   }
 
   return (
@@ -361,52 +337,32 @@ export function JobsPage() {
             </div>
           </SectionCard>
 
-          <SectionCard
-            title="匹配分析与流转"
-            subtitle="选择岗位和简历，预览/保存匹配，并跳转简历优化。"
-          >
-            <div
-              className="space-y-4"
-              onKeyDown={handleKeyboardNav}
-              tabIndex={0}
-              role="region"
-              aria-label="岗位卡片列表，使用 J/K 键导航，Enter 键选择，Cmd+Enter 键一键流转"
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-xs text-[var(--color-muted)]">
-                  {jobsQuery.data?.length ?? 0} 个岗位 | 按 J/K 导航 | ⌘+Enter 一键流转
-                </p>
-              </div>
-
-              {jobsQuery.data && jobsQuery.data.length > 0 ? (
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {jobsQuery.data.map((job) => (
-                    <JobCard
-                      key={job.id}
-                      job={job}
-                      isSelected={job.id === selectedJobId}
-                      onClick={() => setSelectedJobId(job.id)}
-                      onDoubleClick={goToResumeOptimize}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <EmptyHint>暂无岗位，请先在左侧创建或导入岗位。</EmptyHint>
-              )}
-
+          <SectionCard title="匹配分析与流转" subtitle="选择岗位和简历，预览/保存匹配，并跳转简历优化。">
+            <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
+                <FormField label="岗位">
+                  <Select
+                    value={selectedJobId ?? ''}
+                    onChange={(event) => setSelectedJobId(Number(event.target.value))}
+                  >
+                    {jobsQuery.data?.map((job) => (
+                      <option key={job.id} value={job.id}>
+                        #{job.id} - {job.title} ({job.company})
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
                 <FormField label="简历">
-                  <select
+                  <Select
                     value={selectedResumeId ?? ''}
                     onChange={(event) => setSelectedResumeId(Number(event.target.value))}
-                    className="w-full rounded-2xl border border-[var(--color-stroke)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(199,107,79,0.14)]"
                   >
                     {resumesQuery.data?.map((resume) => (
                       <option key={resume.id} value={resume.id}>
                         #{resume.id} - {resume.title}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
               </div>
               <div className="flex flex-wrap gap-3">

@@ -157,12 +157,6 @@ class JobApplication(Base):
     user = relationship("User", back_populates="job_applications", lazy="joined")
     job = relationship("Job", back_populates="job_applications", lazy="joined")
     resume = relationship("Resume", back_populates="job_applications", lazy="joined")
-    tracker_advices = relationship(
-        "TrackerAdvice",
-        back_populates="application",
-        cascade="all, delete-orphan",
-        lazy="dynamic",
-    )
 
     __table_args__ = (
         Index("idx_application_user_status", "user_id", "status"),

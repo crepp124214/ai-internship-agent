@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
+import { getStoredToken } from '../auth/auth-storage'
 
 export interface AssistantMessage {
   role: 'user' | 'ai' | 'system'
@@ -36,10 +37,12 @@ export function useAgentAssistant() {
     let fullContent = ''
 
     try {
+      const token = getStoredToken()
       const response = await fetch('/api/v1/agent/assistant/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           message,

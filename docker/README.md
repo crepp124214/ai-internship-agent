@@ -32,7 +32,7 @@ docker-compose --env-file .env.prod up --build -d
 ### 测试环境
 
 ```bash
-docker-compose -f docker-compose.test.yml --env-file .env.test up --build
+docker-compose -f docker-compose.test.yml up --build
 ```
 
 ## 环境切换

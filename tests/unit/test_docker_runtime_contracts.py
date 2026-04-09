@@ -16,11 +16,11 @@ def test_entrypoint_supports_optional_demo_seed():
 def test_frontend_runtime_assets_exist():
     assert (REPO_ROOT / "docker" / "frontend.Dockerfile").exists()
     assert (REPO_ROOT / "docker" / "nginx.conf").exists()
-    assert (REPO_ROOT / ".env.compose.example").exists()
+    assert (REPO_ROOT / ".env.local.example").exists()
 
 
 def test_compose_example_contains_demo_stack_defaults():
-    compose_env = (REPO_ROOT / ".env.compose.example").read_text(encoding="utf-8")
+    compose_env = (REPO_ROOT / ".env.local.example").read_text(encoding="utf-8")
 
     assert "DATABASE_URL=postgresql://agent_user:agent_password@postgres:5432/internship_agent" in compose_env
     assert "REDIS_URL=redis://redis:6379/0" in compose_env

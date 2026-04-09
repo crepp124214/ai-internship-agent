@@ -19,7 +19,6 @@ from src.data_access.database import Base
 from src.data_access.entities.interview import InterviewQuestion, InterviewRecord, InterviewSession
 from src.data_access.entities.job import Job, JobApplication, JobMatchResult
 from src.data_access.entities.resume import Resume, ResumeOptimization
-from src.data_access.entities.tracker import TrackerAdvice
 from src.data_access.entities.user import User, UserProfile
 from src.utils.config_loader import get_settings
 

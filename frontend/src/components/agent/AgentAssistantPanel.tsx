@@ -60,7 +60,7 @@ export function AgentAssistantPanel({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
         {messages.length === 0 && !streaming && (
-          <div className="text-sm text-[var(--color-muted)]">
+          <div className="text-sm text-[var(--color-ink-muted)]">
             {page === 'resume'
               ? '选中一份简历，我可以帮您分析、解读或给出改进建议。'
               : '我可以帮您搜索公司招聘官网，或分析岗位与简历的匹配度。'}
@@ -72,7 +72,7 @@ export function AgentAssistantPanel({
         ))}
 
         {streaming && (
-          <div className="text-sm text-[var(--color-muted)]">
+          <div className="text-sm text-[var(--color-ink-muted)]">
             <span className="animate-pulse">思考中...</span>
           </div>
         )}
