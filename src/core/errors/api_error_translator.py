@@ -166,6 +166,12 @@ class ApiErrorTranslator:
                 get_error_code_info(ErrorCode.STATE_CONFLICT),
                 detail,
             )
+        if status_code == 403:
+            return (
+                ErrorCode.FORBIDDEN,
+                get_error_code_info(ErrorCode.FORBIDDEN),
+                detail,
+            )
         if status_code == 422:
             return (
                 ErrorCode.INVALID_INPUT,

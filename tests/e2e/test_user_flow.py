@@ -157,7 +157,9 @@ class TestUserFlow:
         response = client.get("/api/v1/users/me")
 
         assert response.status_code == 401
-        assert response.json()["detail"] == "Not authenticated"
+        # Unified error format: code/message/retryable/request_id
+        assert response.json()["code"] == "AUTH_REQUIRED"
+        assert response.json()["message"] == "Not authenticated"
 
     def test_login_rejects_invalid_password(self, client):
         client.post(
@@ -176,7 +178,9 @@ class TestUserFlow:
         )
 
         assert login_response.status_code == 401
-        assert login_response.json()["detail"] == "Invalid credentials"
+        # Unified error format: code/message/retryable/request_id
+        assert login_response.json()["code"] == "AUTH_REQUIRED"
+        assert login_response.json()["message"] == "Invalid credentials"
 
     def test_missing_user_routes_return_404(self, client):
         # First register and login to get a token
@@ -209,6 +213,7 @@ class TestUserFlow:
         # Authenticated user accessing another user's profile returns 403
         get_other = client.get("/api/v1/users/999999", headers=headers)
         assert get_other.status_code == 403
+        assert get_other.json()["code"] == "FORBIDDEN"
 
         update_other = client.put(
             "/api/v1/users/999999",
@@ -216,9 +221,11 @@ class TestUserFlow:
             headers=headers,
         )
         assert update_other.status_code == 403
+        assert update_other.json()["code"] == "FORBIDDEN"
 
         delete_other = client.delete("/api/v1/users/999999", headers=headers)
         assert delete_other.status_code == 403
+        assert delete_other.json()["code"] == "FORBIDDEN"
 
     def test_list_users_is_forbidden_for_regular_users(self, client):
         client.post(
@@ -239,4 +246,5 @@ class TestUserFlow:
         response = client.get("/api/v1/users/", headers=headers)
 
         assert response.status_code == 403
-        assert response.json()["detail"] == "User listing is not available"
+        assert response.json()["code"] == "FORBIDDEN"
+        assert response.json()["message"] == "User listing is not available"

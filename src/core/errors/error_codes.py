@@ -35,6 +35,10 @@ class ErrorCode(str, Enum):
     # HTTP: 409, retryable: false
     STATE_CONFLICT = "STATE_CONFLICT"
 
+    # 禁止访问 - 用户无权访问该资源
+    # HTTP: 403, retryable: false
+    FORBIDDEN = "FORBIDDEN"
+
     # 内部错误 - 未预期的服务器错误
     # HTTP: 500, retryable: true
     INTERNAL_ERROR = "INTERNAL_ERROR"
@@ -78,6 +82,11 @@ ERROR_CODE_INFO: dict[ErrorCode, ErrorCodeInfo] = {
     ErrorCode.STATE_CONFLICT: ErrorCodeInfo(
         http_status=409,
         default_message="状态冲突",
+        retryable=False,
+    ),
+    ErrorCode.FORBIDDEN: ErrorCodeInfo(
+        http_status=403,
+        default_message="禁止访问",
         retryable=False,
     ),
     ErrorCode.INTERNAL_ERROR: ErrorCodeInfo(
