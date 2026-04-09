@@ -2,7 +2,8 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import { interviewApi, readApiError, resumeApi, type GeneratedInterviewQuestion, type ReviewReport } from '../lib/api'
-import { ChatBubble } from './components/ChatBubble'
+import { MessageBlock } from './components/MessageBlock'
+import { ScoreCard } from './components/ScoreCard'
 import { CoachReviewReportCard } from './components/CoachReviewReportCard'
 import {
   EmptyHint,
@@ -74,7 +75,6 @@ export function InterviewPage() {
   const [coachSessionId, setCoachSessionId] = useState<number | null>(null)
   const [coachMessages, setCoachMessages] = useState<Array<{role: 'ai' | 'user', message: string, score?: number | null}>>([])
   const [coachAnswer, setCoachAnswer] = useState('')
-  const [coachFeedback, setCoachFeedback] = useState<string | null>(null)
   const [coachReport, setCoachReport] = useState<ReviewReport | null>(null)
   const [isLast, setIsLast] = useState(false)
   const [inFollowup, setInFollowup] = useState(false)
@@ -155,7 +155,6 @@ export function InterviewPage() {
         { role: 'user', message: coachAnswer },
         { role: 'ai', message: data.feedback, score: data.score },
       ])
-      setCoachFeedback(`本题得分：${data.score}分 - ${data.feedback}`)
       setCoachAnswer('')
       if (data.next_question) {
         setCoachMessages((prev) => [...prev, { role: 'ai', message: data.next_question! }])
@@ -177,6 +176,9 @@ export function InterviewPage() {
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
+
+  // Sticky input area gradient
+  const stickyInputGradient = 'linear-gradient(to top, var(--color-background) 80%, transparent)'
 
   return (
     <div className="space-y-6">
@@ -230,39 +232,57 @@ export function InterviewPage() {
 
         <SectionCard title="面试教练" subtitle="选择简历后直接开始 AI 面试对练。">
           {coachActive ? (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+            <div className="relative flex flex-col h-[600px]">
+              {/* Claude 风格消息区域 - 48px 32px 大边距 */}
+              <div className="flex-1 overflow-y-auto space-y-6 p-8">
                 {coachMessages.map((msg, i) => (
-                  <ChatBubble key={i} role={msg.role} message={msg.message} score={msg.score} />
+                  <MessageBlock
+                    key={i}
+                    role={msg.role}
+                    message={msg.message}
+                  />
                 ))}
+                {/* 评分卡片内联插入对话流 */}
+                {coachMessages.length > 0 && coachMessages[coachMessages.length - 1].score != null && (
+                  <div className="pl-12">
+                    <ScoreCard score={coachMessages[coachMessages.length - 1].score!} />
+                  </div>
+                )}
               </div>
-              {coachFeedback ? (
-                <div className="rounded-[22px] bg-[var(--color-panel)] px-4 py-3 text-sm">
-                  {coachFeedback}
+
+              {/* Sticky 输入框 - 背景渐变遮罩 */}
+              <div
+                className="flex-shrink-0 border-t border-[var(--color-stroke)] p-4"
+                style={{
+                  background: stickyInputGradient,
+                  position: 'relative',
+                  zIndex: 10,
+                }}
+              >
+                <div className="flex flex-col gap-3 max-w-[720px] mx-auto">
+                  <Textarea
+                    value={coachAnswer}
+                    onChange={(e) => setCoachAnswer(e.target.value)}
+                    placeholder="输入你的回答..."
+                    className="w-full resize-none"
+                    rows={3}
+                  />
+                  <div className="flex flex-wrap gap-3">
+                    <PrimaryButton
+                      type="button"
+                      onClick={() => submitAnswerMutation.mutate({ sessionId: coachSessionId!, answer: coachAnswer })}
+                      disabled={!coachAnswer.trim()}
+                    >
+                      提交回答
+                    </PrimaryButton>
+                    <SecondaryButton
+                      type="button"
+                      onClick={() => endCoachMutation.mutate({ sessionId: coachSessionId!, followupSkipped: inFollowup })}
+                    >
+                      结束面试
+                    </SecondaryButton>
+                  </div>
                 </div>
-              ) : null}
-              <div className="flex gap-3">
-                <Textarea
-                  value={coachAnswer}
-                  onChange={(e) => setCoachAnswer(e.target.value)}
-                  placeholder="输入你的回答..."
-                  className="flex-1"
-                />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <SecondaryButton
-                  type="button"
-                  onClick={() => submitAnswerMutation.mutate({ sessionId: coachSessionId!, answer: coachAnswer })}
-                  disabled={!coachAnswer.trim()}
-                >
-                  提交回答
-                </SecondaryButton>
-                <PrimaryButton
-                  type="button"
-                  onClick={() => endCoachMutation.mutate({ sessionId: coachSessionId!, followupSkipped: inFollowup })}
-                >
-                  结束面试
-                </PrimaryButton>
               </div>
             </div>
           ) : coachReport ? (
