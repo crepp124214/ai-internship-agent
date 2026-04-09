@@ -1,7 +1,14 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
-import { interviewApi, readApiError, resumeApi, type GeneratedInterviewQuestion, type ReviewReport } from '../lib/api'
+import {
+  interviewApi,
+  jobsApi,
+  readApiError,
+  resumeApi,
+  type GeneratedInterviewQuestion,
+  type ReviewReport,
+} from '../lib/api'
 import { ChatBubble } from './components/ChatBubble'
 import { CoachReviewReportCard } from './components/CoachReviewReportCard'
 import {
@@ -60,7 +67,9 @@ function extractImportedContext(fileName: string, mimeType: string, rawContent: 
 
 export function InterviewPage() {
   const resumesQuery = useQuery({ queryKey: ['resume', 'list'], queryFn: resumeApi.list })
+  const jobsQuery = useQuery({ queryKey: ['jobs', 'list'], queryFn: jobsApi.list })
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
   const [jobContext, setJobContext] = useState('后端开发实习岗位，重点关注 FastAPI、异步接口、清晰架构和可维护的服务边界。')
   const [questionCount, setQuestionCount] = useState(5)
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedInterviewQuestion[]>([])
@@ -75,13 +84,16 @@ export function InterviewPage() {
   const [coachMessages, setCoachMessages] = useState<Array<{role: 'ai' | 'user', message: string, score?: number | null}>>([])
   const [coachAnswer, setCoachAnswer] = useState('')
   const [coachFeedback, setCoachFeedback] = useState<string | null>(null)
-  const [coachReport, setCoachReport] = useState<ReviewReport | null>(null)
-  const [isLast, setIsLast] = useState(false)
+  const [coachReport, setCoachReport] = useState<{ review_report: ReviewReport; average_score: number } | null>(null)
   const [inFollowup, setInFollowup] = useState(false)
 
   useEffect(() => {
     if (!selectedResumeId && resumesQuery.data?.length) setSelectedResumeId(resumesQuery.data[0].id)
   }, [resumesQuery.data, selectedResumeId])
+
+  useEffect(() => {
+    if (!selectedJobId && jobsQuery.data?.length) setSelectedJobId(jobsQuery.data[0].id)
+  }, [jobsQuery.data, selectedJobId])
 
   const selectedGeneratedQuestion = generatedQuestions[selectedGeneratedQuestionIndex] ?? null
 
@@ -132,14 +144,14 @@ export function InterviewPage() {
   })
 
   const startCoachMutation = useMutation({
-    mutationFn: ({ resumeId }: { resumeId: number }) => interviewApi.coachStart({ resume_id: resumeId }),
+    mutationFn: ({ resumeId, jobId }: { resumeId: number; jobId: number }) =>
+      interviewApi.coachStart({ jd_id: jobId, resume_id: resumeId }),
     onSuccess: (data) => {
       setCoachSessionId(data.session_id)
       setCoachMessages([
         { role: 'ai', message: data.opening_message },
         { role: 'ai', message: data.first_question },
       ])
-      setIsLast(false)
       setInFollowup(false)
       setCoachActive(true)
     },
@@ -159,7 +171,6 @@ export function InterviewPage() {
       setCoachAnswer('')
       if (data.next_question) {
         setCoachMessages((prev) => [...prev, { role: 'ai', message: data.next_question! }])
-        setIsLast(data.is_last)
       } else {
         setInFollowup(true)
       }
@@ -171,7 +182,7 @@ export function InterviewPage() {
     mutationFn: ({ sessionId, followupSkipped }: { sessionId: number; followupSkipped: boolean }) =>
       interviewApi.coachEnd(sessionId, followupSkipped),
     onSuccess: (data) => {
-      setCoachReport(data.review_report)
+      setCoachReport({ review_report: data.review_report, average_score: data.average_score })
       setCoachActive(false)
       setFeedback('面试已结束，复盘报告已生成。')
     },
@@ -196,15 +207,17 @@ export function InterviewPage() {
                 onChange={handleContextImport}
               />
             </FormField>
-            {contextImportMessage ? (
-              <div className={`rounded-[22px] px-4 py-3 text-sm ${
-                contextImportState === 'error'
-                  ? 'border border-[rgba(207,72,72,0.24)] bg-[rgba(207,72,72,0.08)] text-[rgb(143,44,44)]'
-                  : 'border border-[rgba(80,140,96,0.18)] bg-[rgba(80,140,96,0.08)] text-[rgb(42,102,58)]'
-              }`}>
-                {contextImportMessage}
-              </div>
-            ) : null}
+      {contextImportMessage ? (
+          <div className={`rounded-[22px] px-4 py-3 text-sm ${
+            contextImportState === 'error'
+              ? 'border border-[rgba(207,72,72,0.24)] bg-[rgba(207,72,72,0.08)] text-[rgb(143,44,44)]'
+              : contextImportState === 'success'
+                ? 'border border-[rgba(80,140,96,0.18)] bg-[rgba(80,140,96,0.08)] text-[rgb(42,102,58)]'
+                : 'border border-[rgba(80,140,96,0.18)] bg-[rgba(80,140,96,0.08)] text-[rgb(42,102,58)]/50'
+          }`}>
+            {contextImportMessage}
+          </div>
+      ) : null}
             <FormField label="岗位上下文" helper="描述岗位方向、技术栈、业务背景等。">
               <Textarea value={jobContext} onChange={(event) => setJobContext(event.target.value)} className="min-h-32" />
             </FormField>
@@ -228,7 +241,7 @@ export function InterviewPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="面试教练" subtitle="选择简历后直接开始 AI 面试对练。">
+        <SectionCard title="面试教练" subtitle="选择简历和岗位后开始 AI 面试对练。">
           {coachActive ? (
             <div className="space-y-4">
               <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
@@ -267,18 +280,27 @@ export function InterviewPage() {
             </div>
           ) : coachReport ? (
             <div className="space-y-4">
-              <CoachReviewReportCard report={coachReport} />
+              <CoachReviewReportCard report={coachReport.review_report} averageScore={coachReport.average_score} />
               <SecondaryButton type="button" onClick={() => { setCoachReport(null); setCoachMessages([]) }}>
                 重新开始
               </SecondaryButton>
             </div>
           ) : (
             <div className="space-y-4">
-              <EmptyHint>选择简历后点击开始，进入 AI 面试教练对练。</EmptyHint>
+              <EmptyHint>选择简历和岗位后点击开始，进入 AI 面试教练对练。</EmptyHint>
+              <FormField label="目标岗位">
+                <Select value={selectedJobId ?? ''} onChange={(event) => setSelectedJobId(Number(event.target.value))}>
+                  {jobsQuery.data?.map((job) => (
+                    <option key={job.id} value={job.id}>
+                      #{job.id} - {job.title} @ {job.company}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
               <PrimaryButton
                 type="button"
-                onClick={() => startCoachMutation.mutate({ resumeId: selectedResumeId! })}
-                disabled={!selectedResumeId}
+                onClick={() => startCoachMutation.mutate({ resumeId: selectedResumeId!, jobId: selectedJobId! })}
+                disabled={!selectedResumeId || !selectedJobId}
               >
                 开始面试教练
               </PrimaryButton>
@@ -287,7 +309,7 @@ export function InterviewPage() {
         </SectionCard>
       </div>
 
-      {generatedQuestions.length > 0 && (
+      {generatedQuestions.length > 0 ? (
         <SectionCard title="生成的题目" subtitle="选择一道题目保存到题库。">
           <div className="space-y-4">
             <FormField label="选择题目">
@@ -317,6 +339,8 @@ export function InterviewPage() {
             )}
           </div>
         </SectionCard>
+      ) : (
+        <EmptyHint>暂无生成的题目，请先导入上下文并生成题目。</EmptyHint>
       )}
     </div>
   )

@@ -355,11 +355,14 @@ export function ResumePage() {
                   onChange={handleImportFileChange}
                   className="w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-ink)] outline-none transition file:mr-4 file:rounded-full file:border-0 file:bg-[var(--color-accent)] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white focus:border-[var(--color-accent)] focus:ring-4 focus:ring-[rgba(199,107,79,0.14)]"
                 />
-                {selectedImportFile ? (
-                  <p className="text-sm text-[var(--color-ink)]">已选择：{selectedImportFile.name}</p>
-                ) : (
-                  <p className="text-sm text-[var(--color-ink-muted)]">选择文件后点击"导入并创建"</p>
-                )}
+                 {selectedImportFile ? (
+                   <p className="text-sm text-[var(--color-ink)]">已选择：{selectedImportFile.name}</p>
+                 ) : (
+                   <p className="text-sm text-[var(--color-ink-muted)]">选择文件后点击"导入并创建"</p>
+                 )}
+                 {importStatus ? (
+                   <p className="text-xs leading-5 text-[var(--color-ink-muted)]">{importStatus}</p>
+                 ) : null}
                 <PrimaryButton
                   type="button"
                   disabled={!selectedImportFile || importResumeMutation.isPending}
@@ -444,7 +447,11 @@ export function ResumePage() {
               </Select>
             </FormField>
 
-            {effectiveSelectedResume ? (
+            {resumesQuery.isLoading ? (
+              <div className="text-sm text-[var(--color-ink-tertiary)]">加载中...</div>
+            ) : resumesQuery.data?.length === 0 ? (
+              <EmptyHint>暂无简历数据，请先创建或导入一份简历。</EmptyHint>
+            ) : effectiveSelectedResume ? (
               <>
                 <div
                   ref={resumeContentRef}

@@ -9,14 +9,14 @@
 | 类别 | 状态 | 说明 |
 |------|------|------|
 | 主链路可跑通 | ✅ | 岗位保存→简历优化→面试→设置中心可串联 |
-| 自动化测试通过 | ✅ | 535 passed, 18 skipped（unit/integration，排除 entity tests） |
-| 覆盖率 | ⚠️ | 79.66%，原始目标 85%，差距 5.34%（见下方说明） |
+| 自动化测试通过 | ✅ | 563 passed, 18 skipped（unit/integration，排除 entity tests） |
+| 覆盖率 | ✅ | 80.17%，达到 pytest.ini 门槛 80% |
 | Phase C 连续跑 | ✅ | 前后端各 20/20（100%），达到 >=95% 标准 |
 | demo 环境能启动 | ✅ | `LLM_PROVIDER=mock` 可启动 |
-| 文档口径一致 | ✅ | 本次修正后统一 |
+| 文档口径一致 | ✅ | 与 known-issues.md 统一 |
 | 已知风险已记录 | ✅ | 见"已知问题"节 |
 
-**发布限制**：覆盖率未达原始 85% 目标，属于质量层面的发布约束，后续代码演进风险增加，但不阻断当前 demo 试用。
+**发布限制**：覆盖率 80.17% 达到 pytest.ini 门槛（80%），但低于 implementation-plan 原始目标（85%）。低覆盖率模块（resume.py 47%、auth.py 30%）为后续质量风险。
 
 ---
 
@@ -24,12 +24,12 @@
 
 | 指标 | 值 | 说明 |
 |------|-----|------|
-| pytest.ini 门槛 | 79% | Phase 13 时从 85% 下调至此（见 `pytest.ini` 第 24 行） |
-| 实际测得覆盖率 | 79.66% | 刚好压线 |
+| pytest.ini 门槛 | 80% | 本次封板从 79% 提升至 80% |
+| 实际测得覆盖率 | 80.17% | 刚好压线 |
 | 原始目标（implementation-plan） | 85% | Phase 15 规划目标，**当前未达到** |
-| 本次新增测试 | +7 个 | `POST /jobs/save-external` 集成测试 |
+| 本次新增测试 | +16 个 | coach API 集成测试 + interview.py 覆盖率提升至 61% |
 
-> **发布限制说明**：79.66% 已过 pytest.ini 当前门槛（79%），但低于 implementation-plan 原始目标（85%）。差距 5.34 个百分点，属于质量约束，不影响 demo 试用，但需在后续迭代中补齐。
+> **发布限制说明**：80.17% 已过 pytest.ini 当前门槛（80%），但低于 implementation-plan 原始目标（85%）。差距约 5 个百分点，属于质量约束，不影响 demo 试用，但需在后续迭代中补齐低覆盖率模块（resume.py 47%、auth.py 30%）。
 
 ---
 
@@ -125,8 +125,9 @@
 
 | 验证项 | 命令 | 结果 |
 |--------|------|------|
-| 单元/集成测试（排除 entity tests） | `APP_ENV=development python -m pytest tests/unit tests/integration --ignore=tests/unit/data_access/test_entities.py -q` | ✅ 535 passed, 18 skipped |
-| 覆盖率 | `APP_ENV=development python -m pytest tests/unit tests/integration --cov=src --cov-report=term --ignore=tests/unit/data_access/test_entities.py` | ⚠️ 79.66%（未达原始目标 85%，已过 pytest.ini 门槛 79%） |
+| 单元/集成测试（排除 entity tests） | `APP_ENV=development python -m pytest tests/unit tests/integration --ignore=tests/unit/data_access/test_entities.py -q` | ✅ 563 passed, 18 skipped |
+| 覆盖率 | `APP_ENV=development python -m pytest tests/unit tests/integration --cov=src --cov-fail-under=80 --ignore=tests/unit/data_access/test_entities.py` | ✅ 80.17%（达到门槛 80%） |
+| 前端测试 | `npm test` | ✅ 34 passed |
 | 前端 Build | `npm run build` | ✅ 通过 |
 | entity tests（需 Docker PG） | `python -m pytest tests/unit/data_access/test_entities.py` | ⚠️ 28 errors（需 Docker PostgreSQL，CI 专属） |
 
@@ -151,6 +152,7 @@ Phase C 封板判定：
 
 | 问题 | 影响范围 | 是否阻断交付 | 临时规避 | 后续修复建议 |
 |------|----------|------------|----------|------------|
-| 覆盖率未达原始目标 85% | 质量保证 | 否（质量约束，不阻断 demo 试用） | pytest.ini 门槛现为 79%，当前 79.66% 刚好过线 | 补充对 `interview.py`（44%覆盖率）和 `resume.py`（47%覆盖率）的测试，目标恢复至 85% |
-| entity tests 需 Docker PostgreSQL | 本地 schema drift 验证 | 否 | CI 环境中运行 | 创建 `.env.test` 专门用于测试环境 |
-| coach interview API 集成测试覆盖不足 | 回归保护 | 否 | 手动测试关键流程 | 补充 coach start/answer/report 的集成测试 |
+| 覆盖率未达原始目标 85% | 质量保证 | 否（质量约束，不阻断 demo 试用） | pytest.ini 门槛已设为 80%，当前 80.17% 刚好压线 | 补充 `interview.py`（61%）和 `resume.py`（47%）的测试，目标恢复至 85% |
+| entity tests 需 Docker PostgreSQL | 本地 schema drift 验证 | 否 | CI 环境中运行 | Docker Compose 环境中运行 |
+| coach interview API 集成测试覆盖不足 | 回归保护 | 否 | 手动测试关键流程 | ✅ 已修复（2026-04-09），新增 9 个 coach API 测试 |
+| 低覆盖率模块（resume.py 47%、auth.py 30%） | 代码变更回归保护 | 否（质量约束） | 手动验证 | 优先为简历定制、用户认证相关端点补充集成测试 |

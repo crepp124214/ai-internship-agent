@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { resumeApi } from '../lib/api'
@@ -35,9 +36,11 @@ function renderResumePage() {
   })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <ResumePage />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ResumePage />
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 
@@ -107,14 +110,14 @@ describe('ResumePage', () => {
 
     renderResumePage()
 
-    expect(screen.getByText('简历工作台')).toBeInTheDocument()
+    expect(screen.getByText('简历优化')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('新建简历'), 'Imported test resume')
     await user.upload(
-      screen.getByLabelText(/导入本地简历文本/),
+      screen.getByLabelText(/导入本地简历/),
       new File(['# Resume\nSenior frontend engineer'], 'alice.md', { type: 'text/markdown' }),
     )
-    await user.click(screen.getByRole('button', { name: 'Import and create' }))
+    await user.click(screen.getByRole('button', { name: '导入并创建' }))
 
     await waitFor(() =>
       expect(mockedResumeApi.create).toHaveBeenCalledWith(
@@ -134,6 +137,6 @@ describe('ResumePage', () => {
       ),
     )
 
-    expect(screen.getByText('Resume imported and saved successfully.')).toBeInTheDocument()
+    expect(screen.getByText('简历已成功导入并保存。')).toBeInTheDocument()
   })
 })

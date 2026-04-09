@@ -379,3 +379,236 @@ def test_interview_api_record_evaluation_returns_400_for_missing_input(client):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "interview record is missing required evaluation input"
+
+
+def test_interview_api_coach_start_success(client):
+    """Test POST /api/v1/interview/coach/start - success case"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_start(db, user, jd_id, resume_id, question_count):
+        return {
+            "session_id": 1,
+            "opening_message": "Welcome to your interview practice session.",
+            "first_question": "Tell me about yourself.",
+            "total_questions": 5,
+        }
+
+    original_start = interview_module.coach_service.start_session
+    interview_module.coach_service.start_session = mock_start
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/start",
+            json={
+                "jd_id": 1,
+                "resume_id": 1,
+                "question_count": 5,
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["session_id"] == 1
+        assert "opening_message" in payload
+    finally:
+        interview_module.coach_service.start_session = original_start
+
+
+def test_interview_api_coach_start_not_found(client):
+    """Test POST /api/v1/interview/coach/start - resource not found"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_start(db, user, jd_id, resume_id, question_count):
+        raise ValueError("jd_id not found")
+
+    original_start = interview_module.coach_service.start_session
+    interview_module.coach_service.start_session = mock_start
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/start",
+            json={
+                "jd_id": 999,
+                "resume_id": 1,
+                "question_count": 5,
+            },
+        )
+        assert response.status_code == 404
+    finally:
+        interview_module.coach_service.start_session = original_start
+
+
+def test_interview_api_coach_answer_success(client):
+    """Test POST /api/v1/interview/coach/answer - success case"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_answer(db, user, session_id, answer):
+        return {
+            "score": 85,
+            "feedback": "Good answer!",
+            "next_question": "What is your greatest strength?",
+            "is_followup": False,
+            "is_last": False,
+            "timeout_followup_skipped": False,
+        }
+
+    original_answer = interview_module.coach_service.submit_answer
+    interview_module.coach_service.submit_answer = mock_answer
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/answer",
+            json={
+                "session_id": 1,
+                "answer": "I have strong problem-solving skills.",
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["score"] == 85
+    finally:
+        interview_module.coach_service.submit_answer = original_answer
+
+
+def test_interview_api_coach_answer_session_ended(client):
+    """Test POST /api/v1/interview/coach/answer - session already ended"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_answer(db, user, session_id, answer):
+        raise ValueError("面试已结束")
+
+    original_answer = interview_module.coach_service.submit_answer
+    interview_module.coach_service.submit_answer = mock_answer
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/answer",
+            json={
+                "session_id": 1,
+                "answer": "Late answer attempt.",
+            },
+        )
+        assert response.status_code == 409
+    finally:
+        interview_module.coach_service.submit_answer = original_answer
+
+
+def test_interview_api_coach_followup_success(client):
+    """Test POST /api/v1/interview/coach/followup - success case"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_followup(db, user, session_id, followup_answers):
+        return {
+            "session_id": session_id,
+            "review_report": {
+                "dimensions": [],
+                "overall_score": 88,
+                "overall_comment": "Great practice session!",
+                "improvement_suggestions": [],
+                "markdown": "# Practice Report",
+            },
+            "average_score": 88.0,
+        }
+
+    original_followup = interview_module.coach_service.submit_followup_answers
+    interview_module.coach_service.submit_followup_answers = mock_followup
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/followup",
+            json={
+                "session_id": 1,
+                "followup_answers": [{"question": "Why this company?", "answer": "I like the culture."}],
+            },
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["session_id"] == 1
+    finally:
+        interview_module.coach_service.submit_followup_answers = original_followup
+
+
+def test_interview_api_coach_end_success(client):
+    """Test POST /api/v1/interview/coach/end - success case"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_end(db, user, session_id, followup_skipped):
+        return {
+            "session_id": session_id,
+            "review_report": {
+                "dimensions": [],
+                "overall_score": 85,
+                "overall_comment": "Practice session complete.",
+                "improvement_suggestions": [],
+                "markdown": "# Practice Report",
+            },
+            "average_score": 85.0,
+        }
+
+    original_end = interview_module.coach_service.end_session
+    interview_module.coach_service.end_session = mock_end
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/end?session_id=1&followup_skipped=true",
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["session_id"] == 1
+    finally:
+        interview_module.coach_service.end_session = original_end
+
+
+def test_interview_api_coach_end_not_found(client):
+    """Test POST /api/v1/interview/coach/end - session not found"""
+    _set_current_user(1)
+    import src.presentation.api.v1.interview as interview_module
+
+    def mock_end(db, user, session_id, followup_skipped):
+        raise ValueError("Session or unauthorized")
+
+    original_end = interview_module.coach_service.end_session
+    interview_module.coach_service.end_session = mock_end
+
+    try:
+        response = client.post(
+            "/api/v1/interview/coach/end?session_id=999",
+        )
+        assert response.status_code == 404
+    finally:
+        interview_module.coach_service.end_session = original_end
+
+
+def test_interview_api_get_question_not_found(client):
+    """Test GET /api/v1/interview/questions/{question_id} - not found"""
+    _set_current_user(1)
+    response = client.get("/api/v1/interview/questions/99999")
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Interview question not found"
+
+
+def test_interview_api_update_question_not_found(db_session, client):
+    """Test PUT /api/v1/interview/questions/{question_id} - not found"""
+    _set_current_user(1)
+    question = _seed_question(db_session, "Test question")
+
+    original_update = interview_service.update_question
+    interview_service.update_question = AsyncMock(return_value=None)
+
+    try:
+        response = client.put(
+            f"/api/v1/interview/questions/{question.id}",
+            json={
+                "question_text": "Updated question text",
+                "question_type": "technical",
+                "difficulty": "medium",
+            },
+        )
+        assert response.status_code == 404
+    finally:
+        interview_service.update_question = original_update

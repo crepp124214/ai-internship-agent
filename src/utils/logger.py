@@ -11,6 +11,33 @@ import structlog
 
 from src.utils.config_loader import get_settings
 
+# Request ID key
+REQUEST_ID_KEY = "request_id"
+
+
+def _get_request_id_from_context() -> Optional[str]:
+    """Get request_id from context variable if available."""
+    try:
+        from src.presentation.api.middleware.request_id import get_request_id_var
+        return get_request_id_var()
+    except ImportError:
+        return None
+
+
+class RequestIdFilterProcessor:
+    """
+    structlog processor that adds request_id to log entries.
+
+    Extracts request_id from context variable and adds it to the log entry.
+    """
+
+    def __call__(self, logger, method_name, event_dict):
+        # Try to get request_id from context variable
+        request_id = _get_request_id_from_context()
+        if request_id:
+            event_dict["request_id"] = request_id
+        return event_dict
+
 
 def setup_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
     """
@@ -38,6 +65,7 @@ def setup_logger(name: Optional[str] = None) -> structlog.stdlib.BoundLogger:
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         timestamper,
+        RequestIdFilterProcessor(),  # Add request_id from context to log entries
     ]
 
     if settings.APP_ENV == "production":

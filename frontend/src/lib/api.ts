@@ -602,6 +602,10 @@ export const interviewApi = {
     const response = await api.post('/interview/coach/end', null, { params: { session_id: sessionId, followup_skipped: followupSkipped } })
     return response.data
   },
+  async coachGetReport(sessionId: number) {
+    const response = await api.get<{ session_id: number; review_report: ReviewReport; average_score: number }>(`/interview/coach/report/${sessionId}`)
+    return response.data
+  },
 }
 
 export const trackerApi = {
@@ -634,6 +638,7 @@ export interface UserLlmConfig {
   agent: string
   provider: string
   model: string
+  api_key: string | null
   base_url: string | null
   temperature: number
   is_active: boolean

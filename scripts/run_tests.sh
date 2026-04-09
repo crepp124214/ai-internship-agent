@@ -11,6 +11,9 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# 设置测试环境变量
+export APP_ENV=development
+
 # 检查参数
 TEST_TYPE=${1:-"all"}
 
@@ -29,7 +32,7 @@ case $TEST_TYPE in
         ;;
     "e2e")
         echo -e "${YELLOW}运行端到端测试...${NC}"
-        pytest tests/e2e/ -v -s --cov=src --cov-report=term --cov-report=html:htmlcov
+        APP_ENV=development pytest tests/e2e/ -v -s --cov=src --cov-report=term --cov-report=html:htmlcov
         ;;
     "all")
         echo -e "${YELLOW}运行所有测试...${NC}"

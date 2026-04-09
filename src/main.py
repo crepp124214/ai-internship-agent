@@ -5,13 +5,18 @@ AI实习求职Agent系统 - 主入口文件
 import uvicorn
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+
+# 全局异常处理器
+from src.core.errors import api_exception_handler, http_exception_handler
 from src.presentation.api.middleware.rate_limit import (
     RateLimitMiddleware,
     get_rate_limit_runtime_config,
 )
 from src.presentation.api.middleware.security_headers import SecurityHeadersMiddleware
+from src.presentation.api.middleware.request_id import RequestIDMiddleware
 from src.presentation.api.metrics import MetricsMiddleware, metrics
 
+from src.business_logic.readiness import check_readiness
 from src.data_access.database import check_database_connection
 from src.utils.config_loader import get_settings
 from src.utils.logger import setup_logger
@@ -49,6 +54,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request ID middleware - must be first to ensure request_id is available to all subsequent middlewares
+app.add_middleware(RequestIDMiddleware)
 # Rate limiting and security headers middlewares
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -73,6 +80,11 @@ if _tracer_provider is not None:
         logger.info("OpenTelemetry FastAPI instrumentation applied")
     except Exception as exc:
         logger.warning(f"FastAPI instrumentation skipped: {exc}")
+
+# 注册全局异常处理器（拦截所有未处理的异常，转换为统一错误结构）
+app.add_exception_handler(Exception, api_exception_handler)
+# 注册 HTTPException 专用处理器（HTTPException 需要单独处理，因为 FastAPI 默认处理器优先级更高）
+app.add_exception_handler(HTTPException, http_exception_handler)
 
 # 注册路由
 from src.presentation.api.v1 import auth, resume, jobs, interview, users, agent, assistant, user_llm_configs
@@ -110,14 +122,13 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     """就绪检查。"""
-    try:
-        check_database_connection()
-    except Exception as exc:
+    readiness_status = await check_readiness()
+    if not readiness_status.is_ready:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"service not ready: {exc}",
-        ) from exc
-    return {"status": "ready"}
+            detail=readiness_status.to_dict(),
+        ) from None
+    return readiness_status.to_dict()
 
 
 if __name__ == "__main__":

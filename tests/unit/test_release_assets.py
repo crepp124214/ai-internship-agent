@@ -54,7 +54,10 @@ def test_compose_stack_includes_release_services():
 def test_readme_declares_demo_flow():
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "demo / demo123" in readme
+    assert "用户名" in readme
+    assert "`demo`" in readme
+    assert "密码" in readme
+    assert "`demo123`" in readme
     assert "docker compose" in readme
     assert "FastAPI" in readme
     assert "React" in readme

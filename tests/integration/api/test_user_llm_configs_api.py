@@ -185,7 +185,11 @@ def test_save_llm_config_returns_500_on_service_error(client):
         )
 
     assert response.status_code == 500
-    assert "Save config failed" in response.json()["detail"]
+    # 统一错误格式: code, message, retryable
+    # 未知异常隐藏内部细节
+    body = response.json()
+    assert body["code"] == "INTERNAL_ERROR"
+    assert body["retryable"] is True
 
 
 def test_delete_llm_config_requires_authentication(client):
@@ -203,7 +207,10 @@ def test_delete_llm_config_returns_404_when_not_found(client):
         response = client.delete("/api/v1/users/llm-configs/resume_agent")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Config not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "Config not found" in body["message"]
 
 
 def test_delete_llm_config_returns_204_on_success(client):

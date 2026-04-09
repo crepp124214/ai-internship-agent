@@ -74,8 +74,8 @@ describe('Wave 5 frontend smoke', () => {
 
     expect(screen.getByText('AI 求职工作台')).toBeInTheDocument()
     expect(screen.getAllByText('仪表盘').length).toBeGreaterThan(0)
-    expect(screen.getByText('简历')).toBeInTheDocument()
-    expect(screen.getByText('投递追踪')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '退出登录' })).toBeInTheDocument()
+    expect(screen.getByText('简历优化')).toBeInTheDocument()
+    expect(screen.getByText('面试准备')).toBeInTheDocument()
+    expect(screen.getByText('设置中心')).toBeInTheDocument()
   })
 })

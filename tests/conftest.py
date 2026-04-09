@@ -3,6 +3,12 @@ pytest配置文件
 定义测试fixture和配置
 """
 
+import os
+
+# 设置测试环境变量以绕过安全检查
+os.environ.setdefault("APP_ENV", "testing")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-12345")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine

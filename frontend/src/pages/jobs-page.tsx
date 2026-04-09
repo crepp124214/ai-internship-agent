@@ -250,17 +250,19 @@ export function JobsPage() {
                   onChange={handleJobFileImport}
                 />
               </FormField>
-              {importStatus ? (
-                <div
-                  className={
-                    importStatus.kind === 'success'
-                      ? 'rounded-[22px] bg-[rgba(86,128,99,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
-                      : 'rounded-[22px] bg-[rgba(199,107,79,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
-                  }
-                >
-                  {importStatus.message}
-                </div>
-              ) : null}
+               {importStatus ? (
+                 <div
+                   className={
+                     importStatus.kind === 'success'
+                       ? 'rounded-[22px] bg-[rgba(86,128,99,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
+                       : importStatus.kind === 'error'
+                         ? 'rounded-[22px] bg-[rgba(199,107,79,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
+                         : 'rounded-[22px] bg-[rgba(199,107,79,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]/50'
+                   }
+                 >
+                   {importStatus.message}
+                 </div>
+               ) : null}
               <FormField label="岗位标题">
                 <Input
                   value={jobForm.title}
@@ -340,30 +342,42 @@ export function JobsPage() {
           <SectionCard title="匹配分析与流转" subtitle="选择岗位和简历，预览/保存匹配，并跳转简历优化。">
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="岗位">
-                  <Select
-                    value={selectedJobId ?? ''}
-                    onChange={(event) => setSelectedJobId(Number(event.target.value))}
-                  >
-                    {jobsQuery.data?.map((job) => (
-                      <option key={job.id} value={job.id}>
-                        #{job.id} - {job.title} ({job.company})
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
-                <FormField label="简历">
-                  <Select
-                    value={selectedResumeId ?? ''}
-                    onChange={(event) => setSelectedResumeId(Number(event.target.value))}
-                  >
-                    {resumesQuery.data?.map((resume) => (
-                      <option key={resume.id} value={resume.id}>
-                        #{resume.id} - {resume.title}
-                      </option>
-                    ))}
-                  </Select>
-                </FormField>
+               <FormField label="岗位">
+                 {jobsQuery.isLoading ? (
+                   <div className="text-sm text-[var(--color-ink-tertiary)]">加载中...</div>
+                 ) : jobsQuery.data?.length === 0 ? (
+                   <EmptyHint>暂无岗位数据，请先导入或创建岗位。</EmptyHint>
+                 ) : (
+                   <Select
+                     value={selectedJobId ?? ''}
+                     onChange={(event) => setSelectedJobId(Number(event.target.value))}
+                   >
+                     {jobsQuery.data?.map((job) => (
+                       <option key={job.id} value={job.id}>
+                         #{job.id} - {job.title} ({job.company})
+                       </option>
+                     ))}
+                   </Select>
+                 )}
+               </FormField>
+               <FormField label="简历">
+                 {resumesQuery.isLoading ? (
+                   <div className="text-sm text-[var(--color-ink-tertiary)]">加载中...</div>
+                 ) : resumesQuery.data?.length === 0 ? (
+                   <EmptyHint>暂无简历数据，请先导入或创建简历。</EmptyHint>
+                 ) : (
+                   <Select
+                     value={selectedResumeId ?? ''}
+                     onChange={(event) => setSelectedResumeId(Number(event.target.value))}
+                   >
+                     {resumesQuery.data?.map((resume) => (
+                       <option key={resume.id} value={resume.id}>
+                         #{resume.id} - {resume.title}
+                       </option>
+                     ))}
+                   </Select>
+                 )}
+               </FormField>
               </div>
               <div className="flex flex-wrap gap-3">
                 <SecondaryButton

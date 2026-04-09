@@ -174,7 +174,10 @@ def test_jobs_update_propagates_not_found(client):
         )
 
     assert response.status_code == 404
-    assert "岗位不存在" in response.json()["detail"]
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "岗位不存在" in body["message"]
 
 
 def test_jobs_update_requires_authentication(db_session, client):
@@ -194,7 +197,10 @@ def test_jobs_delete_propagates_not_found(client):
         response = client.delete("/api/v1/jobs/999")
 
     assert response.status_code == 404
-    assert "岗位不存在" in response.json()["detail"]
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "岗位不存在" in body["message"]
 
 
 def test_jobs_delete_requires_authentication(db_session, client):
@@ -260,7 +266,10 @@ def test_jobs_match_endpoint_returns_404_for_missing_job(db_session, client):
         )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "job not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "job not found" in body["message"]
 
 
 def test_jobs_match_endpoint_returns_404_for_unowned_resume(db_session, client):
@@ -281,7 +290,10 @@ def test_jobs_match_endpoint_returns_404_for_unowned_resume(db_session, client):
         )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "resume not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "resume not found" in body["message"]
 
 
 def test_jobs_match_endpoint_returns_400_for_empty_resume_text(db_session, client):
@@ -301,7 +313,10 @@ def test_jobs_match_endpoint_returns_400_for_empty_resume_text(db_session, clien
         )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "resume text is empty"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "BAD_REQUEST"
+    assert "resume text is empty" in body["message"]
 
 
 def test_jobs_match_endpoint_returns_500_for_provider_failure(db_session, client):
@@ -321,7 +336,11 @@ def test_jobs_match_endpoint_returns_500_for_provider_failure(db_session, client
         )
 
     assert response.status_code == 500
-    assert "provider failure" in response.json()["detail"]
+    # 统一错误格式: code, message, retryable
+    # 未知异常隐藏内部细节
+    body = response.json()
+    assert body["code"] == "INTERNAL_ERROR"
+    assert body["retryable"] is True
 
 
 def test_jobs_match_persist_endpoint_returns_created_record(db_session, client):
@@ -446,7 +465,10 @@ def test_jobs_match_persist_endpoint_returns_404_for_missing_job(db_session, cli
         )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "job not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "job not found" in body["message"]
 
 
 def test_jobs_match_persist_endpoint_returns_404_for_unowned_resume(db_session, client):
@@ -467,7 +489,10 @@ def test_jobs_match_persist_endpoint_returns_404_for_unowned_resume(db_session, 
         )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "resume not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "resume not found" in body["message"]
 
 
 def test_jobs_match_persist_endpoint_returns_400_for_empty_resume_text(db_session, client):
@@ -487,7 +512,10 @@ def test_jobs_match_persist_endpoint_returns_400_for_empty_resume_text(db_sessio
         )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "resume text is empty"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "BAD_REQUEST"
+    assert "resume text is empty" in body["message"]
 
 
 def test_jobs_match_persist_endpoint_returns_500_for_provider_failure(db_session, client):
@@ -507,7 +535,11 @@ def test_jobs_match_persist_endpoint_returns_500_for_provider_failure(db_session
         )
 
     assert response.status_code == 500
-    assert "provider failure" in response.json()["detail"]
+    # 统一错误格式: code, message, retryable
+    # 未知异常隐藏内部细节
+    body = response.json()
+    assert body["code"] == "INTERNAL_ERROR"
+    assert body["retryable"] is True
 
 
 def test_jobs_match_history_endpoint_returns_404_for_missing_job(db_session, client):
@@ -522,4 +554,126 @@ def test_jobs_match_history_endpoint_returns_404_for_missing_job(db_session, cli
         response = client.get("/api/v1/jobs/999/match-history/")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "job not found"
+    # 统一错误格式: code, message, retryable
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "job not found" in body["message"]
+
+
+def test_save_external_job_requires_authentication(client):
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "Backend Intern",
+            "company": "Example Corp",
+            "location": "Beijing",
+            "description": "Build APIs with FastAPI",
+        },
+    )
+    assert response.status_code == 401
+
+
+def test_save_external_job_succeeds_with_valid_payload(db_session, client):
+    user = _seed_user(db_session, "ext_job_user", "ext_job_user@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "Backend Intern",
+            "company": "Example Corp",
+            "location": "Beijing",
+            "description": "Build APIs with FastAPI and SQLAlchemy",
+            "source_url": "https://example.com/jobs/123",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Backend Intern"
+    assert payload["company"] == "Example Corp"
+    assert payload["location"] == "Beijing"
+    assert payload["source_url"] == "https://example.com/jobs/123"
+
+
+def test_save_external_job_requires_title(db_session, client):
+    user = _seed_user(db_session, "ext_job_user2", "ext_job_user2@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "",
+            "company": "Example Corp",
+            "location": "Beijing",
+            "description": "Build APIs",
+        },
+    )
+    assert response.status_code == 422  # Pydantic validation before business logic
+
+
+def test_save_external_job_requires_company(db_session, client):
+    user = _seed_user(db_session, "ext_job_user3", "ext_job_user3@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "Backend Intern",
+            "company": "",
+            "location": "Beijing",
+            "description": "Build APIs",
+        },
+    )
+    assert response.status_code == 422  # Pydantic validation before business logic
+
+
+def test_save_external_job_requires_location(db_session, client):
+    user = _seed_user(db_session, "ext_job_user4", "ext_job_user4@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "Backend Intern",
+            "company": "Example Corp",
+            "location": "",
+            "description": "Build APIs",
+        },
+    )
+    assert response.status_code == 422  # Pydantic validation before business logic
+
+
+def test_save_external_job_requires_description(db_session, client):
+    user = _seed_user(db_session, "ext_job_user5", "ext_job_user5@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "Backend Intern",
+            "company": "Example Corp",
+            "location": "Beijing",
+            "description": "",
+        },
+    )
+    assert response.status_code == 422  # Pydantic validation before business logic
+
+
+def test_save_external_job_trims_whitespace(db_session, client):
+    user = _seed_user(db_session, "ext_job_user6", "ext_job_user6@example.com")
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/save-external",
+        json={
+            "title": "  Backend Intern  ",
+            "company": "  Example Corp  ",
+            "location": "  Beijing  ",
+            "description": "  Build APIs  ",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Backend Intern"
+    assert payload["company"] == "Example Corp"
+    assert payload["location"] == "Beijing"

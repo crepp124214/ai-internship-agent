@@ -1,6 +1,6 @@
 """System-level API smoke tests."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
@@ -32,7 +32,11 @@ def test_health_endpoint_reports_liveness():
 
 
 def test_ready_endpoint_reports_readiness_when_database_is_available():
-    with patch("src.main.check_database_connection") as mock_check:
+    from src.business_logic.readiness import ReadinessStatus, ReadinessState
+
+    mock_status = ReadinessStatus(state=ReadinessState.READY)
+
+    with patch("src.main.check_readiness", new_callable=AsyncMock, return_value=mock_status) as mock_check:
         response = client.get("/ready")
 
     assert response.status_code == 200
@@ -41,12 +45,19 @@ def test_ready_endpoint_reports_readiness_when_database_is_available():
 
 
 def test_ready_endpoint_returns_503_when_database_check_fails():
-    with patch(
-        "src.main.check_database_connection",
-        side_effect=Exception("database check failed: boom"),
-    ) as mock_check:
+    from src.business_logic.readiness import ReadinessStatus, ReadinessState
+
+    mock_status = ReadinessStatus(
+        state=ReadinessState.NOT_READY,
+        reason="database: connection failed",
+    )
+
+    with patch("src.main.check_readiness", new_callable=AsyncMock, return_value=mock_status) as mock_check:
         response = client.get("/ready")
 
     assert response.status_code == 503
-    assert response.json()["detail"] == "service not ready: database check failed: boom"
+    # 统一错误格式: code, message, retryable, request_id
+    body = response.json()
+    assert body["code"] == "SERVICE_NOT_READY"
+    assert body["retryable"] is True
     mock_check.assert_called_once_with()

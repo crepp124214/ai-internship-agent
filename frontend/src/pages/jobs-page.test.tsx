@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { jobsApi, resumeApi, type Job } from '../lib/api'
@@ -17,6 +18,7 @@ vi.mock('../lib/api', async () => {
       previewMatch: vi.fn(),
       persistMatch: vi.fn(),
       getMatchHistory: vi.fn(),
+      saveExternal: vi.fn(),
     },
     resumeApi: {
       list: vi.fn(),
@@ -32,6 +34,14 @@ vi.mock('../lib/api', async () => {
   }
 })
 
+// Mock scrollIntoView for JSDOM
+beforeEach(() => {
+  vi.clearAllMocks()
+  if (typeof window !== 'undefined') {
+    window.HTMLElement.prototype.scrollIntoView = vi.fn()
+  }
+})
+
 function renderJobsPage() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -42,15 +52,13 @@ function renderJobsPage() {
   })
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      <JobsPage />
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <JobsPage />
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
 
 describe('JobsPage', () => {
   it('imports a local markdown job file, fills the form, and creates the job', async () => {
@@ -93,7 +101,7 @@ describe('JobsPage', () => {
 
     renderJobsPage()
 
-    expect(screen.getByText('岗位匹配工作台')).toBeInTheDocument()
+    expect(screen.getByText('探索公司岗位并分析匹配')).toBeInTheDocument()
 
     await user.upload(
       screen.getByLabelText(/导入本地岗位文件/),
@@ -111,7 +119,7 @@ describe('JobsPage', () => {
       '# Senior Frontend Engineer\nBuild resilient interfaces for candidates.',
     )
     expect(
-      screen.getByText('Imported Senior-Frontend-Engineer.md. The title and description were copied into the form.'),
+      screen.getByText('已导入 Senior-Frontend-Engineer.md，岗位标题和描述已填入表单。'),
     ).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('公司'), 'Acme AI')
@@ -129,6 +137,6 @@ describe('JobsPage', () => {
       }),
     )
 
-    expect(screen.getByText('Job created successfully.')).toBeInTheDocument()
+    expect(screen.getByText('岗位创建成功。')).toBeInTheDocument()
   })
 })
