@@ -77,3 +77,10 @@ docker-compose.override.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# Local agent/session artifacts
+.ccb/
+msg2.txt
+opencode.json
+phase_c_results.json
+run_main_chain.py
