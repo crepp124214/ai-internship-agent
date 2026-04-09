@@ -1,6 +1,6 @@
 # Release Candidate 交付验收清单
 
-> 版本: v1.1.0 | 日期: 2026-04-09 | 目标: 正式小范围试用 + 招聘作品集展示
+> 版本: v1.2.0 | 日期: 2026-04-09 | 目标: 正式小范围试用 + 招聘作品集展示
 
 ## 交付结论
 
@@ -9,8 +9,9 @@
 | 类别 | 状态 | 说明 |
 |------|------|------|
 | 主链路可跑通 | ✅ | 岗位保存→简历优化→面试→设置中心可串联 |
-| 自动化测试通过 | ⚠️ | 534 passed，1 failed（README 测试格式问题，不影响功能） |
+| 自动化测试通过 | ✅ | 535 passed, 18 skipped（unit/integration，排除 entity tests） |
 | 覆盖率 | ⚠️ | 79.66%，原始目标 85%，差距 5.34%（见下方说明） |
+| Phase C 连续跑 | ✅ | 前后端各 20/20（100%），达到 >=95% 标准 |
 | demo 环境能启动 | ✅ | `LLM_PROVIDER=mock` 可启动 |
 | 文档口径一致 | ✅ | 本次修正后统一 |
 | 已知风险已记录 | ✅ | 见"已知问题"节 |
@@ -124,10 +125,25 @@
 
 | 验证项 | 命令 | 结果 |
 |--------|------|------|
-| 单元/集成测试（排除 entity tests） | `APP_ENV=development python -m pytest tests/unit tests/integration --ignore=tests/unit/data_access/test_entities.py -q` | ⚠️ 534 passed, 1 failed, 18 skipped |
+| 单元/集成测试（排除 entity tests） | `APP_ENV=development python -m pytest tests/unit tests/integration --ignore=tests/unit/data_access/test_entities.py -q` | ✅ 535 passed, 18 skipped |
 | 覆盖率 | `APP_ENV=development python -m pytest tests/unit tests/integration --cov=src --cov-report=term --ignore=tests/unit/data_access/test_entities.py` | ⚠️ 79.66%（未达原始目标 85%，已过 pytest.ini 门槛 79%） |
 | 前端 Build | `npm run build` | ✅ 通过 |
 | entity tests（需 Docker PG） | `python -m pytest tests/unit/data_access/test_entities.py` | ⚠️ 28 errors（需 Docker PostgreSQL，CI 专属） |
+
+---
+
+## Phase C 连续跑结果
+
+| 维度 | 任务号 | 结果 |
+|------|--------|------|
+| 后端/API 连续跑 | `20260409-200629-452-46176` | ✅ PASS，20/20，100% |
+| 前端主链路连续跑 | `20260409-200629-538-47700` | ✅ PASS，20/20，100% |
+
+Phase C 封板判定：
+
+- 连续 20 次主链路通过率 >=95%：✅ 达成（100%）
+- P0/P1 问题：✅ 0
+- request_id 可追踪：✅ 达成
 
 ---
 
@@ -136,6 +152,5 @@
 | 问题 | 影响范围 | 是否阻断交付 | 临时规避 | 后续修复建议 |
 |------|----------|------------|----------|------------|
 | 覆盖率未达原始目标 85% | 质量保证 | 否（质量约束，不阻断 demo 试用） | pytest.ini 门槛现为 79%，当前 79.66% 刚好过线 | 补充对 `interview.py`（44%覆盖率）和 `resume.py`（47%覆盖率）的测试，目标恢复至 85% |
-| `test_readme_declares_demo_flow` 断言格式不符 | CI 测试 | 否 | README 已包含 demo 账号信息，仅格式不同 | 更新测试断言匹配当前 README 格式 |
 | entity tests 需 Docker PostgreSQL | 本地 schema drift 验证 | 否 | CI 环境中运行 | 创建 `.env.test` 专门用于测试环境 |
 | coach interview API 集成测试覆盖不足 | 回归保护 | 否 | 手动测试关键流程 | 补充 coach start/answer/report 的集成测试 |
