@@ -2,7 +2,9 @@
 
 ## 当前阶段
 
-- Phase 15: 前端页面重构 + 体验流程 v2.0 ✅ 已完成（2026-04-08）
+- Release Candidate 封板：已形成有条件交付结论（覆盖率未达原始 85% 目标，属于发布限制，不阻断 demo 试用）
+- Phase 15: 前端页面重构 + 体验流程 v2.0 ✅ 已完成（2026-04-09合并到main）
+- Phase 15 面试记录后端同步 ✅ 已完成（2026-04-09）
 - Phase 13: 测试修复 ✅ 已完成（2026-04-07）
 - Phase 12: Tracker 残留代码清理 ✅ 已完成（2026-04-07）
 - Phase 11: P0 紧急修复 ✅ 已完成（2026-04-07）
@@ -297,6 +299,52 @@
 
 ---
 
+## Phase 15: 前端页面重构 + 体验流程 v2.0 ✅ 已完成
+
+### 完成内容（2026-04-09合并到main）
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 设置中心 | `frontend/src/pages/settings/settings-page.tsx` | Notion卡片网格（简历/岗位/面试/Agent配置） |
+| 简历管理页 | `frontend/src/pages/settings/settings-resumes-page.tsx` | 简历列表管理 |
+| 岗位管理页 | `frontend/src/pages/settings/settings-jobs-page.tsx` | 岗位列表管理 |
+| 面试记录页 | `frontend/src/pages/settings/settings-interviews-page.tsx` | 接入真实API（listSessions + coachGetReport） |
+| Agent配置页 | `frontend/src/pages/settings/agent-config-page.tsx` | Provider选择器 |
+| 暖色调设计系统 | `frontend/src/index.css` | CSS变量：珊瑚#e85d4c + 薰衣草#8b7cf8 |
+
+### 提交记录
+
+- `9767fd5` - Merge feature/frontend-redesign into main（62个文件变更，+979/-3703行）
+
+### Phase 15 拆分（feature/frontend-redesign分支）
+
+| Phase | 内容 | 提交 |
+|-------|------|------|
+| Phase 1 | 基础设计系统（CSS变量/字体/动画） | 6d396ea |
+| Phase 2 | 布局与导航（Sidebar/Topbar/CommandPalette） | 936b2e8 |
+| Phase 3 | 岗位匹配模块（卡片/匹配度/键盘导航J/K） | 814a8e6 |
+| Phase 4 | 简历定制模块（悬浮工具栏/Diff视图） | 2f236d7 |
+| Phase 5 | AI面试模块（Claude风格对话/评分卡片） | af92f8e |
+| Phase 6 | Agent助手（Raycast风格CommandPalette） | 47366bd |
+| Phase 7 | Agent配置页面（卡片/Provider选择器） | bceb6f9 |
+| Phase 15 | 设置中心（简历/岗位/面试/Agent配置） | 47366bd |
+
+### 2026-04-09 增量修复（合并后）
+
+| 文件 | 修改 |
+|------|------|
+| `frontend/src/pages/settings/settings-interviews-page.tsx` | 接入真实API，替换DEMO_INTERVIEWS静态数据 |
+| `frontend/src/lib/api.ts` | interviewApi增加coachGetReport方法 |
+| `src/presentation/schemas/interview.py` | CoachStartRequest.jd_id改为可选 |
+| `frontend/src/pages/interview-page.tsx` | 修复coachStart参数类型（jd_id可选）、移除未使用isLast |
+| `frontend/src/pages/components/CoachReviewReportCard.tsx` | 增加averageScore prop |
+| `frontend/src/lib/api.ts` | UserLlmConfig增加api_key字段 |
+| `frontend/package.json` | 安装@types/diff |
+
+**验证：** `npm run build` → ✓ 通过
+
+---
+
 ## Phase 14: Agent 驱动简历/岗位页面 ✅ 完成
 
 ### 实现内容
@@ -371,9 +419,13 @@
 |--------|------|------|
 | ~~P1~~ | ~~Tracker 残留代码物理删除~~ | ✅ Phase 12 已完成 |
 | ~~P2~~ | ~~旧测试失败修复~~ | ✅ Phase 13 已修复 8 个测试 |
-| ~~P1~~ | ~~基础测试覆盖率提升~~ | ✅ 当前 79.57%，目标 85% |
+| ~~P1~~ | ~~基础测试覆盖率提升~~ | ⚠️ 当前 79.66%，pytest.ini 门槛 79%（已过），原始目标 85%（未达） |
 | ~~新功能~~ | ~~Agent 驱动简历/岗位页面~~ | ✅ Agent 助手面板 + 网络搜索公司官网 |
 | ~~新功能~~ | ~~用户 LLM 配置（BYOK）~~ | ✅ 已完成（含 bug 修复：API URL 使用原生 fetch 导致 404） |
+| ~~新功能~~ | ~~Phase 15 前端重构~~ | ✅ feature/frontend-redesign 已合并到 main |
+| ~~新功能~~ | ~~面试记录后端同步~~ | ✅ settings-interviews-page.tsx 接入真实 API |
+| ~~P3~~ | ~~测试覆盖率提升（本次新增 save-external 7 个测试）~~ | ⚠️ 79.66% 已过 pytest.ini 门槛 79%，原始 85% 目标未达 |
+| ~~P3~~ | ~~Release Candidate 封板~~ | ⚠️ 有条件可交付（覆盖率未达原始目标；Agent 配置链路 demo 模式受限）|
 
 ---
 

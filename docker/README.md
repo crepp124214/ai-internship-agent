@@ -1,17 +1,26 @@
 # Docker 多环境使用指南
 
-## 快速开始
+> 📋 **作品集说明**：本项目是一个 AI 实习求职 Agent 系统，帮助学生进行岗位探索、简历优化和面试准备。
 
-### 开发环境（推荐）
+## 演示环境 vs 生产环境
+
+| 功能 | 演示环境 (dev) | 生产环境 (prod) |
+|------|---------------|-----------------|
+| AI 功能（简历优化、面试教练） | 预设响应（mock） | 真实 LLM 调用 |
+| 数据 CRUD（简历、岗位、面试） | ✅ 真实保存 | ✅ 真实保存 |
+| Agent 配置页面 | 可查看界面 | 可保存配置 |
+| LLM 配置生效 | ❌ 需生产环境 | ✅ 真实 API 调用 |
+
+### 开发环境（推荐演示）
 
 ```bash
 docker-compose --env-file .env.dev up --build
 ```
 
 特点：
-- 使用 mock LLM，不花 API 费用
+- 使用 mock LLM，不需要 API 密钥即可体验完整功能流程
 - 热重载开启，修改代码自动生效
-- 自动创建示例数据
+- 自动创建示例数据（种子数据）
 
 访问：
 - 前端：http://localhost:3000
@@ -25,9 +34,13 @@ docker-compose --env-file .env.prod up --build -d
 ```
 
 特点：
-- 使用真实 LLM（需要配置 MINIMAX_API_KEY）
+- 使用真实 LLM（需要配置有效的 API Key）
 - 优化构建，镜像更小
 - 不自动创建示例数据
+
+**重要**：生产环境部署前必须修改 `.env.prod` 中的 LLM 配置：
+- `MINIMAX_API_KEY` 或其他 provider 的 API Key
+- `SECRET_KEY`
 
 ### 测试环境
 
@@ -68,7 +81,7 @@ docker-compose up --build
 
 | 文件 | 用途 | 是否提交 |
 |------|------|---------|
-| `.env.dev` | 开发环境配置 | 是 |
+| `.env.dev` | 开发/演示环境配置 | 是 |
 | `.env.prod` | 生产环境配置 | 是 |
 | `.env.local` | 本地默认配置示例 | 是 |
 | `.env` | 本地实际配置 | 否（已 gitignore） |
@@ -77,6 +90,5 @@ docker-compose up --build
 ## 注意事项
 
 - `.env.local.example` 是本地默认配置示例
-- `.env.dev` 和 `.env.prod` 包含占位符，需要根据实际情况修改
-- 生产环境部署前务必修改 `SECRET_KEY` 和 `MINIMAX_API_KEY`
+- `.env.prod` 包含占位符，生产环境部署前必须修改 `SECRET_KEY` 和 LLM API Key
 - `docker-compose.override.yml` 用于本地开发，会自动被 gitignore，不提交到仓库

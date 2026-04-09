@@ -1,43 +1,43 @@
 import { useNavigate } from 'react-router-dom'
 
 const SETTINGS_CARDS = [
-  {
-    id: 'resumes',
-    icon: '📄',
-    title: '简历管理',
-    description: '上传、编辑和管理简历',
-    stats: '3 份简历',
-    gradient: 'from-rose-50 to-orange-50',
-    path: '/settings/resumes',
-  },
-  {
-    id: 'jobs',
-    icon: '💼',
-    title: '岗位管理',
-    description: '导入和管理目标岗位',
-    stats: '5 个岗位',
-    gradient: 'from-violet-50 to-purple-50',
-    path: '/settings/jobs',
-  },
-  {
-    id: 'interviews',
-    icon: '🎤',
-    title: '面试记录',
-    description: '查看练习历史和报告',
-    stats: '2 次练习',
-    gradient: 'from-cyan-50 to-blue-50',
-    path: '/settings/interviews',
-  },
-  {
-    id: 'agent',
-    icon: '🤖',
-    title: 'Agent 配置',
-    description: '配置 LLM Provider 和模型',
-    stats: '已配置 2/3',
-    gradient: 'from-emerald-50 to-teal-50',
-    path: '/settings/agent-config',
-  },
-]
+    {
+      id: 'resumes',
+      icon: '📄',
+      title: '简历管理',
+      description: '上传、编辑和管理简历',
+      stats: '点击查看',
+      gradient: 'from-rose-50 to-orange-50',
+      path: '/settings/resumes',
+    },
+    {
+      id: 'jobs',
+      icon: '💼',
+      title: '岗位管理',
+      description: '导入和管理目标岗位',
+      stats: '点击查看',
+      gradient: 'from-violet-50 to-purple-50',
+      path: '/settings/jobs',
+    },
+    {
+      id: 'interviews',
+      icon: '🎤',
+      title: '面试记录',
+      description: '查看练习历史和报告',
+      stats: '点击查看',
+      gradient: 'from-cyan-50 to-blue-50',
+      path: '/settings/interviews',
+    },
+    {
+      id: 'agent',
+      icon: '🤖',
+      title: 'Agent 配置',
+      description: '配置 LLM Provider 和模型',
+      stats: '点击配置',
+      gradient: 'from-emerald-50 to-teal-50',
+      path: '/settings/agent-config',
+    },
+  ]
 
 export function SettingsPage() {
   const navigate = useNavigate()

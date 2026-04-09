@@ -3,18 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { AgentChatPanel } from './components/AgentChatPanel'
 import { DataImportModal } from './components/DataImportModal'
 
-// Demo 数据 — 暖色渐变风格
-const DEMO_STATS = [
-  { label: '简历', value: 3, icon: '📄', gradient: 'from-rose-50 to-orange-50' },
-  { label: '岗位', value: 5, icon: '💼', gradient: 'from-violet-50 to-purple-50' },
-  { label: '面试', value: 2, icon: '🎤', gradient: 'from-cyan-50 to-blue-50' },
-]
+  // Demo 数据 — 暖色渐变风格
+  // 注意：以下数据为演示用 mock 数据，实际使用时会从后端 API 获取真实数据
+  // 演示模式下展示功能入口，用户创建数据后会自动显示真实统计
+  const DEMO_STATS = [
+    { label: '简历', value: '→', icon: '📄', gradient: 'from-rose-50 to-orange-50' },
+    { label: '岗位', value: '→', icon: '💼', gradient: 'from-violet-50 to-purple-50' },
+    { label: '面试', value: '→', icon: '🎤', gradient: 'from-cyan-50 to-blue-50' },
+  ]
 
-const DEMO_RECENT = [
-  { type: '简历', action: '优化建议已保存', time: '10:30', icon: '📄' },
-  { type: '匹配', action: '与字节跳动岗位匹配成功', time: '昨天', icon: '💼' },
-  { type: '面试', action: '完成 AI 模拟面试', time: '3天前', icon: '🎤' },
-]
+  const DEMO_RECENT = [
+    { type: '简历', action: '优化建议已保存', time: '10:30', icon: '📄' },
+    { type: '匹配', action: '与字节跳动岗位匹配成功', time: '昨天', icon: '💼' },
+    { type: '面试', action: '完成 AI 模拟面试', time: '3天前', icon: '🎤' },
+  ]
 
 export function DashboardPage() {
   const navigate = useNavigate()
@@ -40,7 +42,7 @@ export function DashboardPage() {
                 →
               </span>
             </div>
-            <p className="text-4xl font-bold tracking-tight text-[var(--color-ink-primary)]">{stat.value}</p>
+            <p className={`font-bold tracking-tight text-[var(--color-ink-primary)] ${stat.value === '→' ? 'text-2xl' : 'text-4xl'}`}>{stat.value}</p>
             <p className="mt-1 text-sm text-[var(--color-ink-secondary)]">{stat.label}</p>
           </button>
         ))}
