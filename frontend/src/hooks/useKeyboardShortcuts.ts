@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 interface KeyboardShortcutHandlers {
@@ -12,7 +12,7 @@ export function useKeyboardShortcuts({
 }: KeyboardShortcutHandlers = {}) {
   const navigate = useNavigate()
   const gKeyPressed = useRef(false)
-  const gKeyTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const gKeyTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     if (!enabled) return

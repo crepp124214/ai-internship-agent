@@ -1,9 +1,4 @@
-import { useLocation } from 'react-router-dom'
-
-export interface BreadcrumbItem {
-  label: string
-  to?: string
-}
+import { useLocation, Link } from 'react-router-dom'
 
 const PAGE_TITLES: Record<string, string> = {
   '/': '仪表盘',
@@ -11,35 +6,37 @@ const PAGE_TITLES: Record<string, string> = {
   '/resume': '简历优化',
   '/interview': '面试准备',
   '/jd-customize': 'JD 定制',
+  '/settings': '设置中心',
+  '/settings/resumes': '简历管理',
+  '/settings/jobs': '岗位管理',
+  '/settings/interviews': '面试记录',
   '/settings/agent-config': 'Agent 配置',
 }
 
-export function Topbar({ onCommandPaletteOpen }: { onCommandPaletteOpen?: () => void }) {
+const SETTINGS_SUB_PATHS = ['/settings/resumes', '/settings/jobs', '/settings/interviews', '/settings/agent-config']
+
+export function Topbar() {
   const location = useLocation()
   const pageTitle = PAGE_TITLES[location.pathname] ?? '未知页面'
+  const isSettingsSubPage = SETTINGS_SUB_PATHS.includes(location.pathname)
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-[var(--color-border)] bg-white px-6">
-      {/* Left: Breadcrumb / Page Title */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-[var(--color-ink)]">{pageTitle}</span>
+    <header className="flex h-14 items-center border-b border-[var(--color-border)] bg-white/80 backdrop-blur-sm px-6">
+      {isSettingsSubPage ? (
+        <div className="flex items-center gap-3">
+          <Link
+            to="/settings"
+            className="flex items-center gap-1 text-sm text-[var(--color-ink-tertiary)] transition-colors hover:text-[var(--color-ink-primary)]"
+          >
+            <span>←</span>
+            <span>设置中心</span>
+          </Link>
+          <span className="text-[var(--color-ink-tertiary)]">/</span>
+          <span className="text-sm font-medium text-[var(--color-ink-primary)]">{pageTitle}</span>
         </div>
-      </div>
-
-      {/* Right: Keyboard hints */}
-      <div className="flex items-center gap-3">
-        {/* Command palette trigger */}
-        <button
-          onClick={onCommandPaletteOpen}
-          className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 text-xs text-[var(--color-ink-secondary)] transition-colors hover:border-[var(--color-ink-tertiary)] hover:text-[var(--color-ink)]"
-        >
-          <span>搜索命令...</span>
-          <kbd className="ml-1 rounded border border-[var(--color-border)] bg-[var(--color-surface-hover)] px-1.5 py-0.5 font-mono text-[10px]">
-            ⌘K
-          </kbd>
-        </button>
-      </div>
+      ) : (
+        <span className="text-sm font-medium text-[var(--color-ink-secondary)]">{pageTitle}</span>
+      )}
     </header>
   )
 }

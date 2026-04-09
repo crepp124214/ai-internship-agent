@@ -30,7 +30,7 @@ export function AuthenticatedAppShell() {
       {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Topbar */}
-        <Topbar onCommandPaletteOpen={handleOpenCommandPalette} />
+        <Topbar />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

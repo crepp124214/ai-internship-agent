@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { AgentAssistantPanel } from './components/agent/AgentAssistantPanel'
+import { AgentAssistantPanel } from '../components/agent/AgentAssistantPanel'
 import { JobCard } from './components/JobCard'
 import { jobsApi, readApiError, resumeApi } from '../lib/api'
 import {

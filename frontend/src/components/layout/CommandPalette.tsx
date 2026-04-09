@@ -7,7 +7,8 @@ export interface Command {
   description?: string
   icon?: string
   keywords?: string[]
-  action: () => void
+  path?: string
+  action?: () => void
   category?: string
 }
 
@@ -23,7 +24,7 @@ const COMMANDS: Command[] = [
     description: '查看首页仪表盘',
     icon: '◉',
     keywords: ['dashboard', '首页', 'home'],
-    action: () => navigate('/'),
+    path: '/',
     category: '导航',
   },
   {
@@ -32,7 +33,7 @@ const COMMANDS: Command[] = [
     description: '浏览和搜索岗位',
     icon: '◈',
     keywords: ['jobs', '岗位', 'job', 'explore'],
-    action: () => navigate('/jobs-explore'),
+    path: '/jobs-explore',
     category: '导航',
   },
   {
@@ -41,7 +42,7 @@ const COMMANDS: Command[] = [
     description: '管理和优化简历',
     icon: '◇',
     keywords: ['resume', '简历', 'cv'],
-    action: () => navigate('/resume'),
+    path: '/resume',
     category: '导航',
   },
   {
@@ -50,7 +51,7 @@ const COMMANDS: Command[] = [
     description: 'AI 模拟面试练习',
     icon: '◎',
     keywords: ['interview', '面试'],
-    action: () => navigate('/interview'),
+    path: '/interview',
     category: '导航',
   },
   {
@@ -59,7 +60,7 @@ const COMMANDS: Command[] = [
     description: '配置 AI Agent 设置',
     icon: '⚙',
     keywords: ['agent', 'config', 'settings', '配置'],
-    action: () => navigate('/settings/agent-config'),
+    path: '/settings/agent-config',
     category: '设置',
   },
 ]
@@ -103,7 +104,9 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
         case 'Enter':
           e.preventDefault()
           if (filteredCommands[selectedIndex]) {
-            filteredCommands[selectedIndex].action()
+            const cmd = filteredCommands[selectedIndex]
+            if (cmd.path) navigate(cmd.path)
+            else cmd.action?.()
             onClose()
           }
           break
@@ -161,7 +164,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                 key={cmd.id}
                 role="option"
                 onClick={() => {
-                  cmd.action()
+                  if (cmd.path) navigate(cmd.path)
+                  else cmd.action?.()
                   onClose()
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}

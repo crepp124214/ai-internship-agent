@@ -1,5 +1,4 @@
 // frontend/src/pages/components/MessageBlock.tsx
-import React from 'react'
 
 interface MessageBlockProps {
   role: 'ai' | 'user'

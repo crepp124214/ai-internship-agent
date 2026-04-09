@@ -186,7 +186,7 @@ export function ResumePage() {
       })
       return { updatedResume, resolvedTitle, fileText, fileName: file.name }
     },
-    onSuccess: async ({ updatedResume, resolvedTitle, fileText, fileName }) => {
+    onSuccess: async ({ updatedResume, fileName }) => {
       queryClient.setQueryData<Resume[]>(['resume', 'list'], (current = []) => [
         updatedResume,
         ...(current ?? []).filter((item) => item.id !== updatedResume.id),

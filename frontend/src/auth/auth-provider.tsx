@@ -83,6 +83,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const activeToken = getStoredToken()
 
       if (!activeToken) {
+        // TEMP: Auto-login as demo user for preview — restore auth check before committing
+        setToken('preview-token')
+        setUser({
+          id: 1,
+          username: 'demo',
+          email: 'demo@example.com',
+          name: 'Demo 用户',
+          phone: null,
+          bio: null,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         setIsBootstrapping(false)
         return
       }

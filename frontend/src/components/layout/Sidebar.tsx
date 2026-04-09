@@ -13,7 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/jobs-explore', label: '岗位探索', icon: '◈', keywords: ['jobs', '岗位', 'job'] },
   { to: '/resume', label: '简历优化', icon: '◇', keywords: ['resume', '简历', 'cv'] },
   { to: '/interview', label: '面试准备', icon: '◎', keywords: ['interview', '面试'] },
-  { to: '/settings/agent-config', label: 'Agent 配置', icon: '⚙', keywords: ['agent', 'config', '设置', '配置'] },
+  { to: '/settings', label: '设置中心', icon: '⚙', keywords: ['settings', '设置', 'config', '配置'] },
 ]
 
 export function Sidebar() {
@@ -21,11 +21,11 @@ export function Sidebar() {
   const { user } = useAuth()
 
   return (
-    <aside className="flex w-60 flex-col bg-[#0D0D0D]">
+    <aside className="flex w-60 flex-col bg-[var(--color-deep)]">
       {/* Logo / Brand */}
       <div className="flex h-14 items-center border-b border-white/8 px-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white/10 text-xs text-white/80">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-[var(--color-accent)] to-[var(--color-secondary)] text-xs text-white">
             ◈
           </div>
           <span className="text-sm font-medium text-white">AI 求职工作台</span>
@@ -55,7 +55,7 @@ export function Sidebar() {
                 >
                   {/* Left indicator bar (only for active) */}
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[var(--color-accent)]" />
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-gradient-to-b from-[var(--color-accent)] to-[var(--color-secondary)]" />
                   )}
                   <span className="text-base">{item.icon}</span>
                   <span className="font-medium">{item.label}</span>

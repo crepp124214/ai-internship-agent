@@ -11,7 +11,6 @@ export function MatchBadge({ score, showBar = true, size = 'md' }: MatchBadgePro
   const percent = Math.round(score)
   const isHigh = percent >= 80
   const isMedium = percent >= 60 && percent < 80
-  const isLow = percent < 60
 
   const colorClass = isHigh
     ? 'text-[var(--color-success)]'

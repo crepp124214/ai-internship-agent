@@ -76,7 +76,7 @@ export function InterviewPage() {
   const [coachMessages, setCoachMessages] = useState<Array<{role: 'ai' | 'user', message: string, score?: number | null}>>([])
   const [coachAnswer, setCoachAnswer] = useState('')
   const [coachReport, setCoachReport] = useState<ReviewReport | null>(null)
-  const [isLast, setIsLast] = useState(false)
+  const [, setIsLast] = useState(false)
   const [inFollowup, setInFollowup] = useState(false)
 
   useEffect(() => {
@@ -132,7 +132,7 @@ export function InterviewPage() {
   })
 
   const startCoachMutation = useMutation({
-    mutationFn: ({ resumeId }: { resumeId: number }) => interviewApi.coachStart({ resume_id: resumeId }),
+    mutationFn: ({ resumeId }: { resumeId: number }) => interviewApi.coachStart({ jd_id: 0, resume_id: resumeId }),
     onSuccess: (data) => {
       setCoachSessionId(data.session_id)
       setCoachMessages([
@@ -287,7 +287,7 @@ export function InterviewPage() {
             </div>
           ) : coachReport ? (
             <div className="space-y-4">
-              <CoachReviewReportCard report={coachReport} />
+              <CoachReviewReportCard report={coachReport} averageScore={coachReport.overall_score} />
               <SecondaryButton type="button" onClick={() => { setCoachReport(null); setCoachMessages([]) }}>
                 重新开始
               </SecondaryButton>
