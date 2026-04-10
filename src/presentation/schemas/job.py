@@ -136,6 +136,8 @@ class JobMatchResponse(BaseModel):
     raw_content: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    status: Optional[str] = Field(default="success", description="执行状态: success | fallback | error")
+    fallback_used: Optional[bool] = Field(default=False, description="是否使用了 fallback")
 
 
 class JobMatchRecord(BaseModel):
@@ -150,6 +152,8 @@ class JobMatchRecord(BaseModel):
     raw_content: str
     provider: str
     model: str
+    status: str = Field(..., min_length=1, max_length=50)
+    fallback_used: bool = False
     created_at: datetime
     updated_at: datetime
 

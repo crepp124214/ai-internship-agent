@@ -183,6 +183,8 @@ class TestInterviewService:
                     "ai_evaluation": "",
                     "score": 90,
                     "feedback": "good",
+                    "status": "success",
+                    "fallback_used": False,
                     "user_id": 55,
                 },
             )

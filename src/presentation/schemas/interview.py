@@ -59,6 +59,8 @@ class InterviewRecordBase(BaseModel):
     feedback: Optional[str] = None
     provider: Optional[str] = None
     model: Optional[str] = None
+    status: Optional[str] = Field(default='success', max_length=50)
+    fallback_used: Optional[bool] = Field(default=False)
 
 
 class InterviewRecordCreate(InterviewRecordBase):
@@ -159,6 +161,8 @@ class InterviewQuestionGenerationResponse(BaseModel):
     raw_content: str
     provider: Optional[str] = None
     model: Optional[str] = None
+    status: Optional[str] = Field(default="success", description="执行状态: success | fallback | error")
+    fallback_used: Optional[bool] = Field(default=False, description="是否使用了 fallback")
 
 
 class InterviewAnswerEvaluationRequest(BaseModel):
@@ -181,6 +185,8 @@ class InterviewAnswerEvaluationResponse(BaseModel):
     raw_content: str
     provider: Optional[str] = None
     model: Optional[str] = None
+    status: Optional[str] = Field(default="success", description="执行状态: success | fallback | error")
+    fallback_used: Optional[bool] = Field(default=False, description="是否使用了 fallback")
 
 
 class InterviewRecordEvaluationRequest(BaseModel):
