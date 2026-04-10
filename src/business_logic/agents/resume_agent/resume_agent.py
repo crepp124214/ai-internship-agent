@@ -17,6 +17,9 @@ class ResumeAgentError(RuntimeError):
     """Base error for resume-agent failures."""
 
 
+MAX_SCORE = 100
+
+
 class EmptyResumeTextError(ResumeAgentError):
     """Raised when resume text is missing or blank."""
 
@@ -37,9 +40,14 @@ class ResumeAgent(BaseAgent):
         llm: Optional[BaseLLM] = None,
         allow_mock_fallback: bool = False,
         user_id: Optional[int] = None,
+        user_llm_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(config)
-        self.config = self._merge_runtime_config(self.config, user_id=user_id)
+        self.config = self._merge_runtime_config(
+            self.config,
+            user_id=user_id,
+            user_llm_config=user_llm_config
+        )
         self.allow_mock_fallback = allow_mock_fallback
         self._active_provider = self.config.get("provider") or "mock"
         self.llm = llm or self._build_llm()
@@ -81,21 +89,18 @@ class ResumeAgent(BaseAgent):
         return {key: value for key, value in default_config.items() if value is not None}
 
     @classmethod
-    def _merge_runtime_config(cls, config: Optional[Dict[str, Any]], user_id: Optional[int] = None) -> Dict[str, Any]:
+    def _merge_runtime_config(
+        cls,
+        config: Optional[Dict[str, Any]],
+        user_id: Optional[int] = None,
+        user_llm_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         merged = cls._load_default_config()
         merged.update(config or {})
 
-        # 查询用户自定义配置，优先使用
-        if user_id is not None:
-            from src.business_logic.user_llm_config_service import user_llm_config_service
-            from src.data_access.database import SessionLocal
-            db = SessionLocal()
-            try:
-                user_config = user_llm_config_service.get_config_for_agent(db, user_id, "resume_agent")
-                if user_config:
-                    merged.update(user_config)
-            finally:
-                db.close()
+        # 优先使用传入的 user_llm_config（由 service 层获取，避免在 agent 构造函数中同步 DB 调用）
+        if user_llm_config:
+            merged.update(user_llm_config)
 
         return {key: value for key, value in merged.items() if value is not None}
 
@@ -130,6 +135,15 @@ class ResumeAgent(BaseAgent):
             "Resume Agent Prompt Pack\n"
             "Use concise, actionable language for resume analysis.\n"
         )
+
+    @staticmethod
+    def _extract_score(content: str) -> int:
+        import re
+        match = re.search(r"score:\s*(\d{1,3})", content, flags=re.IGNORECASE)
+        if not match:
+            return 0
+        score = int(match.group(1))
+        return max(0, min(score, MAX_SCORE))
 
     @staticmethod
     def _normalize_text(resume_text: str) -> str:
