@@ -168,10 +168,25 @@ class ResumeService:
         if resume is None:
             raise ValueError("resume not found")
         resume_text = self._resolve_resume_text(resume)
-        return await self.resume_agent.extract_resume_summary(
+
+        # 从 service 层获取用户 LLM 配置（db 在 async 上下文中，可安全访问）
+        # 不在 agent 构造函数中同步 SessionLocal()，避免阻塞 event loop
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        current_user_id = self._get_current_user_id(current_user)
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "resume_agent")
+
+        user_agent = ResumeAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+
+        result = await user_agent.extract_resume_summary(
             resume_text,
             target_role=target_role,
         )
+
+        return result
 
     async def generate_resume_summary_preview(
         self,
@@ -198,10 +213,24 @@ class ResumeService:
         if resume is None:
             raise ValueError("resume not found")
         resume_text = self._resolve_resume_text(resume)
-        return await self.resume_agent.suggest_resume_improvements(
+
+        # 从 service 层获取用户 LLM 配置（db 在 async 上下文中，可安全访问）
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        current_user_id = self._get_current_user_id(current_user)
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "resume_agent")
+
+        user_agent = ResumeAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+
+        result = await user_agent.suggest_resume_improvements(
             resume_text,
             target_role=target_role,
         )
+
+        return result
 
     async def generate_resume_improvements_preview(
         self,
@@ -229,7 +258,19 @@ class ResumeService:
             raise ValueError("resume not found")
 
         resume_text = self._resolve_resume_text(resume)
-        result = await self.resume_agent.suggest_resume_improvements(
+
+        # 从 service 层获取用户 LLM 配置
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        current_user_id = self._get_current_user_id(current_user)
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "resume_agent")
+
+        user_agent = ResumeAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+
+        result = await user_agent.suggest_resume_improvements(
             resume_text,
             target_role=target_role,
         )
@@ -259,8 +300,8 @@ class ResumeService:
             "ai_suggestion": content,
             "mode": "resume_improvements",
             "raw_content": result.get("raw_content") or content,
-            "provider": result.get("provider") or self._get_resume_provider() or "mock",
-            "model": result.get("model") or self._get_resume_model() or "unknown-model",
+            "provider": result.get("provider") or "mock",
+            "model": result.get("model") or "unknown-model",
             "status": result.get("status", "success"),
             "fallback_used": result.get("fallback_used", False),
         }
@@ -278,7 +319,19 @@ class ResumeService:
             raise ValueError("resume not found")
 
         resume_text = self._resolve_resume_text(resume)
-        result = await self.resume_agent.extract_resume_summary(
+
+        # 从 service 层获取用户 LLM 配置
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        current_user_id = self._get_current_user_id(current_user)
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "resume_agent")
+
+        user_agent = ResumeAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+
+        result = await user_agent.extract_resume_summary(
             resume_text,
             target_role=target_role,
         )
@@ -297,8 +350,8 @@ class ResumeService:
             "ai_suggestion": content,
             "mode": "resume_summary",
             "raw_content": result.get("raw_content") or content,
-            "provider": result.get("provider") or self._get_resume_provider() or "mock",
-            "model": result.get("model") or self._get_resume_model() or "unknown-model",
+            "provider": result.get("provider") or "mock",
+            "model": result.get("model") or "unknown-model",
             "status": result.get("status", "success"),
             "fallback_used": result.get("fallback_used", False),
         }

@@ -118,22 +118,36 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
 
         with patch("src.business_logic.resume.service.resume_repository") as mock_repo:
             mock_repo.get_by_id_and_user_id.return_value = resume
-            self.resume_agent.extract_resume_summary.return_value = {
-                "mode": "summary",
-                "content": "mock summary",
-            }
 
-            result = await self.service.extract_resume_summary(
-                self.db,
-                self.current_user,
-                99,
-            )
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.extract_resume_summary = AsyncMock(return_value={
+                    "mode": "summary",
+                    "content": "mock summary",
+                    "provider": "zhipu",
+                    "model": "glm-4",
+                    "status": "success",
+                    "fallback_used": False,
+                })
+                MockResumeAgent.return_value = mock_agent
 
-            assert result["mode"] == "summary"
-            self.resume_agent.extract_resume_summary.assert_awaited_once_with(
-                "Processed summary text",
-                target_role=None,
-            )
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.extract_resume_summary(
+                        self.db,
+                        self.current_user,
+                        99,
+                    )
+
+                    assert result["mode"] == "summary"
+                    mock_agent.extract_resume_summary.assert_awaited_once_with(
+                        "Processed summary text",
+                        target_role=None,
+                    )
 
     @pytest.mark.asyncio
     async def test_generate_resume_summary_preview_delegates_to_existing_summary_flow(self):
@@ -167,23 +181,37 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
 
         with patch("src.business_logic.resume.service.resume_repository") as mock_repo:
             mock_repo.get_by_id_and_user_id.return_value = resume
-            self.resume_agent.suggest_resume_improvements.return_value = {
-                "mode": "improvements",
-                "content": "mock improvements",
-            }
 
-            result = await self.service.suggest_resume_improvements(
-                self.db,
-                self.current_user,
-                100,
-                target_role="backend engineer",
-            )
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.suggest_resume_improvements = AsyncMock(return_value={
+                    "mode": "improvements",
+                    "content": "mock improvements",
+                    "provider": "zhipu",
+                    "model": "glm-4",
+                    "status": "success",
+                    "fallback_used": False,
+                })
+                MockResumeAgent.return_value = mock_agent
 
-            assert result["mode"] == "improvements"
-            self.resume_agent.suggest_resume_improvements.assert_awaited_once_with(
-                "Raw resume text",
-                target_role="backend engineer",
-            )
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.suggest_resume_improvements(
+                        self.db,
+                        self.current_user,
+                        100,
+                        target_role="backend engineer",
+                    )
+
+                    assert result["mode"] == "improvements"
+                    mock_agent.suggest_resume_improvements.assert_awaited_once_with(
+                        "Raw resume text",
+                        target_role="backend engineer",
+                    )
 
     @pytest.mark.asyncio
     async def test_generate_resume_improvements_preview_delegates_to_existing_improvement_flow(self):
@@ -244,6 +272,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
             "provider": "mock",
             "model": "mock-model",
             "content": "Add measurable impact to each bullet.",
+            "status": "success",
+            "fallback_used": False,
         }
         persisted_optimization = SimpleNamespace(
             id=301,
@@ -258,6 +288,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
             raw_content="Summary: Add measurable impact to each bullet.",
             provider="mock",
             model="mock-model",
+            status="success",
+            fallback_used=False,
         )
 
         with patch("src.business_logic.resume.service.resume_repository") as mock_resume_repo, patch(
@@ -266,37 +298,47 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
         ) as mock_optimization_repo:
             mock_resume_repo.get_by_id_and_user_id.return_value = resume
             mock_optimization_repo.create.return_value = persisted_optimization
-            self.resume_agent.suggest_resume_improvements.return_value = optimization_result
 
-            result = await self.service.persist_resume_improvements(
-                self.db,
-                self.current_user,
-                102,
-                target_role="backend engineer",
-            )
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.suggest_resume_improvements = AsyncMock(return_value=optimization_result)
+                MockResumeAgent.return_value = mock_agent
 
-            assert result is persisted_optimization
-            self.resume_agent.suggest_resume_improvements.assert_awaited_once_with(
-                "Processed resume text",
-                target_role="backend engineer",
-            )
-            mock_optimization_repo.create.assert_called_once()
-            payload = mock_optimization_repo.create.call_args.args[1]
-            assert payload == {
-                "resume_id": 102,
-                "mode": "resume_improvements",
-                "original_text": "Processed resume text",
-                "optimized_text": "Add measurable impact to each bullet.",
-                "optimization_type": "content",
-                "keywords": "metrics, impact",
-                "score": 92,
-                "ai_suggestion": "Add measurable impact to each bullet.",
-                "raw_content": "Summary: Add measurable impact to each bullet.",
-                "provider": "mock",
-                "model": "mock-model",
-                "status": "success",
-                "fallback_used": False,
-            }
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.persist_resume_improvements(
+                        self.db,
+                        self.current_user,
+                        102,
+                        target_role="backend engineer",
+                    )
+
+                    assert result is persisted_optimization
+                    mock_agent.suggest_resume_improvements.assert_awaited_once_with(
+                        "Processed resume text",
+                        target_role="backend engineer",
+                    )
+                    mock_optimization_repo.create.assert_called_once()
+                    payload = mock_optimization_repo.create.call_args.args[1]
+                    assert payload == {
+                        "resume_id": 102,
+                        "mode": "resume_improvements",
+                        "original_text": "Processed resume text",
+                        "optimized_text": "Add measurable impact to each bullet.",
+                        "optimization_type": "content",
+                        "keywords": "metrics, impact",
+                        "score": 92,
+                        "ai_suggestion": "Add measurable impact to each bullet.",
+                        "raw_content": "Summary: Add measurable impact to each bullet.",
+                        "provider": "mock",
+                        "model": "mock-model",
+                        "status": "success",
+                        "fallback_used": False,
+                    }
 
     @pytest.mark.asyncio
     async def test_persist_resume_summary_creates_resume_summary_record(self):
@@ -312,6 +354,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
             "raw_content": "Summary: Candidate has strong backend project experience.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "success",
+            "fallback_used": False,
         }
         persisted_summary = SimpleNamespace(
             id=302,
@@ -326,6 +370,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
             raw_content="Summary: Candidate has strong backend project experience.",
             provider="mock",
             model="mock-model",
+            status="success",
+            fallback_used=False,
         )
 
         with patch("src.business_logic.resume.service.resume_repository") as mock_resume_repo, patch(
@@ -334,36 +380,46 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
         ) as mock_optimization_repo:
             mock_resume_repo.get_by_id_and_user_id.return_value = resume
             mock_optimization_repo.create.return_value = persisted_summary
-            self.resume_agent.extract_resume_summary.return_value = summary_result
 
-            result = await self.service.persist_resume_summary(
-                self.db,
-                self.current_user,
-                104,
-                target_role="backend engineer",
-            )
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.extract_resume_summary = AsyncMock(return_value=summary_result)
+                MockResumeAgent.return_value = mock_agent
 
-            assert result is persisted_summary
-            self.resume_agent.extract_resume_summary.assert_awaited_once_with(
-                "Processed resume text",
-                target_role="backend engineer",
-            )
-            payload = mock_optimization_repo.create.call_args.args[1]
-            assert payload == {
-                "resume_id": 104,
-                "original_text": "Processed resume text",
-                "optimized_text": "Candidate has strong backend project experience.",
-                "optimization_type": "summary",
-                "keywords": "backend engineer",
-                "score": None,
-                "ai_suggestion": "Candidate has strong backend project experience.",
-                "mode": "resume_summary",
-                "raw_content": "Summary: Candidate has strong backend project experience.",
-                "provider": "mock",
-                "model": "mock-model",
-                "status": "success",
-                "fallback_used": False,
-            }
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.persist_resume_summary(
+                        self.db,
+                        self.current_user,
+                        104,
+                        target_role="backend engineer",
+                    )
+
+                    assert result is persisted_summary
+                    mock_agent.extract_resume_summary.assert_awaited_once_with(
+                        "Processed resume text",
+                        target_role="backend engineer",
+                    )
+                    payload = mock_optimization_repo.create.call_args.args[1]
+                    assert payload == {
+                        "resume_id": 104,
+                        "original_text": "Processed resume text",
+                        "optimized_text": "Candidate has strong backend project experience.",
+                        "optimization_type": "summary",
+                        "keywords": "backend engineer",
+                        "score": None,
+                        "ai_suggestion": "Candidate has strong backend project experience.",
+                        "mode": "resume_summary",
+                        "raw_content": "Summary: Candidate has strong backend project experience.",
+                        "provider": "mock",
+                        "model": "mock-model",
+                        "status": "success",
+                        "fallback_used": False,
+                    }
 
     @pytest.mark.asyncio
     async def test_get_resume_optimizations_lists_records_for_current_user(self):
@@ -532,3 +588,211 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
             config={"provider": "mock", "model": "mock-model"},
             allow_mock_fallback=True,
         )
+
+    @pytest.mark.asyncio
+    async def test_extract_resume_summary_uses_user_llm_config_when_available(self):
+        """用户配置了 LLM 时，extract_resume_summary 应使用用户配置而非默认 mock。"""
+        resume = SimpleNamespace(
+            id=99,
+            processed_content="Processed summary text",
+            resume_text="Raw resume text",
+        )
+        user_id = 42
+
+        mock_user_config = {
+            "provider": "zhipu",
+            "model": "glm-4.7",
+            "api_key": "user-key",
+            "base_url": None,
+            "temperature": 0.7,
+        }
+
+        with patch("src.business_logic.resume.service.resume_repository") as mock_repo:
+            mock_repo.get_by_id_and_user_id.return_value = resume
+
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.config = mock_user_config
+                mock_agent.extract_resume_summary = AsyncMock(return_value={
+                    "mode": "summary",
+                    "content": "mock summary",
+                    "provider": "zhipu",
+                    "model": "glm-4.7",
+                    "status": "success",
+                    "fallback_used": False,
+                })
+                MockResumeAgent.return_value = mock_agent
+
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = mock_user_config
+
+                    result = await self.service.extract_resume_summary(
+                        self.db,
+                        self.current_user,
+                        99,
+                    )
+
+                    # 验证 ResumeAgent 被创建时传入了 user_id 和 user_llm_config
+                    MockResumeAgent.assert_called_once_with(
+                        user_id=user_id,
+                        user_llm_config=mock_user_config,
+                        allow_mock_fallback=True,
+                    )
+                    # 验证返回的 provider 和 model 来自用户配置
+                    assert result["provider"] == "zhipu"
+                    assert result["model"] == "glm-4.7"
+
+    @pytest.mark.asyncio
+    async def test_suggest_resume_improvements_uses_user_llm_config_when_available(self):
+        """用户配置了 LLM 时，suggest_resume_improvements 应使用用户配置而非默认 mock。"""
+        resume = SimpleNamespace(
+            id=100,
+            processed_content="Processed resume text",
+            resume_text="Raw resume text",
+        )
+        user_id = 42
+
+        mock_user_config = {
+            "provider": "zhipu",
+            "model": "glm-4.7",
+            "api_key": "user-key",
+            "base_url": None,
+            "temperature": 0.7,
+        }
+
+        with patch("src.business_logic.resume.service.resume_repository") as mock_repo:
+            mock_repo.get_by_id_and_user_id.return_value = resume
+
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.config = mock_user_config
+                mock_agent.suggest_resume_improvements = AsyncMock(return_value={
+                    "mode": "improvements",
+                    "content": "mock improvements",
+                    "provider": "zhipu",
+                    "model": "glm-4.7",
+                    "status": "success",
+                    "fallback_used": False,
+                })
+                MockResumeAgent.return_value = mock_agent
+
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = mock_user_config
+
+                    result = await self.service.suggest_resume_improvements(
+                        self.db,
+                        self.current_user,
+                        100,
+                        target_role="backend engineer",
+                    )
+
+                    MockResumeAgent.assert_called_once_with(
+                        user_id=user_id,
+                        user_llm_config=mock_user_config,
+                        allow_mock_fallback=True,
+                    )
+                    assert result["provider"] == "zhipu"
+                    assert result["model"] == "glm-4.7"
+
+    @pytest.mark.asyncio
+    async def test_extract_resume_summary_fallback_returns_mock_content_on_api_failure(self):
+        """当 LLM API 调用失败且 allow_mock_fallback=True 时，应返回 mock 内容而非抛出异常。"""
+        resume = SimpleNamespace(
+            id=99,
+            processed_content="Processed summary text",
+            resume_text="Raw resume text",
+        )
+
+        with patch("src.business_logic.resume.service.resume_repository") as mock_repo:
+            mock_repo.get_by_id_and_user_id.return_value = resume
+
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                # 模拟 fallback 场景：agent 返回 mock 内容
+                mock_agent.extract_resume_summary = AsyncMock(return_value={
+                    "mode": "summary",
+                    "content": "mock-summary-content",
+                    "provider": "mock",
+                    "model": "mock-model",
+                    "status": "fallback",
+                    "fallback_used": True,
+                })
+                mock_agent.config = {"provider": "zhipu", "model": "glm-4"}
+
+                MockResumeAgent.return_value = mock_agent
+
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.extract_resume_summary(
+                        self.db,
+                        self.current_user,
+                        99,
+                    )
+
+                    # 验证返回了 fallback 的 mock 结果
+                    assert result["provider"] == "mock"
+                    assert result["fallback_used"] is True
+                    assert result["status"] == "fallback"
+
+    @pytest.mark.asyncio
+    async def test_persist_resume_improvements_uses_fallback_provider_from_agent_result(self):
+        """当 extract_resume_summary fallback 返回 mock 内容时，persist_resume_improvements 应使用 agent 结果中的 provider。"""
+        resume = SimpleNamespace(
+            id=102,
+            processed_content="Processed resume text",
+            resume_text="Raw resume text",
+        )
+
+        with patch("src.business_logic.resume.service.resume_repository") as mock_repo, patch(
+            "src.business_logic.resume.service.resume_optimization_repository",
+            create=True,
+        ) as mock_optimization_repo:
+            mock_repo.get_by_id_and_user_id.return_value = resume
+            persisted_optimization = SimpleNamespace(
+                id=301,
+                resume_id=102,
+                provider="mock",
+                model="mock-model",
+                status="fallback",
+                fallback_used=True,
+            )
+            mock_optimization_repo.create.return_value = persisted_optimization
+
+            with patch("src.business_logic.resume.service.ResumeAgent") as MockResumeAgent:
+                mock_agent = MagicMock()
+                mock_agent.suggest_resume_improvements = AsyncMock(return_value={
+                    "mode": "improvements",
+                    "content": "mock improvements",
+                    "raw_content": "mock-raw-content",
+                    "provider": "mock",
+                    "model": "mock-model",
+                    "status": "fallback",
+                    "fallback_used": True,
+                })
+                mock_agent.config = {"provider": "zhipu", "model": "glm-4"}
+                MockResumeAgent.return_value = mock_agent
+
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_ullcs.get_config_for_agent.return_value = {
+                        "provider": "zhipu",
+                        "model": "glm-4",
+                    }
+
+                    result = await self.service.persist_resume_improvements(
+                        self.db,
+                        self.current_user,
+                        102,
+                        target_role="backend engineer",
+                    )
+
+                    mock_optimization_repo.create.assert_called_once()
+                    payload = mock_optimization_repo.create.call_args.args[1]
+                    # provider 必须来自 agent 结果（fallback 时为 "mock"）
+                    assert payload["provider"] == "mock"
+                    assert payload["model"] == "mock-model"
+                    assert payload["status"] == "fallback"
+                    assert payload["fallback_used"] is True
