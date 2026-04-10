@@ -113,6 +113,8 @@ class TestResumeOptimizationEntity:
         assert hasattr(ResumeOptimization, "keywords")
         assert hasattr(ResumeOptimization, "score")
         assert hasattr(ResumeOptimization, "ai_suggestion")
+        assert hasattr(ResumeOptimization, "status")
+        assert hasattr(ResumeOptimization, "fallback_used")
         assert hasattr(ResumeOptimization, "created_at")
         assert hasattr(ResumeOptimization, "updated_at")
 
@@ -153,6 +155,8 @@ class TestJobEntity:
         assert hasattr(Job, "deadline")
         assert hasattr(Job, "created_at")
         assert hasattr(Job, "updated_at")
+        # JobMatchResult fields (should be on the Job entity relationships)
+        assert hasattr(Job, "job_match_results")
 
     def test_job_relationships(self):
         """测试岗位关系映射"""
@@ -231,6 +235,8 @@ class TestInterviewRecordEntity:
         assert hasattr(InterviewRecord, "ai_evaluation")
         assert hasattr(InterviewRecord, "score")
         assert hasattr(InterviewRecord, "feedback")
+        assert hasattr(InterviewRecord, "status")
+        assert hasattr(InterviewRecord, "fallback_used")
         assert hasattr(InterviewRecord, "answered_at")
         assert hasattr(InterviewRecord, "created_at")
         assert hasattr(InterviewRecord, "updated_at")
@@ -309,3 +315,15 @@ class TestEntityStructure:
         assert hasattr(InterviewQuestion, "created_at") and hasattr(InterviewQuestion, "updated_at")
         assert hasattr(InterviewRecord, "created_at") and hasattr(InterviewRecord, "updated_at")
         assert hasattr(InterviewSession, "created_at") and hasattr(InterviewSession, "updated_at")
+
+    def test_new_status_fields_exist(self):
+        """测试新添加的status字段存在"""
+        assert hasattr(ResumeOptimization, "status")
+        assert hasattr(Job, "job_match_results")  # JobMatchResult关系
+        assert hasattr(InterviewRecord, "status")
+
+    def test_new_fallback_fields_exist(self):
+        """测试新添加的fallback_used字段存在"""
+        assert hasattr(ResumeOptimization, "fallback_used")
+        assert hasattr(Job, "job_match_results")  # JobMatchResult关系
+        assert hasattr(InterviewRecord, "fallback_used")

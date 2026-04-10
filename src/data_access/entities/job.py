@@ -4,6 +4,7 @@ Job-related persistence models.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -203,6 +204,9 @@ class JobMatchResult(Base):
     raw_content = Column(Text, nullable=False, comment="Raw LLM output")
     provider = Column(String(50), nullable=False, comment="LLM provider")
     model = Column(String(100), nullable=False, comment="LLM model")
+
+    status = Column(String(50), nullable=False, default="success", index=True, comment="Execution status")
+    fallback_used = Column(Boolean, nullable=False, default=False, index=True, comment="Whether fallback was used")
 
     created_at = Column(DateTime, default=datetime.now, index=True, comment="Created at")
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, comment="Updated at")

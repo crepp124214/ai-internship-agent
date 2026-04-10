@@ -1,6 +1,7 @@
 """Interview persistence entities."""
 
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -71,6 +72,9 @@ class InterviewRecord(Base):
     feedback = Column(Text, comment="Evaluation feedback")
     provider = Column(String(50), index=True, comment="LLM provider")
     model = Column(String(100), index=True, comment="LLM model")
+
+    status = Column(String(50), nullable=False, default="success", index=True, comment="Execution status")
+    fallback_used = Column(Boolean, nullable=False, default=False, index=True, comment="Whether fallback was used")
 
     answered_at = Column(DateTime, index=True, comment="Answered at")
     created_at = Column(DateTime, default=datetime.now, comment="Created at")
