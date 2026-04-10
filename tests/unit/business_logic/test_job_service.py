@@ -249,7 +249,7 @@ class TestJobService:
                     "raw_content": "mock-generate:...",
                     "provider": "mock",
                     "model": "mock-model",
-                    "_fallback_used": True,
+                    "fallback_used": True,
                 })
                 mock_agent.config = {"provider": "zhipu", "model": "glm-4"}
                 with patch("src.business_logic.job.service.JobAgent") as MockJobAgent:
@@ -265,7 +265,7 @@ class TestJobService:
         # 验证返回了 fallback 的 mock 结果
         assert result["score"] == 0
         assert result["provider"] == "mock"
-        assert result["_fallback_used"] is True
+        assert result["fallback_used"] is True
 
     @pytest.mark.asyncio
     async def test_persist_job_match_creates_result_record(self):
@@ -312,6 +312,8 @@ class TestJobService:
             "raw_content": "Score: 86\nFeedback: Strong fit.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "success",
+            "fallback_used": False,
         }
 
     @pytest.mark.asyncio
@@ -345,7 +347,7 @@ class TestJobService:
                     "raw_content": "mock-generate:...",
                     "provider": "mock",
                     "model": "mock-model",
-                    "_fallback_used": True,
+                    "fallback_used": True,
                 }
             ),
         ) as mock_match, patch(

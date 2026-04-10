@@ -261,6 +261,8 @@ class ResumeService:
             "raw_content": result.get("raw_content") or content,
             "provider": result.get("provider") or self._get_resume_provider() or "mock",
             "model": result.get("model") or self._get_resume_model() or "unknown-model",
+            "status": result.get("status", "success"),
+            "fallback_used": result.get("fallback_used", False),
         }
         return resume_optimization_repository.create(db, payload)
 
@@ -297,6 +299,8 @@ class ResumeService:
             "raw_content": result.get("raw_content") or content,
             "provider": result.get("provider") or self._get_resume_provider() or "mock",
             "model": result.get("model") or self._get_resume_model() or "unknown-model",
+            "status": result.get("status", "success"),
+            "fallback_used": result.get("fallback_used", False),
         }
         return resume_optimization_repository.create(db, payload)
 

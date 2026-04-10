@@ -257,6 +257,8 @@ class InterviewService:
             "ai_evaluation": evaluation["raw_content"],
             "provider": evaluation.get("provider") or self._get_interview_provider(),
             "model": evaluation.get("model") or self._get_interview_model(),
+            "status": evaluation.get("status", "success"),
+            "fallback_used": evaluation.get("fallback_used", False),
             "answered_at": getattr(record, "answered_at", None) or datetime.now(),
         }
         return interview_record_repository.update(db, record_id, payload)

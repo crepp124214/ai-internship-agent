@@ -227,8 +227,9 @@ class JobService:
             # fallback 时 result.provider="mock"，非 fallback 时 result.provider=真实配置
             "provider": result.get("provider") or str(provider) if provider is not None else "mock",
             "model": result.get("model") or str(model) if model is not None else "unknown-model",
+            "status": result.get("status", "success"),
+            "fallback_used": result.get("fallback_used", False),
             "matched_at": datetime.now(),
-            "_fallback_used": result.get("_fallback_used"),
         }
 
     async def generate_job_match_preview(
@@ -270,6 +271,8 @@ class JobService:
                 "raw_content": result.get("raw_content", ""),
                 "provider": result.get("provider") or self._get_job_provider() or "mock",
                 "model": result.get("model") or self._get_job_model() or "unknown-model",
+                "status": result.get("status", "success"),
+                "fallback_used": result.get("fallback_used", False),
             },
         )
 

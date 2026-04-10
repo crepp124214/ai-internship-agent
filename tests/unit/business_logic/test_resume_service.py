@@ -294,6 +294,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
                 "raw_content": "Summary: Add measurable impact to each bullet.",
                 "provider": "mock",
                 "model": "mock-model",
+                "status": "success",
+                "fallback_used": False,
             }
 
     @pytest.mark.asyncio
@@ -359,6 +361,8 @@ class TestResumeService(unittest.IsolatedAsyncioTestCase):
                 "raw_content": "Summary: Candidate has strong backend project experience.",
                 "provider": "mock",
                 "model": "mock-model",
+                "status": "success",
+                "fallback_used": False,
             }
 
     @pytest.mark.asyncio
