@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- **Phase 22: AI 链路后端契约对齐** ✅ 已完成（2026-04-10）- 统一 resume/job/interview 三条 AI 链路的运行时语义；所有 agent 响应添加 `status` 和 `fallback_used` 字段；Service 层正确传递完整状态信息；Schema 定义更新；数据库实体添加相应字段；ResumeAgent 移除同步 DB 调用并添加 `user_llm_config` 参数
+- **Phase 22: AI 链路后端契约对齐（resume 专项修复）** ✅ 已完成（2026-04-10）- 修复 resume 链路与 job/interview 路径不一致问题；ResumeService 的 summary/improvements 预览与持久化方法不再依赖单例 default_resume_agent；改用 `user_llm_config_service.get_config_for_agent()` 获取用户配置并创建临时 ResumeAgent；确保 resume 链路稳定携带 provider/model/status/fallback_used 字段；添加4个回归测试覆盖用户配置传入和 fallback 场景；58个业务逻辑测试全部通过
 - **Phase 21: 前端 AI 结果状态机对齐** ✅ 已完成（2026-04-10）- 为 `jobs/resume/interview` 三个页面补齐统一的 `success/fallback/error` 渲染语义；兼容后端新增的 `status/fallback_used` 可选字段；降级结果统一显示”当前显示的是降级结果，不是真实模型输出”；无效内容继续进入错误态，不再用空状态或原始 prompt 片段冒充成功结果
 - **Phase 20: OpenAI Adapter APITimeoutError 导致 retry_async 多次重试挂起修复** ✅ 已完成（2026-04-10）- 根因：`retry_async(max_retries=3)` 装饰 `generate()`，`_run_chat_completion` 将 `APITimeoutError`（httpx timeout 后抛出）包装为 `LLMRetryableError`，导致 retry_async 重试整个 `generate()` 协程，每次重试重新等待 ~10s httpx 超时，累积 ~37s；修复：在 `_run_text_generation`、`_run_chat_completion`、`_run_embedding_request` 三处将 `APITimeoutError` 单独拎出，转换为非 retryable 的 `LLMRequestError`，确保失败立即 fallback；修复后 job/interview 在 ~10.5s 内快速 fallback 到 mock（vs 修复前 37.74s）
 - **Phase 19: OpenAI Adapter timeout=None 导致 30s+ OS 级挂起修复** ✅ 已完成（2026-04-10）- 根因：`OpenAIAdapter._build_client_kwargs()` 当 `timeout=None` 时不传递给 HTTPX，导致连接黑洞地址时 OS TCP 重传挂起 30s+；修复：默认 `timeout=10.0`，确保连接失败时快速超时；与 Phase 17 SessionLocal() 修复共同解决 job/interview 挂起问题
