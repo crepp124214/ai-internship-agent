@@ -138,7 +138,7 @@ cp .env.local.example .env.local
 用文本编辑器打开 `.env.local` 文件，修改数据库连接：
 
 ```
-DATABASE_URL=postgresql://postgres:你的密码@localhost:5432/postgres
+DATABASE_URL=postgresql+psycopg://postgres:你的密码@localhost:5432/postgres
 ```
 
 > **注意**：把"你的密码"改成你安装 PostgreSQL 时设置的密码。如果没改过，Windows 默认可能是 `postgres`，Mac/Linux 默认可能是你的用户名。
@@ -204,6 +204,15 @@ python scripts/seed_demo.py
 
 ```bash
 cd ai-internship-agent
+APP_ENV=development DATABASE_URL=sqlite:///./data/app.db python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+PowerShell 可用等价命令：
+
+```powershell
+cd ai-internship-agent
+$env:APP_ENV="development"
+$env:DATABASE_URL="sqlite:///./data/app.db"
 python -m uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 

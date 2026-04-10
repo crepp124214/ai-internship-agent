@@ -231,9 +231,16 @@ class OpenAIAdapter(BaseLLM):
             "_strict_response_validation",
         ):
             if key == "timeout":
-                value = self.timeout
+                # When timeout is None, the OS TCP retransmission to an unreachable
+                # address can hang for 30+ seconds on Windows. Provide a sane default
+                # (10s) so connection failures fail fast instead of blocking the event loop.
+                value = self.timeout if self.timeout is not None else 10.0
             elif key == "max_retries":
-                value = self.max_retries
+                # Disable HTTPX-level retries; all retry logic is handled by
+                # the retry_async decorator on generate() for deterministic backoff.
+                # Do NOT rely on the AsyncOpenAI client's built-in retry, which
+                # causes unbounded hangs when combined with a misbehaving server.
+                value = 0
             elif key == "base_url":
                 value = self._resolve_option(key, None, env_var=self._env_var("BASE_URL"))
             else:
@@ -293,6 +300,8 @@ class OpenAIAdapter(BaseLLM):
         except openai.BadRequestError:
             # Provider doesn't support this endpoint - fall back to chat
             pass
+        except openai.APITimeoutError as exc:
+            raise LLMRequestError("OpenAI text generation timed out") from exc
         except LLMRequestError:
             raise
         except Exception as exc:
@@ -313,6 +322,13 @@ class OpenAIAdapter(BaseLLM):
             return await self.client.chat.completions.create(**kwargs)
         except LLMRequestError:
             raise
+        except openai.APITimeoutError as exc:
+            # APITimeoutError from httpx means the connection already waited
+            # for timeout seconds (10s with our default). Retrying the same
+            # hung connection via retry_async.generate() would add another
+            # ~40s of delay with no improvement. Raise LLMRequestError
+            # (non-retryable) so the caller falls back immediately.
+            raise LLMRequestError("OpenAI chat request timed out") from exc
         except Exception as exc:  # pragma: no cover - defensive conversion
             if isinstance(exc, self._RETRYABLE_OPENAI_ERRORS + (ConnectionError, TimeoutError)):
                 raise LLMRetryableError("Transient OpenAI chat error") from exc
@@ -323,6 +339,8 @@ class OpenAIAdapter(BaseLLM):
             return await self.client.embeddings.create(**kwargs)
         except LLMRequestError:
             raise
+        except openai.APITimeoutError as exc:
+            raise LLMRequestError("OpenAI embedding request timed out") from exc
         except Exception as exc:  # pragma: no cover - defensive conversion
             if isinstance(exc, self._RETRYABLE_OPENAI_ERRORS + (ConnectionError, TimeoutError)):
                 raise LLMRetryableError("Transient OpenAI embedding error") from exc

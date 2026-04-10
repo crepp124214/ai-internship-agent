@@ -65,6 +65,29 @@ function extractImportedContext(fileName: string, mimeType: string, rawContent: 
   }
 }
 
+// Validate question response - detect mock/prompt artifacts
+// More lenient validation to avoid false positives
+function validateQuestionResponse(question: GeneratedInterviewQuestion): boolean {
+  const text = question.question_text
+  if (!text || typeof text !== 'string') return false
+  const trimmed = text.trim()
+  if (trimmed.length < 5) return false
+  
+  // Check for exact prompt injection markers - more specific patterns
+  const invalidPatterns = [
+    /^mock-/i,
+    /^prompt:/i,
+    /^task:/i,
+    /^agent prompt/i,
+  ]
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(trimmed)) return false
+  }
+  
+  return true
+}
+
 export function InterviewPage() {
   const resumesQuery = useQuery({ queryKey: ['resume', 'list'], queryFn: resumeApi.list })
   const jobsQuery = useQuery({ queryKey: ['jobs', 'list'], queryFn: jobsApi.list })
@@ -118,8 +141,25 @@ export function InterviewPage() {
   }
 
   const generateQuestionsMutation = useMutation({
-    mutationFn: () => interviewApi.generateQuestions({ job_context: jobContext, resume_id: selectedResumeId, count: questionCount }),
+    mutationFn: () => {
+      // Resume is optional - can generate questions without it
+      return interviewApi.generateQuestions({ job_context: jobContext, resume_id: selectedResumeId ?? undefined, count: questionCount })
+    },
     onSuccess: (data) => {
+      // Validate AI response
+      if (!data.questions || data.questions.length === 0) {
+        setFeedback('生成题目失败，请重试或稍后再试。')
+        setGeneratedQuestions([])
+        return
+      }
+      // Validate each question for mock/prompt artifacts
+      const invalidQuestions = data.questions.filter(q => !validateQuestionResponse(q))
+      if (invalidQuestions.length > 0) {
+        console.warn('[Interview] Invalid questions detected:', invalidQuestions.map(q => q.question_text))
+        setFeedback('题目生成服务返回了无效内容，请重试或稍后再试。')
+        setGeneratedQuestions([])
+        return
+      }
       setGeneratedQuestions(data.questions)
       setSelectedGeneratedQuestionIndex(0)
       setFeedback(null)
@@ -144,8 +184,14 @@ export function InterviewPage() {
   })
 
   const startCoachMutation = useMutation({
-    mutationFn: ({ resumeId, jobId }: { resumeId: number; jobId: number }) =>
-      interviewApi.coachStart({ jd_id: jobId, resume_id: resumeId }),
+    mutationFn: () => {
+      const resumeId = selectedResumeId
+      const jobId = selectedJobId
+      if (!resumeId || !jobId) {
+        throw new Error('请先选择简历和岗位')
+      }
+      return interviewApi.coachStart({ jd_id: jobId, resume_id: resumeId })
+    },
     onSuccess: (data) => {
       setCoachSessionId(data.session_id)
       setCoachMessages([
@@ -299,7 +345,7 @@ export function InterviewPage() {
               </FormField>
               <PrimaryButton
                 type="button"
-                onClick={() => startCoachMutation.mutate({ resumeId: selectedResumeId!, jobId: selectedJobId! })}
+                onClick={() => startCoachMutation.mutate()}
                 disabled={!selectedResumeId || !selectedJobId}
               >
                 开始面试教练
@@ -309,7 +355,14 @@ export function InterviewPage() {
         </SectionCard>
       </div>
 
-      {generatedQuestions.length > 0 ? (
+      {/* Priority: show error feedback first, then questions, then empty hint */}
+      {feedback ? (
+        <SectionCard title="生成的题目" subtitle="选择一道题目保存到题库。">
+          <div className="rounded-[22px] border border-[rgba(199,107,79,0.24)] bg-[rgba(199,107,79,0.08)] px-4 py-3 text-sm text-[var(--color-accent)]">
+            {feedback}
+          </div>
+        </SectionCard>
+      ) : generatedQuestions.length > 0 ? (
         <SectionCard title="生成的题目" subtitle="选择一道题目保存到题库。">
           <div className="space-y-4">
             <FormField label="选择题目">

@@ -114,6 +114,29 @@ def test_factory_rejects_unknown_provider():
         LLMFactory.create("unknown", {})
 
 
+def test_factory_returns_zhipu_as_openai_compatible():
+    """zhipu provider should use OpenAIAdapter (OpenAI-compatible API)."""
+    llm = LLMFactory.create(
+        "zhipu",
+        {"api_key": "test-key", "model": "glm-4", "base_url": "https://open.bigmodel.cn"},
+    )
+
+    assert isinstance(llm, OpenAIAdapter)
+    assert llm.config["provider"] == "zhipu"
+    assert llm.model == "glm-4"
+
+
+def test_factory_zhipu_not_mock():
+    """zhipu should NEVER produce MockLLMAdapter."""
+    llm = LLMFactory.create(
+        "zhipu",
+        {"api_key": "test-key", "model": "glm-4.7"},
+    )
+
+    assert not isinstance(llm, MockLLMAdapter)
+    assert isinstance(llm, OpenAIAdapter)
+
+
 @pytest.mark.asyncio
 async def test_mock_provider_is_deterministic():
     llm = LLMFactory.create("mock", {"model": "resume-test"})

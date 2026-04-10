@@ -41,6 +41,7 @@ class ResumeAgent(BaseAgent):
         super().__init__(config)
         self.config = self._merge_runtime_config(self.config, user_id=user_id)
         self.allow_mock_fallback = allow_mock_fallback
+        self._active_provider = self.config.get("provider") or "mock"
         self.llm = llm or self._build_llm()
         self._prompt_pack = self._load_prompt_pack()
 
@@ -104,12 +105,16 @@ class ResumeAgent(BaseAgent):
             return LLMFactory.create(provider, self.config)
         except (LLMProviderError, Exception):
             if self.allow_mock_fallback:
-                fallback_config = dict(self.config)
-                fallback_config["provider"] = "mock"
-                fallback_config.pop("api_key", None)
-                self.config = fallback_config
-                return LLMFactory.create("mock", fallback_config)
+                return self._create_fallback_llm()
             raise
+
+    def _create_fallback_llm(self) -> BaseLLM:
+        """Create a fresh mock LLM adapter for fallback, updating _active_provider."""
+        fallback_config = dict(self.config)
+        fallback_config["provider"] = "mock"
+        fallback_config.pop("api_key", None)
+        self._active_provider = "mock"
+        return LLMFactory.create("mock", fallback_config)
 
     @staticmethod
     def _load_prompt_pack() -> str:
@@ -154,6 +159,23 @@ class ResumeAgent(BaseAgent):
                 system_prompt=self._build_system_prompt("summary", target_role),
             )
         except Exception as exc:  # pragma: no cover - defensive conversion
+            if self.allow_mock_fallback:
+                self.llm = self._create_fallback_llm()
+                fallback_content = await self.llm.generate(
+                    text,
+                    system_prompt=self._build_system_prompt("summary", target_role),
+                )
+                return {
+                    "mode": "summary",
+                    "resume_text": text,
+                    "target_role": target_role,
+                    "content": fallback_content,
+                    "raw_content": fallback_content,
+                    "provider": self._active_provider or "mock",
+                    "model": self.config.get("model") or "unknown",
+                    "status": "fallback",
+                    "fallback_used": True,
+                }
             raise ResumeLLMError("failed to generate resume summary") from exc
         return {
             "mode": "summary",
@@ -161,8 +183,10 @@ class ResumeAgent(BaseAgent):
             "target_role": target_role,
             "content": content,
             "raw_content": content,
-            "provider": self.config.get("provider") or "mock",
+            "provider": self._active_provider or "mock",
             "model": self.config.get("model") or "unknown",
+            "status": "success",
+            "fallback_used": False,
         }
 
     async def suggest_resume_improvements(
@@ -177,6 +201,23 @@ class ResumeAgent(BaseAgent):
                 system_prompt=self._build_system_prompt("improvements", target_role),
             )
         except Exception as exc:  # pragma: no cover - defensive conversion
+            if self.allow_mock_fallback:
+                self.llm = self._create_fallback_llm()
+                fallback_content = await self.llm.generate(
+                    text,
+                    system_prompt=self._build_system_prompt("improvements", target_role),
+                )
+                return {
+                    "mode": "improvements",
+                    "resume_text": text,
+                    "target_role": target_role,
+                    "content": fallback_content,
+                    "raw_content": fallback_content,
+                    "provider": self._active_provider or "mock",
+                    "model": self.config.get("model") or "unknown",
+                    "status": "fallback",
+                    "fallback_used": True,
+                }
             raise ResumeLLMError("failed to generate resume improvements") from exc
         return {
             "mode": "improvements",
@@ -184,8 +225,10 @@ class ResumeAgent(BaseAgent):
             "target_role": target_role,
             "content": content,
             "raw_content": content,
-            "provider": self.config.get("provider") or "mock",
+            "provider": self._active_provider or "mock",
             "model": self.config.get("model") or "unknown",
+            "status": "success",
+            "fallback_used": False,
         }
 
     async def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:

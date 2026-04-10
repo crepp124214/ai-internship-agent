@@ -133,6 +133,14 @@ class TestApiErrorTranslator:
         assert info.http_status == 503
         assert info.retryable is True
 
+    def test_translate_http_exception_403(self):
+        """测试 HTTP 403 禁止访问异常"""
+        exc = HTTPException(status_code=403, detail="Access forbidden")
+        code, info, message = self.translator.translate_exception(exc)
+        assert code == ErrorCode.FORBIDDEN
+        assert info.http_status == 403
+        assert info.retryable is False
+
     def test_translate_resource_not_found_error(self):
         """测试业务层 ResourceNotFoundError"""
         from src.utils.exceptions import ResourceNotFoundError
@@ -236,3 +244,16 @@ class TestApiErrorTranslator:
         assert code == ErrorCode.SERVICE_NOT_READY
         assert info.http_status == 503
         assert info.retryable is True
+
+    def test_to_json_response_403(self):
+        """测试转换为 JSONResponse (403 Forbidden)"""
+        exc = HTTPException(status_code=403, detail="Access forbidden")
+        response = self.translator.to_json_response(exc, request_id="req-789")
+        assert response.status_code == 403
+        import json
+
+        body = json.loads(response.body)
+        assert body["code"] == "FORBIDDEN"
+        assert body["message"] == "Access forbidden"
+        assert body["retryable"] is False
+        assert body["request_id"] == "req-789"

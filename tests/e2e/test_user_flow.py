@@ -248,3 +248,38 @@ class TestUserFlow:
         assert response.status_code == 403
         assert response.json()["code"] == "FORBIDDEN"
         assert response.json()["message"] == "User listing is not available"
+
+    def test_unified_error_structure_includes_all_fields(self, client):
+        """验证统一错误结构包含 code/message/retryable/request_id"""
+        # Register and login
+        client.post(
+            "/api/v1/users/",
+            json={
+                "username": "errorstruct",
+                "email": "errorstruct@example.com",
+                "name": "Error Struct",
+                "password": "password123",
+            },
+        )
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={"username": "errorstruct", "password": "password123"},
+        )
+        headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+        # Test 403 Forbidden includes all unified error fields
+        response = client.get("/api/v1/users/", headers=headers)
+        assert response.status_code == 403
+
+        body = response.json()
+        # 必须包含统一错误结构的所有字段
+        assert "code" in body, "Missing 'code' field"
+        assert "message" in body, "Missing 'message' field"
+        assert "retryable" in body, "Missing 'retryable' field"
+        assert "request_id" in body, "Missing 'request_id' field"
+
+        # 验证字段值
+        assert body["code"] == "FORBIDDEN"
+        assert body["message"] == "User listing is not available"
+        assert body["retryable"] is False
+        assert body["request_id"] is not None  # request_id 应该存在

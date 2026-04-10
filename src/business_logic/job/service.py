@@ -194,12 +194,27 @@ class JobService:
         if resume is None:
             raise ValueError("resume not found")
 
+        # 从 service 层获取用户 LLM 配置（db 在 async 上下文中，可安全访问）
+        # 不在 agent 构造函数中同步 SessionLocal()，避免阻塞 event loop
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "job_agent")
+
+        user_agent = JobAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+
         job_context = self._build_job_context(job)
         resume_context = self._resolve_resume_text(resume)
-        result = await self.job_agent.match_job_to_resume(
+        result = await user_agent.match_job_to_resume(
             job_context=job_context,
             resume_context=resume_context,
         )
+
+        agent_config = getattr(user_agent, "config", {}) or {}
+        provider = agent_config.get("provider")
+        model = agent_config.get("model")
 
         return {
             "mode": result.get("mode", "job_match"),
@@ -208,9 +223,12 @@ class JobService:
             "score": result["score"],
             "feedback": result["feedback"],
             "raw_content": result.get("raw_content", ""),
-            "provider": self._get_job_provider() or "mock",
-            "model": self._get_job_model() or "unknown-model",
+            # 使用 result 中的 provider（来自 agent 的 _active_provider），正确反映实际使用的 provider
+            # fallback 时 result.provider="mock"，非 fallback 时 result.provider=真实配置
+            "provider": result.get("provider") or str(provider) if provider is not None else "mock",
+            "model": result.get("model") or str(model) if model is not None else "unknown-model",
             "matched_at": datetime.now(),
+            "_fallback_used": result.get("_fallback_used"),
         }
 
     async def generate_job_match_preview(

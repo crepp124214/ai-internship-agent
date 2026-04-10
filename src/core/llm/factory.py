@@ -32,7 +32,7 @@ class LLMFactory:
 
         if provider_name in {"mock", "stub"}:
             return MockLLMAdapter(merged_config)
-        if provider_name in {"openai", "minimax"}:
+        if provider_name in {"openai", "minimax", "zhipu"}:
             return OpenAIAdapter(merged_config)
         raise LLMProviderError(f"Unsupported LLM provider: {provider_name}")
 

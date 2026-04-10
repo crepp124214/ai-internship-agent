@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "006_tracker_advice_mode"
-down_revision = "005_interview_record_provider_model"
+down_revision = "005_interview_provider_model"
 branch_labels = None
 depends_on = None
 

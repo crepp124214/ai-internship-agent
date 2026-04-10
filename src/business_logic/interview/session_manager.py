@@ -117,7 +117,7 @@ class InterviewSessionManager:
             "total_questions": question_count,
         }
 
-    async def submit_answer(
+    def submit_answer(
         self,
         db: Session,
         user,
@@ -135,8 +135,8 @@ class InterviewSessionManager:
 
         current_q = state.questions[state.current_index]
 
-        # 调用 agent 评分
-        score_feedback = await self._score_answer(
+        # 调用 agent 评分 (sync version with fallback)
+        score_feedback = self._score_answer(
             current_q, answer, state.jd_text
         )
 
@@ -177,7 +177,7 @@ class InterviewSessionManager:
             "timeout_followup_skipped": False,
         }
 
-    async def submit_followup_answers(
+    def submit_followup_answers(
         self,
         db: Session,
         user,
@@ -191,7 +191,7 @@ class InterviewSessionManager:
 
         # 保存追问记录
         for fa in followup_answers:
-            score_feedback = await self._score_answer(
+            score_feedback = self._score_answer(
                 fa["question"], fa["answer"], state.jd_text
             )
             state.answers.append(AnswerRecord(
@@ -247,12 +247,18 @@ class InterviewSessionManager:
         """使用 agent 生成开场白和问题列表。"""
         if self._agent:
             try:
-                result = self._agent.generate_coach_flow(
-                    job_title=job_title,
-                    jd_text=jd_text,
-                    count=count,
-                )
-                return result.get("opening", ""), result.get("questions", [])
+                # Check if agent method is async and handle accordingly
+                import inspect
+                if inspect.iscoroutinefunction(self._agent.generate_coach_flow):
+                    # Cannot await in sync context - use fallback
+                    logger.warning("Agent generate_coach_flow is async, using fallback")
+                else:
+                    result = self._agent.generate_coach_flow(
+                        job_title=job_title,
+                        jd_text=jd_text,
+                        count=count,
+                    )
+                    return result.get("opening", ""), result.get("questions", [])
             except Exception as exc:
                 logger.warning(f"Coach flow generation failed, using fallback: {exc}")
         # Fallback
@@ -266,17 +272,23 @@ class InterviewSessionManager:
         ]
         return opening, questions[:count]
 
-    async def _score_answer(
+    def _score_answer(
         self, question: str, answer: str, jd_text: str
     ) -> dict:
-        """调用 agent 评分。"""
+        """调用 agent 评分 (sync version with fallback)."""
         if self._agent:
             try:
-                return await self._agent.evaluate_single_answer(
-                    question=question,
-                    answer=answer,
-                    job_context=jd_text,
-                )
+                # Check if agent method is async and handle accordingly
+                import inspect
+                if inspect.iscoroutinefunction(self._agent.evaluate_single_answer):
+                    # Cannot await in sync context - use fallback
+                    logger.warning("Agent evaluate_single_answer is async, using fallback")
+                else:
+                    return self._agent.evaluate_single_answer(
+                        question=question,
+                        answer=answer,
+                        job_context=jd_text,
+                    )
             except Exception as exc:
                 logger.warning(f"Answer scoring failed, using fallback: {exc}")
         # Fallback

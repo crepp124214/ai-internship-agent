@@ -2,12 +2,17 @@
 
 ## 当前阶段
 
+- **Phase 20: OpenAI Adapter APITimeoutError 导致 retry_async 多次重试挂起修复** ✅ 已完成（2026-04-10）- 根因：`retry_async(max_retries=3)` 装饰 `generate()`，`_run_chat_completion` 将 `APITimeoutError`（httpx timeout 后抛出）包装为 `LLMRetryableError`，导致 retry_async 重试整个 `generate()` 协程，每次重试重新等待 ~10s httpx 超时，累积 ~37s；修复：在 `_run_text_generation`、`_run_chat_completion`、`_run_embedding_request` 三处将 `APITimeoutError` 单独拎出，转换为非 retryable 的 `LLMRequestError`，确保失败立即 fallback；修复后 job/interview 在 ~10.5s 内快速 fallback 到 mock（vs 修复前 37.74s）
+- **Phase 19: OpenAI Adapter timeout=None 导致 30s+ OS 级挂起修复** ✅ 已完成（2026-04-10）- 根因：`OpenAIAdapter._build_client_kwargs()` 当 `timeout=None` 时不传递给 HTTPX，导致连接黑洞地址时 OS TCP 重传挂起 30s+；修复：默认 `timeout=10.0`，确保连接失败时快速超时；与 Phase 17 SessionLocal() 修复共同解决 job/interview 挂起问题
+- **Phase 18: OpenAI Adapter HTTPX 重试叠加导致 40s+ 挂起修复** ✅ 已完成（2026-04-10）- 强制 OpenAIAdapter HTTP 客户端 `max_retries=0`，禁用 HTTPX 内置重试，统一由 `retry_async` 装饰器提供确定性 backoff，消除两层重试叠加导致的 40s+ 长时间挂起
+- **Phase 17: User LLM Config 链路 fallback 行为修复** ✅ 已完成（2026-04-10）- 修复 user 保存 LLM config 后，业务链路在 API 调用失败时缺少 mock fallback 的根因；确保 provider 字段与实际使用内容一致
 - Release Candidate 封板：✅ Phase C 已完成（前后端连续跑 20/20，100% 通过）；当前仍为有条件交付（覆盖率未达原始 85% 目标）
 - Phase 15: 前端页面重构 + 体验流程 v2.0 ✅ 已完成（2026-04-09合并到main）
 - Phase 15 面试记录后端同步 ✅ 已完成（2026-04-09）
 - Phase 13: 测试修复 ✅ 已完成（2026-04-07）
 - Phase 12: Tracker 残留代码清理 ✅ 已完成（2026-04-07）
 - Phase 11: P0 紧急修复 ✅ 已完成（2026-04-07）
+- **Phase 16: 面试 coach async/sync 边界修复** ✅ 已完成（2026-04-10）- 修复 coach_answer/coach_followup 路由的 async 边界问题，确保本地开发和测试均通过
 
 ---
 
@@ -337,9 +342,77 @@
 | `frontend/src/lib/api.ts` | interviewApi增加coachGetReport方法 |
 | `src/presentation/schemas/interview.py` | CoachStartRequest.jd_id改为可选 |
 | `frontend/src/pages/interview-page.tsx` | 修复coachStart参数类型（jd_id可选）、移除未使用isLast |
+
+---
+
+## Bug Fix: 用户 LLM 配置未生效 + Coach Start 500 ✅ 完成（2026-04-10）
+
+### 问题 1：coach start 500 错误
+
+**根因：** `src/data_access/repositories/__init__.py` 使用 `from . import job_repository` 导入的是**模块**而非**实例**。`session_manager.py` 调用 `job_repository.get_by_id()` 时实际在模块上查找方法，不存在。
+
+**修复文件：**
+- `src/data_access/repositories/__init__.py` - 改为 `from .job_repository import job_repository` 直接导入实例
+
+### 问题 2：业务接口强制走 mock provider
+
+**根因：** `JobService.match_job_to_resume` 和 `InterviewService.generate_questions_for_job` 使用默认 agent 实例，这些实例在模块加载时创建，不带 `user_id`，导致用户 LLM 配置从未被加载。
+
+**修复文件：**
+- `src/business_logic/job/service.py` - `match_job_to_resume` 内部创建 `JobAgent(user_id=current_user_id)` 以加载用户配置
+- `src/business_logic/interview/service.py` - `generate_questions_for_job` 内部创建 `InterviewAgent(user_id=current_user_id)` 以加载用户配置
+- `src/business_logic/interview/coach_service.py` - `_get_manager` 增加 `db` 参数，从 `user_llm_config_service` 读取用户 LLM 配置创建 `LiteLLMAdapter`
+
+### 回归测试
+
+| 测试文件 | 测试用例 |
+|----------|----------|
+| `tests/unit/business_logic/test_job_service.py` | `test_match_job_to_resume_uses_user_llm_config_when_available` |
+| `tests/unit/business_logic/test_interview_service.py` | `test_generate_questions_for_job_uses_user_llm_config` |
+| `tests/unit/business_logic/interview/test_coach_service.py` | `test_start_session_uses_user_llm_config`, `test_start_session_falls_back_to_default_llm_without_user_config` |
 | `frontend/src/pages/components/CoachReviewReportCard.tsx` | 增加averageScore prop |
 | `frontend/src/lib/api.ts` | UserLlmConfig增加api_key字段 |
 | `frontend/package.json` | 安装@types/diff |
+
+---
+
+## Bug Fix: LLM Factory 不支持 zhipu + Agent Fallback 篡改配置 ✅ 完成（2026-04-10）
+
+### 问题
+
+用户配置了 `provider: "zhipu"` 后，`POST /api/v1/jobs/2/match/` 响应中 `provider: "mock"` 而 `model: "glm-4.6v"`（model 来自用户配置，但 provider 被篡改）。
+
+### 根因（两层）
+
+**第一层 — `LLMFactory.create` 不支持 "zhipu"：**
+`factory.py` 只支持 `{"mock", "stub", "openai", "minimax"}`，"zhipu" 导致 `LLMProviderError`，触发 `_build_llm` 中的 fallback。
+
+**第二层 — Fallback 篡改 `self.config["provider"]`：**
+`_build_llm` 的 except 分支执行 `self.config["provider"] = "mock"`，将用户原始配置覆盖。`match_job_to_resume` 响应中读 `self.config.get("provider")` 即为被篡改后的 "mock"。
+
+### 修复文件
+
+| 文件 | 修改 |
+|------|------|
+| `src/core/llm/factory.py` | `"zhipu"` 加入 provider 列表，映射到 `OpenAIAdapter`（zhipu 是 OpenAI 兼容接口） |
+| `src/business_logic/agents/job_agent/job_agent.py` | 新增 `self._active_provider` 保存原始 provider；`_build_llm` fallback 不再篡改 `self.config`；`match_job_to_resume` 响应改用 `_active_provider` |
+| `src/business_logic/agents/interview_agent/interview_agent.py` | 同上，`generate_interview_questions` / `evaluate_interview_answer` 响应改用 `_active_provider` |
+| `src/business_logic/agents/resume_agent/resume_agent.py` | 同上，`extract_resume_summary` / `suggest_resume_improvements` 响应改用 `_active_provider` |
+
+### 回归测试
+
+| 测试文件 | 测试用例 |
+|----------|----------|
+| `tests/unit/core/test_llm_factory.py` | `test_factory_returns_zhipu_as_openai_compatible`, `test_factory_zhipu_not_mock` |
+| `tests/unit/core/test_job_agent.py` | `test_job_agent_active_provider_reflects_zhipu_not_mock`, `test_job_agent_fallback_does_not_corrupt_config_provider`, `test_job_agent_with_zhipu_config_creates_openai_adapter`, `test_job_agent_match_response_reports_zhipu_provider` |
+
+**验证：** `python -m pytest tests/unit/business_logic/ tests/unit/core/test_job_agent.py tests/unit/core/test_interview_agent.py tests/unit/core/test_llm_factory.py` → **236 passed, 0 failed**
+
+### 已实质切换到真实 provider 的链路
+
+- `POST /api/v1/jobs/{id}/match/` — job_agent 使用 OpenAIAdapter（zhipu OpenAI 兼容接口）
+- `POST /api/v1/interview/questions/generate/` — interview_agent 同上
+- `POST /api/v1/interview/coach/start` — coach_service 使用 LiteLLMAdapter（已支持 zhipu）
 
 **验证：** `npm run build` → ✓ 通过
 

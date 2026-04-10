@@ -38,10 +38,16 @@ class JobAgent(BaseAgent):
         llm: Optional[BaseLLM] = None,
         allow_mock_fallback: bool = False,
         user_id: Optional[int] = None,
+        user_llm_config: Optional[Dict[str, Any]] = None,
     ):
         super().__init__(config)
-        self.config = self._merge_runtime_config(self.config, user_id=user_id)
+        self.config = self._merge_runtime_config(
+            self.config,
+            user_id=user_id,
+            user_llm_config=user_llm_config,
+        )
         self.allow_mock_fallback = allow_mock_fallback
+        self._active_provider = self.config.get("provider") or "mock"
         self.llm = llm or self._build_llm()
         self._prompt_pack = self._load_prompt_pack()
 
@@ -81,21 +87,18 @@ class JobAgent(BaseAgent):
         return {key: value for key, value in default_config.items() if value is not None}
 
     @classmethod
-    def _merge_runtime_config(cls, config: Optional[Dict[str, Any]], user_id: Optional[int] = None) -> Dict[str, Any]:
+    def _merge_runtime_config(
+        cls,
+        config: Optional[Dict[str, Any]],
+        user_id: Optional[int] = None,
+        user_llm_config: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         merged = cls._load_default_config()
         merged.update(config or {})
 
-        # 查询用户自定义配置，优先使用
-        if user_id is not None:
-            from src.business_logic.user_llm_config_service import user_llm_config_service
-            from src.data_access.database import SessionLocal
-            db = SessionLocal()
-            try:
-                user_config = user_llm_config_service.get_config_for_agent(db, user_id, "job_agent")
-                if user_config:
-                    merged.update(user_config)
-            finally:
-                db.close()
+        # 优先使用传入的 user_llm_config（由 service 层获取，避免在 agent 构造函数中同步 DB 调用）
+        if user_llm_config:
+            merged.update(user_llm_config)
 
         return {key: value for key, value in merged.items() if value is not None}
 
@@ -105,12 +108,16 @@ class JobAgent(BaseAgent):
             return LLMFactory.create(provider, self.config)
         except (LLMProviderError, Exception):
             if self.allow_mock_fallback:
-                fallback_config = dict(self.config)
-                fallback_config["provider"] = "mock"
-                fallback_config.pop("api_key", None)
-                self.config = fallback_config
-                return LLMFactory.create("mock", fallback_config)
+                return self._create_fallback_llm()
             raise
+
+    def _create_fallback_llm(self) -> BaseLLM:
+        """Create a fresh mock LLM adapter for fallback, updating _active_provider."""
+        fallback_config = dict(self.config)
+        fallback_config["provider"] = "mock"
+        fallback_config.pop("api_key", None)
+        self._active_provider = "mock"
+        return LLMFactory.create("mock", fallback_config)
 
     @staticmethod
     def _load_prompt_pack() -> str:
@@ -182,6 +189,28 @@ class JobAgent(BaseAgent):
                 ),
             )
         except (LLMRequestError, Exception) as exc:  # pragma: no cover - defensive conversion
+            if self.allow_mock_fallback:
+                # API 调用失败时，创建 fresh fallback adapter 并重试
+                self.llm = self._create_fallback_llm()
+                fallback_content = await self.llm.generate(
+                    normalized_resume_context,
+                    system_prompt=self._build_prompt(
+                        normalized_job_context,
+                        normalized_resume_context,
+                    ),
+                )
+                return {
+                    "mode": "job_match",
+                    "job_context": normalized_job_context,
+                    "resume_context": normalized_resume_context,
+                    "score": self._extract_score(fallback_content),
+                    "feedback": self._extract_feedback(fallback_content),
+                    "raw_content": fallback_content,
+                    "provider": self._active_provider or "mock",
+                    "model": self.config.get("model") or "unknown",
+                    "status": "fallback",
+                    "fallback_used": True,
+                }
             raise JobMatchLLMError("failed to match job and resume") from exc
 
         return {
@@ -191,8 +220,10 @@ class JobAgent(BaseAgent):
             "score": self._extract_score(content),
             "feedback": self._extract_feedback(content),
             "raw_content": content,
-            "provider": self.config.get("provider") or "mock",
+            "provider": self._active_provider or "mock",
             "model": self.config.get("model") or "unknown",
+            "status": "success",
+            "fallback_used": False,
         }
 
     async def execute(self, task: Dict[str, Any]) -> Dict[str, Any]:

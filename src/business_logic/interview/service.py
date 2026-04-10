@@ -169,7 +169,17 @@ class InterviewService:
             if resume is None:
                 raise ValueError("resume not found")
             resume_context = self._resolve_resume_text(resume)
-        return await self.interview_agent.generate_interview_questions(
+        # 从 service 层获取用户 LLM 配置（db 在 async 上下文中，可安全访问）
+        # 不在 agent 构造函数中同步 SessionLocal()，避免阻塞 event loop
+        from src.business_logic.user_llm_config_service import user_llm_config_service
+        user_llm_config = user_llm_config_service.get_config_for_agent(db, current_user_id, "interview_agent")
+
+        user_agent = InterviewAgent(
+            user_id=current_user_id,
+            user_llm_config=user_llm_config,
+            allow_mock_fallback=True,
+        )
+        return await user_agent.generate_interview_questions(
             job_context=job_context,
             resume_context=resume_context,
             count=count,

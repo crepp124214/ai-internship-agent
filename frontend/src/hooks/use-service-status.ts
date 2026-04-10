@@ -14,7 +14,14 @@ interface ServiceState {
   checkConnectivity: () => Promise<void>
 }
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+const apiBaseUrl = (function() {
+  // In development, use relative path to go through Vite proxy
+  if (import.meta.env.DEV) {
+    return ''  // Relative URL - goes through Vite proxy to http://127.0.0.1:8000
+  }
+  // In production, use configured base URL
+  return (import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+})()
 
 export const useServiceStatus = create<ServiceState>((set, get) => ({
   status: 'idle',

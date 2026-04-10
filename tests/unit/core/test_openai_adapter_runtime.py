@@ -123,7 +123,9 @@ class TestOpenAIAdapterRuntime:
         assert mock_openai.call_args.kwargs["api_key"] == "env-key"
         assert mock_openai.call_args.kwargs["base_url"] == "https://env.example.com/v1"
         assert mock_openai.call_args.kwargs["timeout"] == 15.5
-        assert mock_openai.call_args.kwargs["max_retries"] == 7
+        # max_retries 必须为 0，禁用 HTTPX 内置重试，避免与 retry_async 装饰器叠加
+        # 造成 40s+ 长时间挂起。所有重试统一由 retry_async 处理。
+        assert mock_openai.call_args.kwargs["max_retries"] == 0
         assert adapter.config.get("base_url") is None
 
     def test_init_uses_nested_runtime_config_and_coerces_numeric_values(self, monkeypatch):
@@ -157,7 +159,8 @@ class TestOpenAIAdapterRuntime:
         assert adapter.temperature == 0.25
         assert adapter.max_tokens == 1024
         assert mock_openai.call_args.kwargs["timeout"] == 30.0
-        assert mock_openai.call_args.kwargs["max_retries"] == 9
+        # max_retries 强制为 0，不接受用户配置的 max_retries
+        assert mock_openai.call_args.kwargs["max_retries"] == 0
 
     def test_init_falls_back_to_environment_for_invalid_numeric_top_level_config(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -192,7 +195,8 @@ class TestOpenAIAdapterRuntime:
         assert adapter.temperature == 0.42
         assert adapter.max_tokens == 256
         assert mock_openai.call_args.kwargs["timeout"] == 15.5
-        assert mock_openai.call_args.kwargs["max_retries"] == 7
+        # max_retries 强制为 0，不接受环境变量中的 OPENAI_MAX_RETRIES
+        assert mock_openai.call_args.kwargs["max_retries"] == 0
 
     @pytest.mark.asyncio
     async def test_generate_uses_responses_api(self):
@@ -345,10 +349,19 @@ class TestOpenAIAdapterRuntime:
 
     @pytest.mark.asyncio
     async def test_generate_retries_transient_openai_errors(self):
+        """验证 retry_async 在真正的可重试错误（如 RateLimitError）上重试。
+
+        APITimeoutError 不应触发重试（httpx 已等待 timeout 秒，重试只会增加延迟），
+        但 RateLimitError 等真正的可重试错误应该被 retry_async 重试。
+        """
         response = SimpleNamespace(output_text="recovered")
         client = MagicMock()
-        transient_error = openai.APITimeoutError(request=MagicMock())
-        client.responses.create = AsyncMock(side_effect=[transient_error, response])
+        rate_limit_error = openai.RateLimitError(
+            "rate limited",
+            response=MagicMock(request=MagicMock(), status_code=429),
+            body={},
+        )
+        client.responses.create = AsyncMock(side_effect=[rate_limit_error, response])
 
         with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
             adapter = OpenAIAdapter({"api_key": "test-key", "model": "gpt-4o-mini"})
@@ -358,7 +371,25 @@ class TestOpenAIAdapterRuntime:
 
         assert result == "recovered"
         assert client.responses.create.await_count == 2
-        assert sleep_mock.await_count == 1
+
+    def test_init_defaults_to_10s_timeout_when_not_specified(self, monkeypatch):
+        """修复回归：timeout=None 时 OS TCP 重传导致连接黑洞地址挂起 30s+。
+
+        当 config 中未指定 timeout 时，OpenAIAdapter 应使用默认 10s timeout，
+        避免连接 127.0.0.1:9 这类黑洞地址时长时间挂起。
+        """
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_TIMEOUT", raising=False)
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+        client = MagicMock()
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client) as mock_openai:
+            adapter = OpenAIAdapter({})
+
+        # timeout 必须为 10.0（默认值），不能是 None
+        assert mock_openai.call_args.kwargs["timeout"] == 10.0
+        # max_retries 强制为 0
+        assert mock_openai.call_args.kwargs["max_retries"] == 0
 
     @pytest.mark.asyncio
     async def test_embedding_retries_transient_openai_errors(self):

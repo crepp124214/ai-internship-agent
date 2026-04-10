@@ -74,6 +74,31 @@ async function readTextFile(file: File) {
   })
 }
 
+// Validate AI content - detect mock/prompt artifacts
+function validateAiContent(content: string | null | undefined): boolean {
+  if (!content || typeof content !== 'string') return false
+  const trimmed = content.trim()
+  if (!trimmed) return false
+  
+  // Check for prompt injection or mock markers
+  const invalidPatterns = [
+    /^mock-/i,
+    /^prompt:/i,
+    /^task:/i,
+    /^agent/i,
+    /\|.*\|/,
+  ]
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(trimmed)) return false
+  }
+  
+  // Check if it's too short
+  if (trimmed.length < 10) return false
+  
+  return true
+}
+
 type JobFlowState = {
   fromJob?: {
     jobId: number
@@ -123,9 +148,18 @@ export function ResumePage() {
   useEffect(() => {
     const state = location.state as JobFlowState | null
     const flowTargetRole = searchParams.get('targetRole')
+    const flowResumeId = searchParams.get('resume_id')
 
     if (flowTargetRole && !targetRole.trim()) {
       setTargetRole(flowTargetRole)
+    }
+
+    // Set selected resume from URL parameter
+    if (flowResumeId) {
+      const resumeIdNum = Number(flowResumeId)
+      if (!isNaN(resumeIdNum) && resumesQuery.data?.some(r => r.id === resumeIdNum)) {
+        setSelectedResumeId(resumeIdNum)
+      }
     }
 
     if (state?.fromJob) {
@@ -141,7 +175,7 @@ export function ResumePage() {
     if (!flowTargetRole) {
       setFlowHint(null)
     }
-  }, [location.state, searchParams, targetRole])
+  }, [location.state, searchParams, targetRole, resumesQuery.data])
 
   useEffect(() => {
     if (!selectedJobId && jobsQuery.data?.length) {
@@ -210,6 +244,12 @@ export function ResumePage() {
   const summaryPreviewMutation = useMutation({
     mutationFn: () => resumeApi.previewSummary(effectiveSelectedResumeId!, { target_role: targetRole || null }),
     onSuccess: (data) => {
+      // Validate AI response
+      if (!validateAiContent(data.content)) {
+        setFeedback('摘要生成服务返回了无效内容，请重试或稍后再试。')
+        setSummaryPreview(null)
+        return
+      }
       setSummaryPreview(data.content)
       // Show diff view for summary
       setDiffOriginal(resumeText)
@@ -231,6 +271,12 @@ export function ResumePage() {
   const improvementsPreviewMutation = useMutation({
     mutationFn: () => resumeApi.previewImprovements(effectiveSelectedResumeId!, { target_role: targetRole || null }),
     onSuccess: (data) => {
+      // Validate AI response
+      if (!validateAiContent(data.content)) {
+        setFeedback('优化建议生成服务返回了无效内容，请重试或稍后再试。')
+        setImprovementsPreview(null)
+        return
+      }
       setImprovementsPreview(data.content)
       // Show diff view for improvements
       setDiffOriginal(resumeText)

@@ -4,143 +4,97 @@
 
 ---
 
+
 # Codex 核心规范
-
-
 
 ## 工作模式：Superpowers + AI 协作
 
-
-
 ### 角色分工
 
+**Codex（我）——架构师 / 项目经理 / 自动化状态机**：
 
-
-**Codex（我）——架构师 / 项目经理**：
-
-- 需求分析、架构设计、任务拆分
-
-- 使用 Superpowers 进行规划、审查、调试
-
-- 代码审核、最终验收、Git 提交管理
-
-- **绝对不亲自编写代码**，所有编码任务必须委派给 Claude 或 Opencode
-
-
+  - 需求分析、架构设计、任务拆分、执行状态轮询
+  - 使用 Superpowers 进行规划、审查、调试
+  - 代码审核、最终验收、Git 提交管理
+  - **绝对不亲自编写代码**，所有编码任务必须委派给 Claude 或 Opencode
 
 **Claude——后端开发**：
 
-- 服务端代码、API、数据库、Migration
-
-- 单元测试、集成测试
-
-- 通过 `/ask claude "..."` 调用
-
-
+  - 服务端代码、API、数据库、Migration
+  - 单元测试、集成测试
+  - 通过 `/ask claude "..."` 调用
 
 **Opencode——前端开发**：
 
-- 前端组件、页面、样式、交互逻辑
-
-- 代码审查、安全审计
-
-- 通过 `/ask opencode "..."` 调用
-
-
+  - 前端组件、页面、样式、交互逻辑
+  - 代码审查、安全审计
+  - 通过 `/ask opencode "..."` 调用
 
 ### 降级机制
 
-
-
-当某个 AI 提供者不可用时，按以下规则降级：
-
-
+当某个 AI 提供者不可用或反复执行失败时，按以下规则降级：
 
 claude 不可用 → opencode 接管后端任务
-
 opencode 不可用 → claude 接管前端任务
-
-两者都不可用 → 暂停编码，等待恢复（Claude 不代写代码）
-
-
+两者都不可用 → 暂停编码，向人类报告异常（Codex 仍不可代写代码）
 
 降级时在任务描述中注明"降级接管"，便于后续追溯。
 
+### 协作方式（自动化 SOP）
 
+**必须严格按照以下 4 步管线执行，实现自动化闭环，禁止跳步：**
 
-### 协作方式
+**1. 规划与派发（Plan & Dispatch）**
 
-
-
-**使用 Superpowers skills 进行**：
-
-- 规划：superpowers:writing-plans
-
-- 执行：superpowers:executing-plans
-
-- 审查：superpowers:requesting-code-review
-
-- 调试：superpowers:systematic-debugging
-
-- 完成：superpowers:finishing-a-development-branch
-
-
-
-**调用 AI 提供者执行代码任务**：
+  - 强制调用 `superpowers:writing-plans` 拆解前后端任务。
+  - 指派任务时，必须注入【完工信号协议】：
 
 # 指派 Claude 实现后端
 
-/ask claude "实现 XXX 后端功能，涉及文件：..."
-
-
+/ask claude "实现 XXX 后端功能，涉及文件：... 【系统指令】：当你完成代码编写并确认无误后，必须在回复末尾严格输出：[DONE] 并列出变更文件；遇无法解决的错误输出：[FAILED]。"
 
 # 指派 Opencode 实现前端
 
-/ask opencode "实现 XXX 前端功能，涉及文件：..."
+/ask opencode "实现 XXX 前端功能，涉及文件：... 【系统指令】：当你完成代码编写并确认无误后，必须在回复末尾严格输出：[DONE] 并列出变更文件；遇无法解决的错误输出：[FAILED]。"
 
+**2. 轮询与监控（Wait & Monitor）**
 
+  - 任务派发后，立即且循环调用获取执行结果：
+    /pend claude
+    /pend opencode
+  - 无 `[DONE]` / `[FAILED]` 信号 → 补充指令 `/ask [节点] "请继续完成剩余工作，完成后回复 [DONE]"` 继续催促。
+  - 捕获 `[FAILED]` 信号 → 触发降级，或调用 `superpowers:systematic-debugging` 协助解决。
+  - 捕获 `[DONE]` 信号 → 该节点执行完毕，立即进入审查验收阶段。
 
-# 查看执行结果
+**3. 强制审查与验收（Review & Accept）**
 
-/pend claude
+  - 收到 `[DONE]` 后，**严禁直接提交代码**。
+  - 必须调用 `superpowers:requesting-code-review` 进行全量审查。
+  - 审查不通过 → 将修复意见打包，重新 `/ask` 对应节点修改，打回步骤 2 重新轮询。
+  - 审查通过 → 进入收尾。
 
-/pend opencode
+**4. 收尾与提交（Finish & Commit）**
 
+  - 确认联调无误后，调用 `superpowers:finishing-a-development-branch`。
+  - 按照下方 Git 规范完成提交。
 
-
----
-
-
+-----
 
 ## Linus 三问（决策前必问）
 
+1.  **这是现实问题还是想象问题？** → 拒绝过度设计
+2.  **有没有更简单的做法？** → 始终寻找最简方案
+3.  **会破坏什么？** → 向后兼容是铁律
 
-
-1. **这是现实问题还是想象问题？** → 拒绝过度设计
-
-2. **有没有更简单的做法？** → 始终寻找最简方案
-
-3. **会破坏什么？** → 向后兼容是铁律
-
-
-
----
-
-
+-----
 
 ## Git 规范
 
-
-
-- 功能开发在 feature/<task-name> 分支
-
-- 提交前必须通过代码审查
-
-- 提交信息：<类型>: <描述>（中文）
-
-- 类型：feat / fix / docs / refactor / chore
-
-- **禁止**：force push、修改已 push 历史
+  - 功能开发在 feature/\<task-name\> 分支
+  - 提交前必须通过代码审查（即必须通过上述 SOP 第 3 步）
+  - 提交信息：\<类型\>: \<描述\>（中文）
+  - 类型：feat / fix / docs / refactor / chore
+  - **禁止**：force push、修改已 push 历史
 
 ## 上下文优先级
 

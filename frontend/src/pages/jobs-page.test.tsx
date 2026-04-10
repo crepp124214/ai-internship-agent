@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { jobsApi, resumeApi, type Job } from '../lib/api'
-import { JobsPage } from './jobs-page'
+import { JobsPage, validateAiResponse } from './jobs-page'
 
 vi.mock('../lib/api', async () => {
   const actual = await vi.importActual<typeof import('../lib/api')>('../lib/api')
@@ -138,5 +138,41 @@ describe('JobsPage', () => {
     )
 
     expect(screen.getByText('岗位创建成功。')).toBeInTheDocument()
+  })
+
+  describe('validateAiResponse', () => {
+    it('should reject content starting with <short assessment>', () => {
+      expect(validateAiResponse('<short assessment>|姓名：张三')).toBe(false)
+      expect(validateAiResponse('<short assessment>some content')).toBe(false)
+    })
+
+    it('should reject content with placeholder fragments like <...>', () => {
+      expect(validateAiResponse('Some text <...> more text')).toBe(false)
+      expect(validateAiResponse('Test <...> content')).toBe(false)
+    })
+
+    it('should reject content with pipe-separated raw resume fragments', () => {
+      expect(validateAiResponse('Score 0\n|姓名：张三|学校：xxx|')).toBe(false)
+      expect(validateAiResponse('|姓名：张三\n|学校：xxx|')).toBe(false)
+    })
+
+    it('should reject prompt injection markers', () => {
+      expect(validateAiResponse('mock-generate:Interview Agent')).toBe(false)
+      expect(validateAiResponse('prompt: some prompt')).toBe(false)
+      expect(validateAiResponse('Task: generate interview questions')).toBe(false)
+      expect(validateAiResponse('Agent Prompt Pack')).toBe(false)
+    })
+
+    it('should reject too short content', () => {
+      expect(validateAiResponse('abc')).toBe(false)
+      expect(validateAiResponse('')).toBe(false)
+      expect(validateAiResponse(null)).toBe(false)
+    })
+
+    it('should accept valid normal content', () => {
+      expect(validateAiResponse('Score 85\n\n该简历与岗位匹配度较高')).toBe(true)
+      expect(validateAiResponse('该候选人具备扎实的 Python 开发经验，熟悉 FastAPI 框架')).toBe(true)
+      expect(validateAiResponse('很好，这个候选人具备出色的能力')).toBe(true)  // 10+ chars
+    })
   })
 })

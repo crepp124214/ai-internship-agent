@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "005_interview_record_provider_model"
-down_revision = "004_resume_optimization_contract"
+revision = "005_interview_provider_model"
+down_revision = "004_resume_opt_contract"
 branch_labels = None
 depends_on = None
 

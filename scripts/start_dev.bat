@@ -44,6 +44,9 @@ if not exist "%ROOT%\.env" (
   )
 )
 
+echo [INFO] Cleaning stale dev processes...
+call "%~dp0stop_dev.bat" >nul 2>&1
+
 echo [INFO] Installing backend dependencies (first run may take a while)...
 cd /d "%BACKEND_DIR%"
 "%PYTHON_EXE%" -m pip install --upgrade pip
@@ -64,10 +67,10 @@ if errorlevel 1 (
 )
 
 echo [INFO] Starting backend on http://127.0.0.1:8000 ...
-start "AIIA Backend" cmd /k "cd /d "%BACKEND_DIR%" && "%PYTHON_EXE%" -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload"
+start "AIIA Backend" cmd /k "cd /d "%BACKEND_DIR%" && set APP_ENV=development && set DATABASE_URL=sqlite:///./data/app.db && "%PYTHON_EXE%" -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload"
 
 echo [INFO] Starting frontend on http://127.0.0.1:5173 ...
-start "AIIA Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev"
+start "AIIA Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev -- --host 127.0.0.1 --port 5173 --strictPort"
 
 echo.
 echo ======================================

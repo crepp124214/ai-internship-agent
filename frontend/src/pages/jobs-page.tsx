@@ -104,6 +104,37 @@ function parseImportedJobFile(text: string, fileName: string): Partial<JobFormSt
   return { title, description: trimmedText, source: 'local_file' }
 }
 
+// Validate AI response - detect mock/prompt artifacts or invalid content
+export function validateAiResponse(content: string | null | undefined): boolean {
+  if (!content || typeof content !== 'string') return false
+  const trimmed = content.trim()
+  if (!trimmed) return false
+  
+  // Check for specific invalid patterns from mock/downgrade responses
+  const invalidPatterns = [
+    // Starts with short assessment marker
+    /^<short assessment>/i,
+    // Contains placeholder fragments like <...>
+    /<[^>]*\.\.\.[^>]*>/,
+    // Contains pipe-separated raw resume fragments like |姓名：|
+    /\|[^\n]+\|[^\n]*$/m,
+    // Prompt injection markers
+    /^mock-/i,
+    /^prompt:/i,
+    /^task:/i,
+    /^agent/i,
+  ]
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(trimmed)) return false
+  }
+  
+  // Check if it's too short or looks like an error
+  if (trimmed.length < 10) return false
+  
+  return true
+}
+
 export function JobsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -163,8 +194,22 @@ export function JobsPage() {
   })
 
   const matchPreviewMutation = useMutation({
-    mutationFn: () => jobsApi.previewMatch(selectedJobId!, { resume_id: selectedResumeId! }),
+    mutationFn: () => {
+      const jobId = selectedJobId
+      const resumeId = selectedResumeId
+      if (!jobId || !resumeId) {
+        throw new Error('请先选择岗位和简历')
+      }
+      return jobsApi.previewMatch(jobId, { resume_id: resumeId })
+    },
     onSuccess: (data) => {
+      // Validate response - check for mock/prompt artifacts
+      const isValid = validateAiResponse(data.feedback)
+      if (!isValid) {
+        setFeedback('匹配分析服务返回了无效内容，请重试或稍后再试。')
+        setMatchPreview(null)
+        return
+      }
       setMatchPreview(`Score ${data.score}\n\n${data.feedback}`)
       setFeedback(null)
     },
@@ -172,7 +217,14 @@ export function JobsPage() {
   })
 
   const persistMatchMutation = useMutation({
-    mutationFn: () => jobsApi.persistMatch(selectedJobId!, { resume_id: selectedResumeId! }),
+    mutationFn: () => {
+      const jobId = selectedJobId
+      const resumeId = selectedResumeId
+      if (!jobId || !resumeId) {
+        throw new Error('请先选择岗位和简历')
+      }
+      return jobsApi.persistMatch(jobId, { resume_id: resumeId })
+    },
     onSuccess: async () => {
       setFeedback('匹配结果已保存。')
     },
@@ -226,7 +278,7 @@ export function JobsPage() {
     }
 
     navigate(
-      `/resume?fromJob=${selectedJob.id}&targetRole=${encodeURIComponent(`${selectedJob.title}（${selectedJob.company}）`)}`,
+      `/resume?fromJob=${selectedJob.id}&targetRole=${encodeURIComponent(`${selectedJob.title}（${selectedJob.company}）`)}&resume_id=${selectedResumeId}`,
       { state: { fromJob: payload } },
     )
   }

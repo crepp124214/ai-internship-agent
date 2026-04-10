@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
 
     # 数据库配置
-    DATABASE_URL: str = "postgresql://user:password@localhost:5432/internship_agent"
+    DATABASE_URL: str = "postgresql+psycopg://user:password@localhost:5432/internship_agent"
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # LLM 配置 — 支持多厂商模型接入

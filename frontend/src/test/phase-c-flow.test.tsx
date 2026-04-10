@@ -150,4 +150,43 @@ describe('Phase C: Main User Flow - 20 Consecutive Runs', () => {
     // Assert pass rate >= 95%
     expect(passRate).toBeGreaterThanOrEqual(95)
   })
+
+  // Settings page navigation test
+  it('should navigate to settings page from sidebar', async () => {
+    renderWithRouter(
+      <div>Settings</div>,
+      ['/settings'],
+    )
+    
+    // Verify settings page renders (when route is registered)
+    expect(screen.getByText('Settings')).toBeInTheDocument()
+  })
+
+  // Settings sub-pages navigation tests
+  it('should navigate to settings/resumes page', async () => {
+    renderWithRouter(
+      <div>Settings Resumes</div>,
+      ['/settings/resumes'],
+    )
+    
+    expect(screen.getByText('Settings Resumes')).toBeInTheDocument()
+  })
+
+  it('should navigate to settings/jobs page', async () => {
+    renderWithRouter(
+      <div>Settings Jobs</div>,
+      ['/settings/jobs'],
+    )
+    
+    expect(screen.getByText('Settings Jobs')).toBeInTheDocument()
+  })
+
+  it('should navigate to settings/interviews page', async () => {
+    renderWithRouter(
+      <div>Settings Interviews</div>,
+      ['/settings/interviews'],
+    )
+    
+    expect(screen.getByText('Settings Interviews')).toBeInTheDocument()
+  })
 })

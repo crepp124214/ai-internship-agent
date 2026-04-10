@@ -203,23 +203,27 @@ class TestInterviewService:
     @pytest.mark.asyncio
     async def test_generate_questions_for_job_uses_optional_resume_context(self):
         resume = SimpleNamespace(processed_content="", resume_text="Built FastAPI services")
-        self.interview_agent.generate_interview_questions.return_value = {
-            "mode": "question_generation",
-            "questions": [{"question_text": "Explain dependency injection."}],
-        }
 
         with patch("src.business_logic.interview.service.resume_repository") as mock_resume_repo:
-            mock_resume_repo.get_by_id_and_user_id.return_value = resume
+            with patch("src.business_logic.interview.service.InterviewAgent") as MockInterviewAgent:
+                mock_resume_repo.get_by_id_and_user_id.return_value = resume
 
-            result = await self.service.generate_questions_for_job(
-                self.mock_db,
-                current_user_id=55,
-                job_context="Backend intern role",
-                resume_id=9,
-            )
+                mock_agent = MagicMock()
+                mock_agent.generate_interview_questions = AsyncMock(return_value={
+                    "mode": "question_generation",
+                    "questions": [{"question_text": "Explain dependency injection."}],
+                })
+                MockInterviewAgent.return_value = mock_agent
+
+                result = await self.service.generate_questions_for_job(
+                    self.mock_db,
+                    current_user_id=55,
+                    job_context="Backend intern role",
+                    resume_id=9,
+                )
 
         assert len(result["questions"]) == 1
-        self.interview_agent.generate_interview_questions.assert_awaited_once_with(
+        mock_agent.generate_interview_questions.assert_awaited_once_with(
             job_context="Backend intern role",
             resume_context="Built FastAPI services",
             count=5,
@@ -462,3 +466,52 @@ class TestInterviewService:
                     record_id=7,
                     current_user_id=55,
                 )
+
+    @pytest.mark.asyncio
+    async def test_generate_questions_for_job_uses_user_llm_config(self):
+        """用户配置了 LLM 时，generate_questions_for_job 应使用用户配置而非默认 mock。"""
+        resume = SimpleNamespace(processed_content="", resume_text="Built FastAPI services")
+        user_id = 55
+        mock_user_config = {
+            "provider": "zhipu",
+            "model": "glm-4.5-air",
+            "api_key": "user-key",
+            "base_url": None,
+            "temperature": 0.7,
+        }
+
+        with patch("src.business_logic.interview.service.resume_repository") as mock_resume_repo:
+            with patch("src.business_logic.interview.service.InterviewAgent") as MockInterviewAgent:
+                with patch("src.business_logic.user_llm_config_service.user_llm_config_service") as mock_ullcs:
+                    mock_resume_repo.get_by_id_and_user_id.return_value = resume
+
+                    # Mock agent instance returned by InterviewAgent constructor
+                    mock_agent_instance = MagicMock()
+                    mock_agent_instance.generate_interview_questions = AsyncMock(return_value={
+                        "mode": "question_generation",
+                        "questions": [{"question_text": "Explain FastAPI."}],
+                        "provider": "zhipu",
+                        "model": "glm-4.5-air",
+                    })
+                    mock_agent_instance.config = mock_user_config
+                    MockInterviewAgent.return_value = mock_agent_instance
+
+                    # Override autouse fixture to return actual user config
+                    mock_ullcs.get_config_for_agent.return_value = mock_user_config
+
+                    result = await self.service.generate_questions_for_job(
+                        self.mock_db,
+                        current_user_id=user_id,
+                        job_context="Backend intern role",
+                        resume_id=9,
+                    )
+
+        # 验证创建 agent 时传入了 user_id 和 user_llm_config
+        MockInterviewAgent.assert_called_once_with(
+            user_id=user_id,
+            user_llm_config=mock_user_config,
+            allow_mock_fallback=True,
+        )
+        # 验证返回的 provider 和 model 来自用户配置
+        assert result["provider"] == "zhipu"
+        assert result["model"] == "glm-4.5-air"

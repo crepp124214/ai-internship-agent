@@ -45,7 +45,7 @@ services:
     environment:
       APP_ENV: testing
       APP_DEBUG: "true"
-      DATABASE_URL: postgresql://test_user:test_password@postgres:5432/ai_internship_test
+      DATABASE_URL: postgresql+psycopg://test_user:test_password@postgres:5432/ai_internship_test
       REDIS_URL: redis://redis:6379/0
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test-key-for-ci}
       LLM_PROVIDER: mock
