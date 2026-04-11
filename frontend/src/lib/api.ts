@@ -58,6 +58,8 @@ export type ResumeAnalysisResponse = {
   raw_content: string | null
   provider: string | null
   model: string | null
+  status?: 'success' | 'fallback'
+  fallback_used?: boolean | null
 }
 
 export type ResumeOptimization = {
@@ -114,6 +116,33 @@ export type Job = {
   updated_at: string
 }
 
+/**
+ * 推荐岗位结构（Task 2 主入口）
+ */
+export type RecommendedJob = {
+  id: number
+  title: string
+  company: string
+  location?: string
+  workType?: string
+  tags?: string[]
+  recommendationScore: number
+  officialUrl?: string
+  summary?: string
+}
+
+type RecommendedJobApiResponse = {
+  id: number
+  title: string
+  company: string
+  location?: string
+  work_type?: string | null
+  tags?: string[] | null
+  recommendation_score: number
+  official_url?: string | null
+  summary?: string | null
+}
+
 export type JobCreatePayload = {
   title: string
   company: string
@@ -140,6 +169,24 @@ export type JobSaveExternalPayload = {
   source_url?: string | null
 }
 
+export type JobUpdatePayload = {
+  title?: string
+  company?: string
+  location?: string
+  description?: string
+  requirements?: string | null
+  salary?: string | null
+  work_type?: string | null
+  experience?: string | null
+  education?: string | null
+  welfare?: string | null
+  tags?: string | null
+  source?: string
+  source_url?: string | null
+  source_id?: string | null
+  is_active?: boolean
+}
+
 export type JobMatchPayload = {
   resume_id: number
 }
@@ -153,6 +200,8 @@ export type JobMatchResponse = {
   raw_content: string | null
   provider: string | null
   model: string | null
+  status?: 'success' | 'fallback'
+  fallback_used?: boolean | null
 }
 
 export type JobMatchRecord = {
@@ -223,6 +272,8 @@ export type InterviewQuestionGenerationResponse = {
   raw_content: string
   provider: string | null
   model: string | null
+  status?: 'success' | 'fallback'
+  fallback_used?: boolean | null
 }
 
 export type InterviewAnswerEvaluationPayload = {
@@ -524,6 +575,9 @@ export const resumeApi = {
     })
     return response.data
   },
+  async delete(resumeId: number) {
+    await api.delete(`/resumes/${resumeId}`)
+  },
 }
 
 export const jobsApi = {
@@ -531,9 +585,20 @@ export const jobsApi = {
     const response = await api.get<Job[]>('/jobs/')
     return response.data
   },
+  async getById(jobId: number) {
+    const response = await api.get<Job>(`/jobs/${jobId}`)
+    return response.data
+  },
   async create(payload: JobCreatePayload) {
     const response = await api.post<Job>('/jobs/', payload)
     return response.data
+  },
+  async update(jobId: number, payload: JobUpdatePayload) {
+    const response = await api.put<Job>(`/jobs/${jobId}`, payload)
+    return response.data
+  },
+  async delete(jobId: number) {
+    await api.delete(`/jobs/${jobId}`)
   },
   async saveExternal(payload: JobSaveExternalPayload) {
     const response = await api.post<Job>('/jobs/save-external', payload)
@@ -551,6 +616,48 @@ export const jobsApi = {
     const response = await api.get<JobMatchRecord[]>(`/jobs/${jobId}/match-history/`)
     return response.data
   },
+  /**
+   * 获取推荐岗位（Task 2 主入口）
+   * 根据求职目标摘要返回 5 条推荐岗位
+   */
+  async getRecommendedJobs(goalSummary: string) {
+    const response = await api.get<RecommendedJobApiResponse[]>('/jobs/recommended/', {
+      params: { goal_summary: goalSummary },
+    })
+    return response.data.map((job) => ({
+      id: job.id,
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      workType: job.work_type ?? undefined,
+      tags: job.tags ?? [],
+      recommendationScore: job.recommendation_score,
+      officialUrl: job.official_url ?? undefined,
+      summary: job.summary ?? undefined,
+    }))
+  },
+}
+
+export type InterviewQuestionSet = {
+  id: number
+  user_id: number
+  title: string
+  job_id: number | null
+  resume_id: number | null
+  source: string
+  status: string
+  questions: GeneratedInterviewQuestion[]
+  created_at: string
+  updated_at: string
+}
+
+export type InterviewQuestionSetCreatePayload = {
+  title: string
+  job_id?: number | null
+  resume_id?: number | null
+  source?: string
+  status?: string
+  questions: GeneratedInterviewQuestion[]
 }
 
 export const interviewApi = {
@@ -576,6 +683,18 @@ export const interviewApi = {
   },
   async createSession(payload: InterviewSessionCreatePayload) {
     const response = await api.post<InterviewSession>('/interview/sessions/', payload)
+    return response.data
+  },
+  async listQuestionSets() {
+    const response = await api.get<InterviewQuestionSet[]>('/interview/question-sets')
+    return response.data
+  },
+  async createQuestionSet(payload: InterviewQuestionSetCreatePayload) {
+    const response = await api.post<InterviewQuestionSet>('/interview/question-sets', payload)
+    return response.data
+  },
+  async startCoachFromQuestionSet(questionSetId: number) {
+    const response = await api.post(`/interview/question-sets/${questionSetId}/start-coach`)
     return response.data
   },
   async listRecords() {
@@ -673,6 +792,35 @@ export async function saveUserLlmConfig(data: UserLlmConfigInput): Promise<UserL
 
 export async function deleteUserLlmConfig(agent: string): Promise<void> {
   await api.delete(`/users/llm-configs/${agent}`)
+}
+
+// Test LLM Config types and response
+export interface TestLlmConfigRequest {
+  provider: string
+  model: string
+  api_key: string
+  base_url?: string | null
+}
+
+export interface TestLlmConfigResponse {
+  status: 'success' | 'error'
+  provider: string
+  model: string
+  latency_ms: number
+  fallback_used: boolean
+  error_code: string | null
+  error_message: string | null
+  agent?: string
+}
+
+export async function testGlobalLlmConfig(input: TestLlmConfigRequest): Promise<TestLlmConfigResponse> {
+  const response = await api.post<TestLlmConfigResponse>('/users/llm-configs/test', input)
+  return response.data
+}
+
+export async function testAgentLlmConfig(agent: string, input: TestLlmConfigRequest): Promise<TestLlmConfigResponse> {
+  const response = await api.post<TestLlmConfigResponse>(`/users/llm-configs/test-agent`, { agent, ...input })
+  return response.data
 }
 
 export interface AgentTool {

@@ -2,6 +2,8 @@
 
 ## 当前阶段
 
+- **Phase 24: 产品体验重构 Task 6 - 黄金路径联调与文档收尾** ✅ 已完成（2026-04-10）- 编写黄金路径 e2e 测试（login -> recommend -> match -> resume -> question set -> coach）；在 conftest.py 新增 `auth_header` 和 `golden_path_api_client` fixtures；`test_golden_path_recommend_and_match` 覆盖推荐岗位和岗位匹配；`test_golden_path_resume_customize_and_question_set_to_coach` 覆盖简历定制、题集创建、从题集启动教练；`test_golden_path_question_set_full_lifecycle` 覆盖题集完整生命周期；63 个集成测试全部通过；更新 progress.md 和 architecture.md 记录 Product Experience Redesign 完成状态
+- **Phase 23: 产品体验重构 Task 1 - 前端产品壳与页面骨架** ✅ 已完成（2026-04-10）- 统一 dashboard/jobs/resume/interview/settings 的页面骨架；抽出统一 WorkspaceShell（页面标题区 / 状态区 / 动作区 / 主工作区）；修改 page-primitives.tsx 新增 WorkspaceShell 组件；jobs-page.tsx 迁移到 WorkspaceShell；补齐前端测试 9 个 jobs-page 测试 + 49 个前端测试全部通过
 - **Phase 22: AI 链路后端契约对齐（resume 专项修复）** ✅ 已完成（2026-04-10）- 修复 resume 链路与 job/interview 路径不一致问题；ResumeService 的 summary/improvements 预览与持久化方法不再依赖单例 default_resume_agent；改用 `user_llm_config_service.get_config_for_agent()` 获取用户配置并创建临时 ResumeAgent；确保 resume 链路稳定携带 provider/model/status/fallback_used 字段；添加4个回归测试覆盖用户配置传入和 fallback 场景；58个业务逻辑测试全部通过
 - **Phase 21: 前端 AI 结果状态机对齐** ✅ 已完成（2026-04-10）- 为 `jobs/resume/interview` 三个页面补齐统一的 `success/fallback/error` 渲染语义；兼容后端新增的 `status/fallback_used` 可选字段；降级结果统一显示”当前显示的是降级结果，不是真实模型输出”；无效内容继续进入错误态，不再用空状态或原始 prompt 片段冒充成功结果
 - **Phase 20: OpenAI Adapter APITimeoutError 导致 retry_async 多次重试挂起修复** ✅ 已完成（2026-04-10）- 根因：`retry_async(max_retries=3)` 装饰 `generate()`，`_run_chat_completion` 将 `APITimeoutError`（httpx timeout 后抛出）包装为 `LLMRetryableError`，导致 retry_async 重试整个 `generate()` 协程，每次重试重新等待 ~10s httpx 超时，累积 ~37s；修复：在 `_run_text_generation`、`_run_chat_completion`、`_run_embedding_request` 三处将 `APITimeoutError` 单独拎出，转换为非 retryable 的 `LLMRequestError`，确保失败立即 fallback；修复后 job/interview 在 ~10.5s 内快速 fallback 到 mock（vs 修复前 37.74s）
@@ -501,6 +503,34 @@
 | ~~新功能~~ | ~~面试记录后端同步~~ | ✅ settings-interviews-page.tsx 接入真实 API |
 | ~~P3~~ | ~~测试覆盖率提升（本次新增 save-external 7 个测试）~~ | ⚠️ 79.66% 已过 pytest.ini 门槛 79%，原始 85% 目标未达 |
 | ~~P3~~ | ~~Release Candidate 封板~~ | ⚠️ 有条件可交付（覆盖率未达原始目标；Agent 配置链路 demo 模式受限）|
+| ~~新功能~~ | ~~产品体验重构 Task 6 黄金路径联调与文档收尾~~ | ✅ Phase 24 已完成；63 个集成测试全部通过；e2e 黄金路径测试编写完成 |
+
+---
+
+## Phase 24: 产品体验重构 Task 6 - 黄金路径联调与文档收尾 ✅ 完成（2026-04-10）
+
+### 完成内容
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| E2E 测试 fixtures | `tests/e2e/conftest.py` | 新增 `auth_header` 和 `golden_path_api_client` fixtures |
+| 岗位黄金路径 | `tests/e2e/test_job_api.py` | `test_golden_path_recommend_and_match`、`test_golden_path_recommend_jobs_endpoint_structure` |
+| 面试黄金路径 | `tests/e2e/test_interview_api.py` | `test_golden_path_resume_customize_and_question_set_to_coach`、`test_golden_path_question_set_full_lifecycle` |
+| 文档更新 | `docs/planning/memory-bank/progress.md`、`docs/planning/memory-bank/architecture.md` | 记录 Product Experience Redesign 完成状态 |
+
+### 黄金路径覆盖范围
+
+```
+login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{id}/match/)
+    -> resume customize (POST /resumes/{id}/customize-for-jd)
+    -> question set (POST /interview/question-sets)
+    -> coach (POST /interview/question-sets/{id}/start-coach)
+```
+
+### 验证结果
+
+- 集成测试：`python -m pytest tests/integration/api/test_jobs_api.py tests/integration/api/test_user_llm_configs_api.py tests/integration/api/test_interview_api.py -v --no-cov` → **63 passed**
+- E2E 黄金路径测试需要运行中的服务器（`python -m pytest tests/e2e/test_job_api.py tests/e2e/test_interview_api.py -k golden_path -v --no-cov`）
 
 ---
 
@@ -512,3 +542,49 @@
   - 影响了哪些文件
   - 做了哪些验证
   - 当前剩余风险是什么
+# 2026-04-11
+
+- 修复岗位申请链路：`/api/v1/jobs/applications/` 不再返回 410 占位，已补齐真实创建与列表能力。
+- 新增 `job_application_repository`，在 `JobService` 中补充岗位申请创建/列表逻辑，并校验岗位存在、简历归属当前用户。
+- 补充岗位申请集成测试，覆盖认证、创建成功、岗位不存在、简历越权、按当前用户隔离列表。
+
+## Task 6: 简历管理页可用化 ✅ 完成
+
+### 完成内容
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 前端 API | `frontend/src/lib/api.ts` | 新增 `resumeApi.delete()` 方法 |
+| 简历管理页 | `frontend/src/pages/settings/settings-resumes-page.tsx` | 连接真实 API，移除 DEMO 数据，使用 React Query + useMutation |
+| 后端测试 | `tests/integration/api/test_resume_api.py` | 15 个测试全部通过 |
+
+### 实现功能
+
+- 列表：从后端 `GET /api/v1/resumes/` 获取简历列表
+- 删除：前端调用 `resumeApi.delete(resumeId)` 调用后端 `DELETE /api/v1/resumes/{id}`
+- 查看/编辑/下载：UI 入口已预留，后端能力已存在
+
+### 验证结果
+
+- 后端集成测试：`python -m pytest tests/integration/api/test_resume_api.py` → **15 passed**
+
+---
+
+## Task 8: 面试管理页可用化 ✅ 完成
+
+### 完成内容
+
+| 模块 | 文件 | 说明 |
+|------|------|------|
+| 面试管理页 | `frontend/src/pages/settings/settings-interviews-page.tsx` | 已接入真实 API（listSessions, coachGetReport） |
+| 后端测试 | `tests/integration/api/test_interview_api.py` | 19 个测试全部通过 |
+
+### 实现功能
+
+- 报告查看：点击已完成面试查看 AI 评估报告
+- 题集复用：通过 `interviewApi.startCoachFromQuestionSet(questionSetId)` 启动教练
+- 面试记录列表：从 `GET /api/v1/interview/sessions/` 获取
+
+### 验证结果
+
+- 后端集成测试：`python -m pytest tests/integration/api/test_interview_api.py` → **19 passed**
