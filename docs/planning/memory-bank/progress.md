@@ -592,6 +592,22 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 
 ---
 
+## 仪表盘视觉打磨 ✅ 完成
+
+### 完成内容
+
+| 文件 | 修改 |
+|------|------|
+| `dashboard-page.tsx` | 重构为系统总览型 + 半控制台入口 |
+| `dashboard-page.test.tsx` | 更新测试，验证新布局 |
+
+### 验证结果
+
+- 前端测试：`npm test -- --run src/pages/dashboard-page.test.tsx` → **4 passed**
+- 构建：`npm run build` → **✓ built**
+
+---
+
 ## Task 6: 简历管理页可用化 ✅ 完成
 
 ### 完成内容
@@ -632,3 +648,54 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 ### 验证结果
 
 - 后端集成测试：`python -m pytest tests/integration/api/test_interview_api.py` → **19 passed**
+
+---
+
+## Task 9: 全链路验收与文档同步 ✅ 完成
+
+### 完成内容
+
+| 路径 | 验证 |
+|------|------|
+| 设置中心导入 → 岗位页 Agent → 简历页优化 → 面试页题集/教练 | Integration tests 覆盖完整链路 |
+| 简历管理 CRUD | Integration tests 覆盖 |
+| 岗位管理 CRUD + 推荐 + 匹配 | Integration tests 覆盖 |
+| 面试管理：sessions/questions/coach/question sets | Integration tests 覆盖 |
+| 用户 LLM 配置 CRUD + test | Integration tests 覆盖 |
+
+### 主路径覆盖
+
+```
+导入 (POST /import/resume, POST /import/jds)
+  → 简历列表 (GET /resumes/)
+  → 简历定制 (POST /resumes/{id}/customize-for-jd)
+  → 推荐岗位 (GET /jobs/recommended/)
+  → 岗位匹配 (POST /jobs/{id}/match/) → persist (POST /jobs/{id}/match/persist/)
+  → 创建题集 (POST /interview/question-sets)
+  → 启动教练 (POST /interview/question-sets/{id}/start-coach)
+  → 教练对话 (POST /interview/coach/{id}/answer, followup, end)
+  → 获取报告 (GET /interview/coach/{id}/report)
+```
+
+### 管理路径覆盖
+
+| 管理页 | 前端动作 | 后端 API |
+|--------|----------|----------|
+| 简历管理 | 查看/编辑/删除 | GET/PUT/DELETE /resumes/{id} |
+| 岗位管理 | 查看/编辑/删除 | GET/PUT/DELETE /jobs/{id} |
+| 面试管理 | 查看报告/题集复用/删除题集 | GET /coach/{id}/report, POST /question-sets/{id}/start-coach, DELETE /question-sets/{id} |
+
+### 验证结果
+
+- 后端集成测试：`python -m pytest tests/integration/api/ -q --no-cov` → **104 passed, 18 skipped**
+  - `test_resume_api.py`: 15 passed
+  - `test_jobs_api.py`: 25 passed
+  - `test_interview_api.py`: 21 passed
+  - `test_import.py`: 7 passed
+  - `test_user_llm_configs_api.py`: 15 passed
+  - `test_assistant_api.py`: 1 passed
+  - `test_system_api.py`: 4 passed
+- E2E 测试：`tests/e2e/` 需要运行中服务器（localhost:8000 + localhost:5173）
+  - 黄金路径 e2e：`test_golden_path_recommend_and_match`、`test_golden_path_resume_customize_and_question_set_to_coach`、`test_golden_path_question_set_full_lifecycle`
+  - 页面加载 e2e：`test_swagger_loads`、`test_dashboard_loads`、`test_jobs_page_loads` 等
+- 前端测试（已在上次 Task 7/8 验证）：**82 passed**，构建成功
