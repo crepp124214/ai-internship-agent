@@ -574,6 +574,24 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 
 ---
 
+## Task 9: 全链路验收与文档同步 ✅ 完成
+
+### 完成内容
+
+| 路径 | 验证 |
+|------|------|
+| 设置中心 | settings-page.test.tsx 通过 |
+| 岗位管理 | settings-jobs-page.test.tsx 通过 |
+| 简历管理 | settings-resumes-page.test.tsx 通过 |
+| 面试管理 | settings-interviews-page.test.tsx 通过 |
+
+### 验证结果
+
+- 前端测试：`npm test -- --run src/pages/settings/*.test.tsx src/pages/dashboard-page.test.tsx src/pages/jobs-page.test.tsx src/pages/resume-page.test.tsx src/pages/interview-page.test.tsx` → **40 passed**
+- 构建：`npm run build` → **✓ built**
+
+---
+
 ## Task 6: 简历管理页可用化 ✅ 完成
 
 ### 完成内容
