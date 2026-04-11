@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router'
 
 import { EmptyHint } from '../page-primitives'
-import { interviewApi, readApiError, type InterviewSession, type ReviewReport } from '../../lib/api'
+import { interviewApi, readApiError, type InterviewSession, type ReviewReport, type InterviewQuestionSet } from '../../lib/api'
 
 export function SettingsInterviewsPage() {
+  const navigate = useNavigate()
+
   const sessionsQuery = useQuery<InterviewSession[], Error>({
     queryKey: ['interview', 'sessions'],
     queryFn: () => interviewApi.listSessions(),
+  })
+
+  const questionSetsQuery = useQuery<InterviewQuestionSet[], Error>({
+    queryKey: ['interview', 'question-sets'],
+    queryFn: () => interviewApi.listQuestionSets(),
   })
 
   const [selectedSession, setSelectedSession] = useState<InterviewSession | null>(null)
@@ -16,6 +24,7 @@ export function SettingsInterviewsPage() {
   const [sessionsError, setSessionsError] = useState<string | null>(null)
   const [reportError, setReportError] = useState<string | null>(null)
   const sessions = sessionsQuery.data ?? []
+  const questionSets = questionSetsQuery.data ?? []
 
   useEffect(() => {
     if (sessionsQuery.error) {
@@ -45,9 +54,24 @@ export function SettingsInterviewsPage() {
   return (
     <div className="min-h-[calc(100vh-8rem)]">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-[var(--color-ink-primary)]">面试记录</h1>
-        <p className="mt-0.5 text-sm text-[var(--color-ink-tertiary)]">查看历史练习和 AI 评估报告</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--color-ink-primary)]">面试记录</h1>
+          <p className="mt-0.5 text-sm text-[var(--color-ink-tertiary)]">查看历史练习和 AI 评估报告</p>
+        </div>
+        {questionSets.length > 0 && (
+          <button
+            onClick={() => {
+              const firstSet = questionSets[0]
+              interviewApi.startCoachFromQuestionSet(firstSet.id).then(() => {
+                navigate('/interview')
+              })
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-secondary)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            从题集开始练习
+          </button>
+        )}
       </div>
 
       {/* Interview List */}
@@ -123,6 +147,28 @@ export function SettingsInterviewsPage() {
         </div>
       ) : (
         <EmptyHint>暂无面试记录，去面试准备页面开始练习吧。</EmptyHint>
+      )}
+
+      {/* Question Sets Section */}
+      {questionSets.length > 0 && (
+        <div className="mt-8 border-t border-[var(--color-border)] pt-6">
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-[var(--color-ink-primary)]">题集 {questionSets.length} 个</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {questionSets.map((qs) => (
+              <button
+                key={qs.id}
+                onClick={() => {
+                  interviewApi.startCoachFromQuestionSet(qs.id).then(() => navigate('/interview'))
+                }}
+                className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink-secondary)] hover:bg-[var(--color-surface-hover)]"
+              >
+                {qs.title}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Report Modal */}

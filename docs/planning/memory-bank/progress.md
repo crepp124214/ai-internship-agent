@@ -2,6 +2,7 @@
 
 ## 当前阶段
 
+- **Phase 25: 产品体验重构 Task 7 - 岗位管理页可用化** ✅ 已完成（2026-04-11）- 岗位管理页连接真实 API，替代 DEMO 数据；补全 `jobsApi.getById/update/delete` 前端方法；`settings-jobs-page.tsx` 使用 TanStack Query 加载岗位列表；新增查看/编辑/删除岗位弹窗；4个前端测试 + 4个后端集成测试全部通过；82个前端测试 + 101个后端集成测试无回归
 - **Phase 24: 产品体验重构 Task 6 - 黄金路径联调与文档收尾** ✅ 已完成（2026-04-10）- 编写黄金路径 e2e 测试（login -> recommend -> match -> resume -> question set -> coach）；在 conftest.py 新增 `auth_header` 和 `golden_path_api_client` fixtures；`test_golden_path_recommend_and_match` 覆盖推荐岗位和岗位匹配；`test_golden_path_resume_customize_and_question_set_to_coach` 覆盖简历定制、题集创建、从题集启动教练；`test_golden_path_question_set_full_lifecycle` 覆盖题集完整生命周期；63 个集成测试全部通过；更新 progress.md 和 architecture.md 记录 Product Experience Redesign 完成状态
 - **Phase 23: 产品体验重构 Task 1 - 前端产品壳与页面骨架** ✅ 已完成（2026-04-10）- 统一 dashboard/jobs/resume/interview/settings 的页面骨架；抽出统一 WorkspaceShell（页面标题区 / 状态区 / 动作区 / 主工作区）；修改 page-primitives.tsx 新增 WorkspaceShell 组件；jobs-page.tsx 迁移到 WorkspaceShell；补齐前端测试 9 个 jobs-page 测试 + 49 个前端测试全部通过
 - **Phase 22: AI 链路后端契约对齐（resume 专项修复）** ✅ 已完成（2026-04-10）- 修复 resume 链路与 job/interview 路径不一致问题；ResumeService 的 summary/improvements 预览与持久化方法不再依赖单例 default_resume_agent；改用 `user_llm_config_service.get_config_for_agent()` 获取用户配置并创建临时 ResumeAgent；确保 resume 链路稳定携带 provider/model/status/fallback_used 字段；添加4个回归测试覆盖用户配置传入和 fallback 场景；58个业务逻辑测试全部通过
@@ -547,6 +548,23 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 - 修复岗位申请链路：`/api/v1/jobs/applications/` 不再返回 410 占位，已补齐真实创建与列表能力。
 - 新增 `job_application_repository`，在 `JobService` 中补充岗位申请创建/列表逻辑，并校验岗位存在、简历归属当前用户。
 - 补充岗位申请集成测试，覆盖认证、创建成功、岗位不存在、简历越权、按当前用户隔离列表。
+
+## 管理页收口返工 ✅ 完成
+
+### 完成内容
+
+| 任务 | 文件 | 修改 |
+|------|------|------|
+| A. 简历管理页 | `settings-resumes-page.tsx` | 删除上传入口、移除 TODO 占位按钮（编辑/下载）、只保留删除功能 |
+| B. 岗位管理页 | `settings-jobs-page.tsx` | 删除导入入口、移除 JobImportModal 组件 |
+| C. 面试管理页 | `settings-interviews-page.tsx` | 添加题集复用入口（点击跳转到面试页面开始练习）|
+
+### 验证结果
+
+- 前端测试：`npm test -- --run src/pages/settings/settings-page.test.tsx src/pages/settings/settings-jobs-page.test.tsx` → **7 passed**
+- 构建：`npm run build` → **✓ built**
+
+---
 
 ## Task 6: 简历管理页可用化 ✅ 完成
 
