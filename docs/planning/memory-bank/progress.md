@@ -2,6 +2,7 @@
 
 ## 当前阶段
 
+- **Phase 26: 产品体验重构返工 - 管理页后端支撑补齐** ✅ 已完成（2026-04-11）- 简历/岗位/面试三个管理页后端支撑核查补齐；`interview_service.delete_question_set` 方法新增（支持题集删除）；`DELETE /api/v1/interview/question-sets/{id}` API 路由新增；`frontend/src/lib/api.ts` 新增 `InterviewQuestionSetUpdatePayload` 类型和 `updateQuestionSet/deleteQuestionSet` 方法；`settings-interviews-page.tsx` 题集管理区新增（查看/删除/复用）；3个后端集成测试全部通过；104个集成测试 + 82个前端测试无回归
 - **Phase 25: 产品体验重构 Task 7 - 岗位管理页可用化** ✅ 已完成（2026-04-11）- 岗位管理页连接真实 API，替代 DEMO 数据；补全 `jobsApi.getById/update/delete` 前端方法；`settings-jobs-page.tsx` 使用 TanStack Query 加载岗位列表；新增查看/编辑/删除岗位弹窗；4个前端测试 + 4个后端集成测试全部通过；82个前端测试 + 101个后端集成测试无回归
 - **Phase 24: 产品体验重构 Task 6 - 黄金路径联调与文档收尾** ✅ 已完成（2026-04-10）- 编写黄金路径 e2e 测试（login -> recommend -> match -> resume -> question set -> coach）；在 conftest.py 新增 `auth_header` 和 `golden_path_api_client` fixtures；`test_golden_path_recommend_and_match` 覆盖推荐岗位和岗位匹配；`test_golden_path_resume_customize_and_question_set_to_coach` 覆盖简历定制、题集创建、从题集启动教练；`test_golden_path_question_set_full_lifecycle` 覆盖题集完整生命周期；63 个集成测试全部通过；更新 progress.md 和 architecture.md 记录 Product Experience Redesign 完成状态
 - **Phase 23: 产品体验重构 Task 1 - 前端产品壳与页面骨架** ✅ 已完成（2026-04-10）- 统一 dashboard/jobs/resume/interview/settings 的页面骨架；抽出统一 WorkspaceShell（页面标题区 / 状态区 / 动作区 / 主工作区）；修改 page-primitives.tsx 新增 WorkspaceShell 组件；jobs-page.tsx 迁移到 WorkspaceShell；补齐前端测试 9 个 jobs-page 测试 + 49 个前端测试全部通过
@@ -558,6 +559,13 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 | A. 简历管理页 | `settings-resumes-page.tsx` | 删除上传入口、移除 TODO 占位按钮（编辑/下载）、只保留删除功能 |
 | B. 岗位管理页 | `settings-jobs-page.tsx` | 删除导入入口、移除 JobImportModal 组件 |
 | C. 面试管理页 | `settings-interviews-page.tsx` | 添加题集复用入口（点击跳转到面试页面开始练习）|
+
+### 极窄前端返工 ✅ 完成
+
+- 简历管理页：补齐查看（模态框展示内容）、编辑（更新标题/默认状态）、删除完整动作
+- 面试管理页：题集复用入口文案强化为"题集复用"
+- 新增测试：`settings-resumes-page.test.tsx`、`settings-interviews-page.test.tsx`
+- 验证：14 个测试全部通过，构建成功
 
 ### 验证结果
 

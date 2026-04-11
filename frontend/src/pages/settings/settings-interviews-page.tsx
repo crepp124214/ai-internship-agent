@@ -153,7 +153,7 @@ export function SettingsInterviewsPage() {
       {questionSets.length > 0 && (
         <div className="mt-8 border-t border-[var(--color-border)] pt-6">
           <div className="mb-4">
-            <h2 className="text-base font-semibold text-[var(--color-ink-primary)]">题集 {questionSets.length} 个</h2>
+            <h2 className="text-base font-semibold text-[var(--color-ink-primary)]">题集复用 {questionSets.length} 个</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             {questionSets.map((qs) => (
