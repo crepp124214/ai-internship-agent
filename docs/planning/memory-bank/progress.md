@@ -592,14 +592,14 @@ login (auth_header) -> recommend (GET /jobs/recommended/) -> match (POST /jobs/{
 
 ---
 
-## 仪表盘视觉打磨 ✅ 完成
+## 仪表盘视觉打磨 ✅ 完成（极窄返工）
 
 ### 完成内容
 
 | 文件 | 修改 |
 |------|------|
-| `dashboard-page.tsx` | 重构为系统总览型 + 半控制台入口 |
-| `dashboard-page.test.tsx` | 更新测试，验证新布局 |
+| `dashboard-page.tsx` | 按设计文档重构为：第一层单一资源总览面板 + 第二层三张管理入口卡 |
+| `dashboard-page.test.tsx` | 更新测试，验证新结构 |
 
 ### 验证结果
 

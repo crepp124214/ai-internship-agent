@@ -30,36 +30,33 @@ describe('DashboardPage', () => {
     expect(screen.getByRole('heading', { name: '系统总览' })).toBeInTheDocument()
   })
 
-  it('shows system stats cards with navigation', () => {
+  it('shows single overview panel with summary and latest activity', () => {
     renderDashboardPage()
 
-    // 显示系统状态卡片
-    expect(screen.getByText('简历库')).toBeInTheDocument()
-    expect(screen.getByText('目标岗位')).toBeInTheDocument()
-    expect(screen.getByText('面试练习')).toBeInTheDocument()
-    expect(screen.getByText('申请跟踪')).toBeInTheDocument()
+    // 第一层：单一资源总览面板
+    expect(screen.getByText(/暂无数据/)).toBeInTheDocument()
+    expect(screen.getByText(/最新活动/)).toBeInTheDocument()
   })
 
-  it('shows console entry buttons', () => {
+  it('shows three management entry cards', () => {
     renderDashboardPage()
 
-    // 显示控制台入口
-    expect(screen.getByText('求职 Agent')).toBeInTheDocument()
-    expect(screen.getByText('简历优化')).toBeInTheDocument()
-    expect(screen.getByText('面试教练')).toBeInTheDocument()
-    expect(screen.getByText('申请追踪')).toBeInTheDocument()
-
-    // 快速入口标题
-    expect(screen.getByText('快速入口')).toBeInTheDocument()
+    // 第二层：三张管理入口卡
+    expect(screen.getByText('简历管理')).toBeInTheDocument()
+    expect(screen.getByText('岗位管理')).toBeInTheDocument()
+    expect(screen.getByText('面试管理')).toBeInTheDocument()
   })
 
-  it('dashboard is system overview type, no import, no recent activities, no inline ai assistant', () => {
+  it('dashboard is NOT navigation distribution, no function entry cards, no quick entry title', () => {
     renderDashboardPage()
-    // 删除导入数据按钮
+    // 删除功能入口卡
+    expect(screen.queryByText('求职 Agent')).not.toBeInTheDocument()
+    expect(screen.queryByText('简历优化')).not.toBeInTheDocument()
+    expect(screen.queryByText('面试教练')).not.toBeInTheDocument()
+    expect(screen.queryByText('申请追踪')).not.toBeInTheDocument()
+    // 删除快速入口标题
+    expect(screen.queryByText('快速入口')).not.toBeInTheDocument()
+    // 删除导入
     expect(screen.queryByText('导入数据')).not.toBeInTheDocument()
-    // 删除最近活动
-    expect(screen.queryByText('最近活动')).not.toBeInTheDocument()
-    // 删除页面内 AI 助手入口
-    expect(screen.queryByText('AI 求职助手')).not.toBeInTheDocument()
   })
 })
