@@ -10,22 +10,23 @@
 
 | 功能 | 说明 |
 |------|------|
-| 简历优化 | 上传简历，根据目标岗位 JD 生成定向优化建议（关键词匹配、技能差距分析、经历描述改进） |
-| AI 面试 | 多轮对话式模拟面试，实时评分与反馈，思路引导与知识点补充 |
-| 岗位匹配 | 分析简历与岗位匹配度，量化打分（0-100），生成匹配报告与改进方向 |
-| Agent 助手 | 自然语言交互的智能助手，支持搜索招聘官网、分析 JD 要求 |
+| **简历优化** | 上传简历，根据目标岗位 JD 生成定向优化建议（关键词匹配、技能差距分析、经历描述改进） |
+| **AI 面试** | 多轮对话式模拟面试，实时评分与反馈，思路引导与知识点补充 |
+| **岗位匹配** | 分析简历与岗位匹配度，量化打分（0-100），生成匹配报告与改进方向 |
+| **Agent 助手** | 自然语言交互的智能助手，支持搜索招聘官网、分析 JD 要求 |
 
 ## 技术架构
 
 ```
 ai-internship-agent/
 ├── backend/              # 后端 (FastAPI + DDD 架构)
-│   ├── app/api/          # RESTful API
-│   ├── domain/           # 领域逻辑 (Agent、面试、JD、简历、岗位)
-│   └── infrastructure/   # 基础设施 (数据库、LLM 适配器)
+│   ├── app/api/v1/       # RESTful API 端点
+│   ├── domain/           # 领域逻辑 (Agent、JD定制、面试、简历、岗位)
+│   ├── infrastructure/   # 基础设施 (数据库、LLM 适配器)
+│   └── shared/           # 共享能力 (运行时、工具、错误处理)
 ├── frontend/             # 前端 (React 18 + TypeScript)
 ├── tests/               # 测试 (unit/integration/e2e)
-└── docker/              # Docker 部署
+└── docker/              # Docker 部署配置
 ```
 
 **技术栈：**
@@ -39,10 +40,11 @@ ai-internship-agent/
 | 测试 | pytest · Playwright · 708 测试用例 · 80%+ 覆盖率 |
 
 **架构亮点：**
-- DDD 分层架构：清晰的领域驱动设计，应用层、领域层、基础设施层分离
-- 多 Agent 协作：简历 Agent、岗位 Agent、面试 Agent 独立运行
-- Agent 运行时：基于 ReAct 模式，支持工具注册、状态管理、记忆存储
-- LLM 灵活配置：支持多个主流大模型，可按 Agent 单独配置
+
+- **DDD 分层架构** — 清晰的领域驱动设计，应用层、领域层、基础设施层分离
+- **多 Agent 协作** — 简历 Agent、岗位 Agent、面试 Agent 独立运行，各自专注垂直场景
+- **Agent 运行时** — 基于 ReAct 模式的 Agent 运行时，支持工具注册、状态管理、记忆存储
+- **LLM 灵活配置** — 支持多个主流大模型，可按 Agent 单独配置，支持 Mock 模式
 
 ## 快速部署
 
@@ -70,9 +72,9 @@ python -m uvicorn backend.main:app --reload --port 8000
 cd frontend && npm install && npm run dev
 ```
 
-## 配置 LLM（可选）
+## LLM 配置（可选）
 
-默认使用 Mock 模式，无需 API Key：
+默认使用 Mock 模式，无需 API Key。如需真实 AI 能力：
 
 ```env
 # .env.local
@@ -85,7 +87,11 @@ OPENAI_API_KEY=sk-your-key
 ## 测试
 
 ```bash
+# 运行所有测试
 pytest tests/ -v
+
+# 测试覆盖率
+pytest --cov=backend --cov-report=html
 ```
 
 ## 项目文档
