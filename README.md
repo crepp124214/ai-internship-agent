@@ -10,13 +10,10 @@
 
 ---
 
-## 🔗 相关链接
+## 📚 文档
 
-### 📚 文档资源
-- [📖 完整文档索引](docs/README.md) - 架构设计、API 文档、开发指南
-- [📊 测试与质量报告](docs/reports/complete-test-analysis-report.md) - 708 个测试用例，80%+ 覆盖率
-- [🏗️ 项目结构重构报告](docs/reports/refactor-report-2026-04-12.md) - DDD 架构迁移记录
-- [👨‍💻 开发规则](CLAUDE.md) - 架构约束、技术栈、开发规范
+- [系统设计](docs/design/internship-design-document.md)
+- [技术栈](docs/design/tech-stack.md)
 
 ---
 
