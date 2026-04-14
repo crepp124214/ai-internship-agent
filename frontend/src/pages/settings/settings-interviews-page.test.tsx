@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsInterviewsPage } from './settings-interviews-page'
@@ -128,6 +128,18 @@ describe('SettingsInterviewsPage', () => {
 
     // Should have start practice button
     expect(screen.getByText('从题集开始练习')).toBeInTheDocument()
+  })
+
+  it('navigates to interview page with selected question set state', async () => {
+    renderSettingsInterviewsPage()
+
+    await screen.findByText('技术面试')
+
+    fireEvent.click(screen.getByText('前端面试题集'))
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/interview', { state: { questionSetId: 1 } })
+    })
   })
 
   it('displays session list with score and status', async () => {

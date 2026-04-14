@@ -487,3 +487,40 @@ class TestJobService:
         assert result["provider"] == "zhipu"
         assert result["model"] == "glm-4.7"
         assert result["score"] == 85
+
+    @pytest.mark.asyncio
+    async def test_get_recommended_jobs_uses_goal_summary_for_ranking_and_normalizes_tags(self):
+        backend_job = SimpleNamespace(
+            id=1,
+            title="Backend Intern",
+            company="Alpha Tech",
+            location="Beijing",
+            description="Build APIs with FastAPI",
+            requirements="Python",
+            work_type="internship",
+            tags="python,fastapi",
+            source_url="https://alpha.example/jobs/1",
+        )
+        frontend_job = SimpleNamespace(
+            id=2,
+            title="Frontend Intern",
+            company="Beta Labs",
+            location="Shanghai",
+            description="Build React interfaces",
+            requirements="TypeScript",
+            work_type="internship",
+            tags="react,typescript",
+            source_url="https://beta.example/jobs/2",
+        )
+
+        with patch("src.business_logic.job.service.job_repository") as mock_repo:
+            mock_repo.get_all.return_value = [frontend_job, backend_job]
+
+            result = await self.service.get_recommended_jobs(
+                self.mock_db,
+                goal_summary="backend fastapi beijing",
+                limit=5,
+            )
+
+        assert [job.id for job in result] == [1, 2]
+        assert result[0].tags == ["python", "fastapi"]

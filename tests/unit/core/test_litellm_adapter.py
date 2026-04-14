@@ -40,3 +40,23 @@ async def test_chat_with_tools_includes_tools_param():
         call_kwargs = mock_create.call_args.kwargs
         assert "tools" in call_kwargs
         assert call_kwargs["tools"] == tools
+
+
+@pytest.mark.asyncio
+async def test_chat_uses_openai_compatible_bridge_for_zhipu():
+    adapter = LiteLLMAdapter(
+        provider="zhipu",
+        model="glm-4.7",
+        api_key="test-key",
+        base_url="https://open.bigmodel.cn/api/paas/v4",
+    )
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock(message=MagicMock(content="hello"))]
+
+    with patch("src.core.llm.litellm_adapter.acompletion", new_callable=AsyncMock) as mock_create:
+        mock_create.return_value = mock_response
+        await adapter.chat(messages=[{"role": "user", "content": "hi"}])
+        call_kwargs = mock_create.call_args.kwargs
+        # 现在使用 provider/model 格式，而不是 custom_llm_provider
+        assert call_kwargs["model"].startswith("zhipu/")
+        assert call_kwargs["extra_body"] == {"thinking": {"type": "disabled"}}

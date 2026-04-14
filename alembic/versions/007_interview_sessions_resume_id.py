@@ -1,14 +1,14 @@
 """Add session_id/question_index/is_followup to interview_records, and resume_id/status/etc to interview_sessions.
 
 Revision ID: 007
-Revises: 006_refresh_token
+Revises: 007_add_status_fallback_fields
 Create Date: 2026-04-08
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "007"
-down_revision = "006_refresh_token"
+down_revision = "007_add_status_fallback_fields"
 branch_labels = None
 depends_on = None
 

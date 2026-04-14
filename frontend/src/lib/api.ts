@@ -660,6 +660,11 @@ export type InterviewQuestionSetCreatePayload = {
   questions: GeneratedInterviewQuestion[]
 }
 
+export type InterviewQuestionSetUpdatePayload = {
+  title?: string
+  status?: string
+}
+
 export const interviewApi = {
   async listQuestions() {
     const response = await api.get<InterviewQuestion[]>('/interview/questions/')
@@ -692,6 +697,13 @@ export const interviewApi = {
   async createQuestionSet(payload: InterviewQuestionSetCreatePayload) {
     const response = await api.post<InterviewQuestionSet>('/interview/question-sets', payload)
     return response.data
+  },
+  async updateQuestionSet(questionSetId: number, payload: InterviewQuestionSetUpdatePayload) {
+    const response = await api.patch<InterviewQuestionSet>(`/interview/question-sets/${questionSetId}`, payload)
+    return response.data
+  },
+  async deleteQuestionSet(questionSetId: number) {
+    await api.delete(`/interview/question-sets/${questionSetId}`)
   },
   async startCoachFromQuestionSet(questionSetId: number) {
     const response = await api.post(`/interview/question-sets/${questionSetId}/start-coach`)

@@ -44,15 +44,15 @@ class TestCoachService:
 
                         # Mock manager instance
                         mock_manager_instance = MagicMock()
-                        mock_manager_instance.start.return_value = {
+                        mock_manager_instance.start = AsyncMock(return_value={
                             "session_id": 1,
                             "opening_message": "你好",
                             "first_question": "自我介绍",
                             "total_questions": 5,
-                        }
+                        })
                         MockManager.return_value = mock_manager_instance
 
-                        result = self.service.start_session(
+                        result = await self.service.start_session(
                             db=mock_db,
                             user=mock_user,
                             jd_id=2,
@@ -70,6 +70,7 @@ class TestCoachService:
         assert call_kwargs.get("llm") is not None
         llm_instance = call_kwargs["llm"]
         assert isinstance(llm_instance, LiteLLMAdapter)
+        assert llm_instance.provider == "zhipu"
         assert llm_instance.model == "glm-4.5-air"
 
     @pytest.mark.asyncio
@@ -89,15 +90,15 @@ class TestCoachService:
                         mock_cfg_svc.get_config_for_agent.return_value = None  # No user config
 
                         mock_manager_instance = MagicMock()
-                        mock_manager_instance.start.return_value = {
+                        mock_manager_instance.start = AsyncMock(return_value={
                             "session_id": 1,
                             "opening_message": "你好",
                             "first_question": "自我介绍",
                             "total_questions": 5,
-                        }
+                        })
                         MockManager.return_value = mock_manager_instance
 
-                        result = self.service.start_session(
+                        result = await self.service.start_session(
                             db=mock_db,
                             user=mock_user,
                             jd_id=2,

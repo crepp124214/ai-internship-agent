@@ -14,11 +14,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.main import app
-from src.data_access.database import Base, get_db
-from src.presentation.schemas.user import UserCreate
-from src.presentation.schemas.resume import ResumeCreate
-from src.presentation.schemas.job import JobCreate
+from backend.main import app
+from backend.infrastructure.database.session import Base, get_db
+from backend.app.schemas.user import UserCreate
+from backend.app.schemas.resume import ResumeCreate
+from backend.app.schemas.job import JobCreate
 
 
 @pytest.fixture

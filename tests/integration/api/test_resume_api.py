@@ -143,6 +143,8 @@ def test_resume_api_generates_summary_for_current_user(db_session, client):
             "raw_content": "Summary: Strong backend-focused internship profile.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "fallback",
+            "fallback_used": True,
         }
     )
 
@@ -164,6 +166,8 @@ def test_resume_api_generates_summary_for_current_user(db_session, client):
         "raw_content": "Summary: Strong backend-focused internship profile.",
         "provider": "mock",
         "model": "mock-model",
+        "status": "fallback",
+        "fallback_used": True,
     }
 
 
@@ -182,6 +186,8 @@ def test_resume_api_generates_improvements_for_current_user(db_session, client):
             "raw_content": "Summary: Add measurable project outcomes and tighten skill grouping.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "fallback",
+            "fallback_used": True,
         }
     )
 
@@ -200,6 +206,8 @@ def test_resume_api_generates_improvements_for_current_user(db_session, client):
         "raw_content": "Summary: Add measurable project outcomes and tighten skill grouping.",
         "provider": "mock",
         "model": "mock-model",
+        "status": "fallback",
+        "fallback_used": True,
     }
 
 
@@ -269,6 +277,8 @@ def test_resume_api_persists_improvements_for_current_user(db_session, client):
             "raw_content": "Summary: Add measurable outcomes to each bullet.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "fallback",
+            "fallback_used": True,
             "created_at": datetime(2026, 3, 28, 12, 0, 0),
             "updated_at": datetime(2026, 3, 28, 12, 0, 0),
         }
@@ -292,6 +302,8 @@ def test_resume_api_persists_improvements_for_current_user(db_session, client):
     assert payload["raw_content"] == "Summary: Add measurable outcomes to each bullet."
     assert payload["provider"] == "mock"
     assert payload["model"] == "mock-model"
+    assert payload["status"] == "fallback"
+    assert payload["fallback_used"] is True
 
 
 def test_resume_api_persists_summary_for_current_user(db_session, client):
@@ -320,6 +332,8 @@ def test_resume_api_persists_summary_for_current_user(db_session, client):
             "raw_content": "Summary: Candidate shows strong backend internship readiness.",
             "provider": "mock",
             "model": "mock-model",
+            "status": "fallback",
+            "fallback_used": True,
             "created_at": datetime(2026, 3, 28, 12, 0, 0),
             "updated_at": datetime(2026, 3, 28, 12, 0, 0),
         }
@@ -341,6 +355,8 @@ def test_resume_api_persists_summary_for_current_user(db_session, client):
     assert payload["keywords"] == "backend engineer"
     assert payload["provider"] == "mock"
     assert payload["model"] == "mock-model"
+    assert payload["status"] == "fallback"
+    assert payload["fallback_used"] is True
 
 
 def test_resume_api_lists_persisted_optimizations_for_current_user(db_session, client):
@@ -370,6 +386,8 @@ def test_resume_api_lists_persisted_optimizations_for_current_user(db_session, c
                 raw_content="Summary: Tighten bullet phrasing.",
                 provider="mock",
                 model="mock-model",
+                status="fallback",
+                fallback_used=True,
                 created_at=datetime(2026, 3, 28, 12, 0, 0),
                 updated_at=datetime(2026, 3, 28, 12, 0, 0),
             ),
@@ -386,6 +404,8 @@ def test_resume_api_lists_persisted_optimizations_for_current_user(db_session, c
                 raw_content="Summary: Add role-specific keywords.",
                 provider="mock",
                 model="mock-model",
+                status="fallback",
+                fallback_used=True,
                 created_at=datetime(2026, 3, 28, 12, 0, 0),
                 updated_at=datetime(2026, 3, 28, 12, 0, 0),
             ),
@@ -409,6 +429,8 @@ def test_resume_api_lists_persisted_optimizations_for_current_user(db_session, c
     }
     assert {item["provider"] for item in payload} == {"mock"}
     assert {item["model"] for item in payload} == {"mock-model"}
+    assert {item["status"] for item in payload} == {"fallback"}
+    assert {item["fallback_used"] for item in payload} == {True}
 
 
 def test_resume_api_lists_summary_history_for_current_user(db_session, client):
@@ -438,6 +460,8 @@ def test_resume_api_lists_summary_history_for_current_user(db_session, client):
                 raw_content="Summary raw one.",
                 provider="mock",
                 model="mock-model",
+                status="fallback",
+                fallback_used=True,
                 created_at=datetime(2026, 3, 28, 12, 0, 0),
                 updated_at=datetime(2026, 3, 28, 12, 0, 0),
             ),
@@ -454,6 +478,8 @@ def test_resume_api_lists_summary_history_for_current_user(db_session, client):
                 raw_content="Summary raw two.",
                 provider="mock",
                 model="mock-model",
+                status="fallback",
+                fallback_used=True,
                 created_at=datetime(2026, 3, 28, 12, 0, 0),
                 updated_at=datetime(2026, 3, 28, 12, 0, 0),
             ),
@@ -471,6 +497,8 @@ def test_resume_api_lists_summary_history_for_current_user(db_session, client):
     assert {item["mode"] for item in payload} == {"resume_summary"}
     assert {item["mode"] for item in payload} == {"resume_summary"}
     assert {item["resume_id"] for item in payload} == {resume.id}
+    assert {item["status"] for item in payload} == {"fallback"}
+    assert {item["fallback_used"] for item in payload} == {True}
 
 
 def test_resume_api_returns_404_for_unowned_resume_persist(db_session, client):

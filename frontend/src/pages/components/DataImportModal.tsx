@@ -1,5 +1,6 @@
 // frontend/src/pages/components/DataImportModal.tsx
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import { getStoredToken } from '../../auth/auth-storage';
 
 interface DataImportModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
@@ -35,7 +37,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
         ? '/api/v1/import/resume'
         : '/api/v1/import/jds';
 
-      const token = localStorage.getItem('token');
+      const token = getStoredToken();
       const headers: Record<string, string> = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
@@ -60,6 +62,18 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
     }
   };
 
+  const handleTabChange = (tab: 'resume' | 'jd') => {
+    setActiveTab(tab);
+    setFile(null);
+    setResult(null);
+    setError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const selectedFileName = file ? file.name : '';
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-full max-w-md p-6">
@@ -80,7 +94,7 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
-            onClick={() => setActiveTab('resume')}
+            onClick={() => handleTabChange('resume')}
           >
             简历导入
           </button>
@@ -90,24 +104,34 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
                 ? 'bg-blue-500 text-white'
                 : 'bg-gray-200 hover:bg-gray-300'
             }`}
-            onClick={() => setActiveTab('jd')}
+            onClick={() => handleTabChange('jd')}
           >
             JD 批量导入
           </button>
         </div>
 
         <div className="mb-4">
-          <input
-            type="file"
-            accept={activeTab === 'resume' ? '.pdf,.docx' : '.csv,.xlsx'}
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-gray-500
-              file:mr-4 file:py-2 file:px-4
-              file:rounded file:border-0
-              file:text-sm file:font-semibold
-              file:bg-blue-50 file:text-blue-700
-              hover:file:bg-blue-100"
-          />
+          <div className="flex items-center gap-3">
+            <div className="relative inline-flex overflow-hidden rounded border border-gray-300 bg-gray-50">
+              <span className="pointer-events-none px-4 py-2 text-sm font-semibold text-gray-700">
+                选择文件
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={activeTab === 'resume' ? '.pdf,.docx' : '.csv,.xlsx'}
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                aria-label="选择文件"
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </div>
+            <span className="text-sm text-gray-500">
+              {selectedFileName || '未选择文件'}
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            点击“选择文件”后，从本地文件夹中选择要导入的文件
+          </p>
           <p className="text-xs text-gray-500 mt-1">
             {activeTab === 'resume'
               ? '支持 PDF、DOCX 格式'

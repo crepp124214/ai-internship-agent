@@ -11,6 +11,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.data_access.database import Base, get_db
+from src.data_access.entities.interview import (
+    InterviewRecord as InterviewRecordModel,
+    InterviewSession as InterviewSessionModel,
+)
+from src.data_access.repositories.job_repository import job_repository
 from src.data_access.repositories.resume_repository import resume_repository
 from src.data_access.repositories.interview_repository import interview_question_repository
 from src.data_access.repositories.user_repository import user_repository
@@ -103,6 +108,23 @@ def _seed_resume(db, user_id, title="Resume", resume_text="Built APIs with FastA
             "processed_content": "",
             "resume_text": resume_text,
             "language": "zh-CN",
+        },
+    )
+
+
+def _seed_job(db, title="Backend Intern"):
+    return job_repository.create(
+        db,
+        {
+            "title": title,
+            "company": "Interview Co",
+            "location": "Beijing",
+            "description": "Build APIs",
+            "requirements": "Python, FastAPI",
+            "source": "test",
+            "source_url": "https://example.com/interview-job",
+            "source_id": "interview-job-1",
+            "is_active": True,
         },
     )
 
@@ -386,7 +408,7 @@ def test_interview_api_coach_start_success(client):
     _set_current_user(1)
     import src.presentation.api.v1.interview as interview_module
 
-    def mock_start(db, user, jd_id, resume_id, question_count):
+    async def mock_start(db, user, jd_id, resume_id, question_count):
         return {
             "session_id": 1,
             "opening_message": "Welcome to your interview practice session.",
@@ -419,7 +441,7 @@ def test_interview_api_coach_start_not_found(client):
     _set_current_user(1)
     import src.presentation.api.v1.interview as interview_module
 
-    def mock_start(db, user, jd_id, resume_id, question_count):
+    async def mock_start(db, user, jd_id, resume_id, question_count):
         raise ValueError("jd_id not found")
 
     original_start = interview_module.coach_service.start_session
@@ -444,7 +466,7 @@ def test_interview_api_coach_answer_success(client):
     _set_current_user(1)
     import src.presentation.api.v1.interview as interview_module
 
-    def mock_answer(db, user, session_id, answer):
+    async def mock_answer(db, user, session_id, answer):
         return {
             "score": 85,
             "feedback": "Good answer!",
@@ -477,7 +499,7 @@ def test_interview_api_coach_answer_session_ended(client):
     _set_current_user(1)
     import src.presentation.api.v1.interview as interview_module
 
-    def mock_answer(db, user, session_id, answer):
+    async def mock_answer(db, user, session_id, answer):
         raise ValueError("面试已结束")
 
     original_answer = interview_module.coach_service.submit_answer
@@ -501,7 +523,7 @@ def test_interview_api_coach_followup_success(client):
     _set_current_user(1)
     import src.presentation.api.v1.interview as interview_module
 
-    def mock_followup(db, user, session_id, followup_answers):
+    async def mock_followup(db, user, session_id, followup_answers):
         return {
             "session_id": session_id,
             "review_report": {
@@ -530,6 +552,230 @@ def test_interview_api_coach_followup_success(client):
         assert payload["session_id"] == 1
     finally:
         interview_module.coach_service.submit_followup_answers = original_followup
+
+
+def test_create_and_list_question_sets(db_session, client):
+    user = _seed_user(db_session, "question_set_user", "question_set_user@example.com")
+    resume = _seed_resume(db_session, user.id)
+    job = _seed_job(db_session)
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/interview/question-sets",
+        json={
+            "title": "后端实习题集",
+            "job_id": job.id,
+            "resume_id": resume.id,
+            "questions": [
+                {
+                    "question_number": 1,
+                    "question_text": "请介绍 FastAPI 项目经验",
+                    "question_type": "technical",
+                    "difficulty": "medium",
+                    "category": "backend",
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["title"] == "后端实习题集"
+    assert payload["job_id"] == job.id, "job_id should be persisted and returned"
+    assert payload["resume_id"] == resume.id, "resume_id should be persisted and returned"
+    assert payload["questions"][0]["question_text"] == "请介绍 FastAPI 项目经验"
+
+    list_response = client.get("/api/v1/interview/question-sets")
+    assert list_response.status_code == 200
+    records = list_response.json()
+    assert len(records) == 1
+    assert records[0]["id"] == payload["id"]
+
+
+def test_start_coach_from_question_set(db_session, client):
+    user = _seed_user(db_session, "question_set_coach", "question_set_coach@example.com")
+    resume = _seed_resume(db_session, user.id)
+    job = _seed_job(db_session, title="Platform Intern")
+    _set_current_user(user.id)
+
+    create_response = client.post(
+        "/api/v1/interview/question-sets",
+        json={
+            "title": "平台题集",
+            "job_id": job.id,
+            "resume_id": resume.id,
+            "questions": [
+                {
+                    "question_number": 1,
+                    "question_text": "如何设计异步接口？",
+                    "question_type": "technical",
+                    "difficulty": "medium",
+                    "category": "backend",
+                },
+                {
+                    "question_number": 2,
+                    "question_text": "如何排查超时问题？",
+                    "question_type": "technical",
+                    "difficulty": "medium",
+                    "category": "backend",
+                },
+            ],
+        },
+    )
+    question_set_id = create_response.json()["id"]
+
+    import src.presentation.api.v1.interview as interview_module
+
+    async def mock_start(db, user, jd_id, resume_id, question_count):
+        return {
+            "session_id": 11,
+            "opening_message": "开始题集对练",
+            "first_question": "如何设计异步接口？",
+            "total_questions": question_count,
+        }
+
+    original_start = interview_module.coach_service.start_session
+    interview_module.coach_service.start_session = mock_start
+
+    try:
+        response = client.post(f"/api/v1/interview/question-sets/{question_set_id}/start-coach")
+    finally:
+        interview_module.coach_service.start_session = original_start
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"] == 11
+    assert payload["total_questions"] == 2
+
+
+def test_start_coach_from_question_set_binding_persists(db_session, client):
+    """Regression: question set with job_id/resume_id binding should allow start-coach."""
+    user = _seed_user(db_session, "qs_binding_user", "qs_binding_user@example.com")
+    resume = _seed_resume(db_session, user.id)
+    job = _seed_job(db_session, title="Backend Engineer")
+    _set_current_user(user.id)
+
+    # Create question set WITH job_id and resume_id
+    create_response = client.post(
+        "/api/v1/interview/question-sets",
+        json={
+            "title": "绑定测试题集",
+            "job_id": job.id,
+            "resume_id": resume.id,
+            "questions": [
+                {
+                    "question_number": 1,
+                    "question_text": "描述你的项目经验",
+                    "question_type": "technical",
+                    "difficulty": "medium",
+                    "category": "backend",
+                },
+            ],
+        },
+    )
+    assert create_response.status_code == 201
+    created = create_response.json()
+    assert created["job_id"] == job.id, "job_id should be in response"
+    assert created["resume_id"] == resume.id, "resume_id should be in response"
+
+    # Verify start-coach uses the binding (mock coach_service to isolate)
+    import src.presentation.api.v1.interview as interview_module
+
+    async def mock_start(db, user, jd_id, resume_id, question_count):
+        # Verify the correct jd_id and resume_id are passed from the question set binding
+        assert jd_id == job.id, f"start_coach should use question set's job_id={job.id}, got {jd_id}"
+        assert resume_id == resume.id, f"start_coach should use question set's resume_id={resume.id}, got {resume_id}"
+        return {
+            "session_id": 22,
+            "opening_message": "开始对练",
+            "first_question": "描述你的项目经验",
+            "total_questions": question_count,
+        }
+
+    original_start = interview_module.coach_service.start_session
+    interview_module.coach_service.start_session = mock_start
+
+    try:
+        response = client.post(f"/api/v1/interview/question-sets/{created['id']}/start-coach")
+    finally:
+        interview_module.coach_service.start_session = original_start
+
+    assert response.status_code == 200, f"start-coach should succeed, got {response.status_code}: {response.json()}"
+
+
+def test_delete_question_set_succeeds(db_session, client):
+    """Test DELETE /api/v1/interview/question-sets/{id} succeeds for owner."""
+    user = _seed_user(db_session, "qs_deleter", "qs_deleter@example.com")
+    resume = _seed_resume(db_session, user.id)
+    job = _seed_job(db_session)
+    _set_current_user(user.id)
+
+    create_response = client.post(
+        "/api/v1/interview/question-sets",
+        json={
+            "title": "待删除题集",
+            "job_id": job.id,
+            "resume_id": resume.id,
+            "questions": [
+                {
+                    "question_number": 1,
+                    "question_text": "第一题",
+                    "question_type": "technical",
+                    "difficulty": "easy",
+                    "category": "general",
+                },
+            ],
+        },
+    )
+    question_set_id = create_response.json()["id"]
+
+    response = client.delete(f"/api/v1/interview/question-sets/{question_set_id}")
+    assert response.status_code == 204
+
+    # Verify it's gone
+    get_response = client.get(f"/api/v1/interview/question-sets/{question_set_id}")
+    assert get_response.status_code == 404
+
+
+def test_delete_question_set_returns_404_for_nonexistent(db_session, client):
+    """Delete returns 404 for non-existent question set."""
+    user = _seed_user(db_session, "qs_deleter2", "qs_deleter2@example.com")
+    _set_current_user(user.id)
+
+    response = client.delete("/api/v1/interview/question-sets/99999")
+    assert response.status_code == 404
+
+
+def test_delete_question_set_returns_404_for_other_user(db_session, client):
+    """Cannot delete another user's question set."""
+    user1 = _seed_user(db_session, "qs_owner", "qs_owner@example.com")
+    user2 = _seed_user(db_session, "qs_other", "qs_other@example.com")
+    resume = _seed_resume(db_session, user1.id)
+    job = _seed_job(db_session)
+    _set_current_user(user1.id)
+
+    create_response = client.post(
+        "/api/v1/interview/question-sets",
+        json={
+            "title": "用户1的题集",
+            "job_id": job.id,
+            "resume_id": resume.id,
+            "questions": [
+                {
+                    "question_number": 1,
+                    "question_text": "题目",
+                    "question_type": "technical",
+                    "difficulty": "easy",
+                    "category": "general",
+                },
+            ],
+        },
+    )
+    question_set_id = create_response.json()["id"]
+
+    _set_current_user(user2.id)
+    response = client.delete(f"/api/v1/interview/question-sets/{question_set_id}")
+    assert response.status_code == 404
 
 
 def test_interview_api_coach_end_success(client):
@@ -582,6 +828,44 @@ def test_interview_api_coach_end_not_found(client):
         assert response.status_code == 404
     finally:
         interview_module.coach_service.end_session = original_end
+
+
+def test_interview_api_coach_report_success(db_session, client):
+    """Test GET /api/v1/interview/coach/report/{session_id} - success case."""
+    user = _seed_user(db_session, "report_user", "report_user@example.com")
+    _set_current_user(user.id)
+    session = InterviewSessionModel(
+        user_id=user.id,
+        job_id=None,
+        session_type="technical",
+        total_questions=1,
+        answered_questions=1,
+        average_score=88,
+        completed=True,
+        status="completed",
+    )
+    db_session.add(session)
+    db_session.commit()
+    db_session.refresh(session)
+
+    record = InterviewRecordModel(
+        user_id=user.id,
+        session_id=session.id,
+        question_id=None,
+        user_answer="我会先拆清接口边界，再说明回退策略。",
+        score=88,
+        feedback="回答不错",
+    )
+    db_session.add(record)
+    db_session.commit()
+
+    response = client.get(f"/api/v1/interview/coach/report/{session.id}")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["session_id"] == session.id
+    assert payload["average_score"] == 88
+    assert payload["review_report"]["overall_score"] >= 0
+    assert "markdown" in payload["review_report"]
 
 
 def test_interview_api_get_question_not_found(client):

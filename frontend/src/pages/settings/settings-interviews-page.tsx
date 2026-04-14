@@ -63,9 +63,7 @@ export function SettingsInterviewsPage() {
           <button
             onClick={() => {
               const firstSet = questionSets[0]
-              interviewApi.startCoachFromQuestionSet(firstSet.id).then(() => {
-                navigate('/interview')
-              })
+              navigate('/interview', { state: { questionSetId: firstSet.id } })
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[var(--color-accent)] to-[var(--color-secondary)] px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg"
           >
@@ -159,9 +157,7 @@ export function SettingsInterviewsPage() {
             {questionSets.map((qs) => (
               <button
                 key={qs.id}
-                onClick={() => {
-                  interviewApi.startCoachFromQuestionSet(qs.id).then(() => navigate('/interview'))
-                }}
+                onClick={() => navigate('/interview', { state: { questionSetId: qs.id } })}
                 className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink-secondary)] hover:bg-[var(--color-surface-hover)]"
               >
                 {qs.title}

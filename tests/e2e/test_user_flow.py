@@ -7,9 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.business_logic.resume import resume_service
-from src.data_access.database import Base, get_db
-from src.main import app
+from backend.domain.resume.service import resume_service
+from backend.infrastructure.database.session import Base, get_db
+from backend.main import app
 
 
 TEST_DATABASE_URL = "sqlite://"

@@ -15,12 +15,12 @@ from alembic import context
 # 添加项目根目录到路径，以便导入模块
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.data_access.database import Base
-from src.data_access.entities.interview import InterviewQuestion, InterviewRecord, InterviewSession
-from src.data_access.entities.job import Job, JobApplication, JobMatchResult
-from src.data_access.entities.resume import Resume, ResumeOptimization
-from src.data_access.entities.user import User, UserProfile
-from src.utils.config_loader import get_settings
+from backend.infrastructure.database.session import Base
+from backend.infrastructure.database.models.interview import InterviewQuestion, InterviewRecord, InterviewSession
+from backend.infrastructure.database.models.job import Job, JobApplication, JobMatchResult
+from backend.infrastructure.database.models.resume import Resume, ResumeOptimization
+from backend.infrastructure.database.models.user import User, UserProfile
+from backend.shared.utils.config_loader import get_settings
 
 
 # this is the Alembic Config object, which provides

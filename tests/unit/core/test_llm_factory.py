@@ -150,3 +150,25 @@ async def test_mock_provider_is_deterministic():
     assert "Hello" in chat["content"]
     assert len(embedding) == 3
     assert all(isinstance(value, float) for value in embedding)
+
+
+@pytest.mark.parametrize("provider", ["deepseek", "qwen", "moonshot", "siliconflow"])
+def test_factory_returns_openai_adapter_for_openai_compatible_providers(provider):
+    """All OpenAI-compatible providers should return OpenAIAdapter, not MockLLMAdapter."""
+    llm = LLMFactory.create(
+        provider,
+        {"api_key": "test-key", "model": "test-model"},
+    )
+
+    assert isinstance(llm, OpenAIAdapter)
+    assert not isinstance(llm, MockLLMAdapter)
+    assert llm.config["provider"] == provider
+
+
+@pytest.mark.parametrize("provider", ["deepseek", "qwen", "moonshot", "siliconflow"])
+def test_factory_rejects_openai_compatible_provider_without_key(provider, monkeypatch):
+    """Known provider but missing API key should raise, not silently fall back to mock."""
+    monkeypatch.delenv(f"{provider.upper()}_API_KEY", raising=False)
+
+    with pytest.raises(Exception, match="API key"):
+        LLMFactory.create(provider, {"model": "test-model"})

@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 
 import {
@@ -6,100 +7,42 @@ import {
   jobsApi,
   readApiError,
   resumeApi,
-  type GeneratedInterviewQuestion,
+  type InterviewQuestionSet,
   type ReviewReport,
 } from '../lib/api'
 import { ChatBubble } from './components/ChatBubble'
-import { CoachReviewReportCard } from './components/CoachReviewReportCard'
 import {
-  EmptyHint,
   FormField,
-  Input,
-  PageHeader,
   PrimaryButton,
-  ResultPanel,
-  SectionCard,
+  ResultFrame,
   SecondaryButton,
   Select,
   Textarea,
+  WorkspaceShell,
 } from './page-primitives'
 
-const CONTEXT_JSON_KEYS = [
-  'job_context', 'description', 'title', 'context', 'summary', 'content',
-  'requirements', 'responsibilities', 'role', 'position',
-  'jobDescription', 'job_description', 'jobTitle', 'job_title', 'company', 'company_name',
-] as const
+const SCORE_PLACEHOLDER_TEXT = '评分暂不可用'
 
-function collectContextStrings(value: unknown, depth = 0): string[] {
-  if (depth > 3) return []
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed ? [trimmed] : []
-  }
-  if (Array.isArray(value)) return value.flatMap((item) => collectContextStrings(item, depth + 1))
-  if (!value || typeof value !== 'object') return []
-  const record = value as Record<string, unknown>
-  const prioritized = CONTEXT_JSON_KEYS.flatMap((key) => collectContextStrings(record[key], depth + 1))
-  if (prioritized.length > 0) return prioritized
-  return Object.entries(record).flatMap(([key, candidate]) => {
-    if (typeof candidate === 'string') {
-      const trimmed = candidate.trim()
-      return trimmed ? [`${key}: ${trimmed}`] : []
-    }
-    return collectContextStrings(candidate, depth + 1)
-  })
-}
+function formatImmediateScoreFeedback(score: number, feedback?: string | null) {
+  const normalizedFeedback = feedback?.trim()
 
-function extractImportedContext(fileName: string, mimeType: string, rawContent: string) {
-  const trimmedContent = rawContent.trim()
-  if (!trimmedContent) throw new Error('文件内容为空')
-  const isJsonFile = fileName.toLowerCase().endsWith('.json') || mimeType.includes('json')
-  if (!isJsonFile) return { content: trimmedContent, message: `已导入 ${fileName}，岗位上下文字段已更新。` }
-  try {
-    const parsed = JSON.parse(trimmedContent)
-    const content = [...new Set(collectContextStrings(parsed))].join('\n\n').trim()
-    if (content) return { content, message: `已导入 ${fileName}，并从 JSON 中提取了结构化上下文。` }
-    return { content: trimmedContent, message: `已导入 ${fileName}，没有识别到明确字段，使用原始 JSON 文本。` }
-  } catch {
-    return { content: trimmedContent, message: `已导入 ${fileName}，JSON 解析失败，使用原始文本。` }
+  if (!normalizedFeedback || normalizedFeedback.includes(SCORE_PLACEHOLDER_TEXT)) {
+    return `本题得分：${score}分`
   }
-}
 
-// Validate question response - detect mock/prompt artifacts
-// More lenient validation to avoid false positives
-function validateQuestionResponse(question: GeneratedInterviewQuestion): boolean {
-  const text = question.question_text
-  if (!text || typeof text !== 'string') return false
-  const trimmed = text.trim()
-  if (trimmed.length < 5) return false
-  
-  // Check for exact prompt injection markers - more specific patterns
-  const invalidPatterns = [
-    /^mock-/i,
-    /^prompt:/i,
-    /^task:/i,
-    /^agent prompt/i,
-  ]
-  
-  for (const pattern of invalidPatterns) {
-    if (pattern.test(trimmed)) return false
-  }
-  
-  return true
+  return `本题得分：${score}分 - ${normalizedFeedback}`
 }
 
 export function InterviewPage() {
+  const location = useLocation()
   const resumesQuery = useQuery({ queryKey: ['resume', 'list'], queryFn: resumeApi.list })
   const jobsQuery = useQuery({ queryKey: ['jobs', 'list'], queryFn: jobsApi.list })
+  const questionSetsQuery = useQuery({ queryKey: ['interview', 'question-sets'], queryFn: interviewApi.listQuestionSets })
+  const sessionsQuery = useQuery({ queryKey: ['interview', 'sessions'], queryFn: interviewApi.listSessions })
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
-  const [jobContext, setJobContext] = useState('后端开发实习岗位，重点关注 FastAPI、异步接口、清晰架构和可维护的服务边界。')
-  const [questionCount, setQuestionCount] = useState(5)
-  const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedInterviewQuestion[]>([])
-  const [selectedGeneratedQuestionIndex, setSelectedGeneratedQuestionIndex] = useState(0)
+  const [selectedQuestionSetId, setSelectedQuestionSetId] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [contextImportState, setContextImportState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [contextImportMessage, setContextImportMessage] = useState<string | null>(null)
 
   // Coach mode state
   const [coachActive, setCoachActive] = useState(false)
@@ -110,6 +53,33 @@ export function InterviewPage() {
   const [coachReport, setCoachReport] = useState<{ review_report: ReviewReport; average_score: number } | null>(null)
   const [inFollowup, setInFollowup] = useState(false)
 
+  const latestCompletedSession =
+    sessionsQuery.data
+      ?.filter((session) => Boolean(session.completed))
+      .sort((left, right) => new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime())[0] ?? null
+
+  const latestReportQuery = useQuery({
+    queryKey: ['interview', 'coach-report', latestCompletedSession?.id],
+    queryFn: () => interviewApi.coachGetReport(latestCompletedSession!.id),
+    enabled: Boolean(latestCompletedSession),
+  })
+
+  // 从 resume / settings-interviews 跳转过来的上下文
+  useEffect(() => {
+    const state = location.state as {
+      fromResume?: { jobId: number; resumeId: number }
+      questionSetId?: number
+    } | null
+
+    if (state?.fromResume) {
+      setSelectedJobId(state.fromResume.jobId)
+      setSelectedResumeId(state.fromResume.resumeId)
+    }
+    if (state?.questionSetId) {
+      setSelectedQuestionSetId(state.questionSetId)
+    }
+  }, [location.state])
+
   useEffect(() => {
     if (!selectedResumeId && resumesQuery.data?.length) setSelectedResumeId(resumesQuery.data[0].id)
   }, [resumesQuery.data, selectedResumeId])
@@ -118,70 +88,11 @@ export function InterviewPage() {
     if (!selectedJobId && jobsQuery.data?.length) setSelectedJobId(jobsQuery.data[0].id)
   }, [jobsQuery.data, selectedJobId])
 
-  const selectedGeneratedQuestion = generatedQuestions[selectedGeneratedQuestionIndex] ?? null
-
-  const handleContextImport = async (event: ChangeEvent<HTMLInputElement>) => {
-    const input = event.currentTarget
-    const file = input.files?.[0]
-    if (!file) return
-    setContextImportState('loading')
-    setContextImportMessage(`正在导入 ${file.name}...`)
-    try {
-      const rawContent = await file.text()
-      const importedContext = extractImportedContext(file.name, file.type, rawContent)
-      setJobContext(importedContext.content)
-      setContextImportState('success')
-      setContextImportMessage(importedContext.message)
-    } catch (error) {
-      setContextImportState('error')
-      setContextImportMessage(error instanceof Error ? error.message : '导入失败')
-    } finally {
-      input.value = ''
+  useEffect(() => {
+    if (!selectedQuestionSetId && questionSetsQuery.data?.length) {
+      setSelectedQuestionSetId(questionSetsQuery.data[0].id)
     }
-  }
-
-  const generateQuestionsMutation = useMutation({
-    mutationFn: () => {
-      // Resume is optional - can generate questions without it
-      return interviewApi.generateQuestions({ job_context: jobContext, resume_id: selectedResumeId ?? undefined, count: questionCount })
-    },
-    onSuccess: (data) => {
-      // Validate AI response
-      if (!data.questions || data.questions.length === 0) {
-        setFeedback('生成题目失败，请重试或稍后再试。')
-        setGeneratedQuestions([])
-        return
-      }
-      // Validate each question for mock/prompt artifacts
-      const invalidQuestions = data.questions.filter(q => !validateQuestionResponse(q))
-      if (invalidQuestions.length > 0) {
-        console.warn('[Interview] Invalid questions detected:', invalidQuestions.map(q => q.question_text))
-        setFeedback('题目生成服务返回了无效内容，请重试或稍后再试。')
-        setGeneratedQuestions([])
-        return
-      }
-      setGeneratedQuestions(data.questions)
-      setSelectedGeneratedQuestionIndex(0)
-      setFeedback(null)
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
-
-  const saveGeneratedQuestionMutation = useMutation({
-    mutationFn: () => {
-      if (!selectedGeneratedQuestion) throw new Error('请先生成题目')
-      return interviewApi.createQuestion({
-        question_type: selectedGeneratedQuestion.question_type,
-        difficulty: selectedGeneratedQuestion.difficulty,
-        question_text: selectedGeneratedQuestion.question_text,
-        category: selectedGeneratedQuestion.category,
-      })
-    },
-    onSuccess: async () => {
-      setFeedback('题目已保存到题库。')
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
+  }, [questionSetsQuery.data, selectedQuestionSetId])
 
   const startCoachMutation = useMutation({
     mutationFn: () => {
@@ -198,8 +109,27 @@ export function InterviewPage() {
         { role: 'ai', message: data.opening_message },
         { role: 'ai', message: data.first_question },
       ])
+      setCoachReport(null)
+      setCoachFeedback(null)
       setInFollowup(false)
       setCoachActive(true)
+    },
+    onError: (error) => setFeedback(readApiError(error)),
+  })
+
+  const startCoachFromSetMutation = useMutation({
+    mutationFn: (questionSetId: number) => interviewApi.startCoachFromQuestionSet(questionSetId),
+    onSuccess: (data) => {
+      setCoachSessionId(data.session_id)
+      setCoachMessages([
+        { role: 'ai', message: data.opening_message },
+        { role: 'ai', message: data.first_question },
+      ])
+      setCoachReport(null)
+      setCoachFeedback(null)
+      setInFollowup(false)
+      setCoachActive(true)
+      setFeedback(null)
     },
     onError: (error) => setFeedback(readApiError(error)),
   })
@@ -208,12 +138,13 @@ export function InterviewPage() {
     mutationFn: ({ sessionId, answer }: { sessionId: number; answer: string }) =>
       interviewApi.coachAnswer({ session_id: sessionId, answer }),
     onSuccess: (data) => {
+      const immediateScoreFeedback = formatImmediateScoreFeedback(data.score, data.feedback)
       setCoachMessages((prev) => [
         ...prev,
         { role: 'user', message: coachAnswer },
-        { role: 'ai', message: data.feedback, score: data.score },
+        { role: 'ai', message: immediateScoreFeedback, score: data.score },
       ])
-      setCoachFeedback(`本题得分：${data.score}分 - ${data.feedback}`)
+      setCoachFeedback(immediateScoreFeedback)
       setCoachAnswer('')
       if (data.next_question) {
         setCoachMessages((prev) => [...prev, { role: 'ai', message: data.next_question! }])
@@ -235,166 +166,234 @@ export function InterviewPage() {
     onError: (error) => setFeedback(readApiError(error)),
   })
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        eyebrow="面试准备工作台"
-        title="生成面试题目，进行 AI 对练"
-        description="生成针对性的面试题目，或直接进入 AI 面试教练进行多轮对练。"
-      />
+  // First screen structure: left = question set + preview, right = coach entry
+  // Second screen: left = last training result, right = history entry
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <SectionCard title="生成题目" subtitle="结合岗位上下文和简历，生成针对性面试题目。">
-          <div className="space-y-4">
-            <FormField label="导入本地上下文" helper="支持 txt、md 和 json 文件。">
-              <Input
-                type="file"
-                accept=".txt,.md,.json,text/plain,text/markdown,application/json"
-                onChange={handleContextImport}
-              />
-            </FormField>
-      {contextImportMessage ? (
-          <div className={`rounded-[22px] px-4 py-3 text-sm ${
-            contextImportState === 'error'
-              ? 'border border-[rgba(207,72,72,0.24)] bg-[rgba(207,72,72,0.08)] text-[rgb(143,44,44)]'
-              : contextImportState === 'success'
-                ? 'border border-[rgba(80,140,96,0.18)] bg-[rgba(80,140,96,0.08)] text-[rgb(42,102,58)]'
-                : 'border border-[rgba(80,140,96,0.18)] bg-[rgba(80,140,96,0.08)] text-[rgb(42,102,58)]/50'
-          }`}>
-            {contextImportMessage}
-          </div>
+  const currentQuestionSet =
+    questionSetsQuery.data?.find((questionSet) => questionSet.id === selectedQuestionSetId) ??
+    questionSetsQuery.data?.[0] ??
+    null
+  const activeReport = coachReport ?? latestReportQuery.data ?? null
+  const activeReportAverageScore = coachReport?.average_score ?? latestReportQuery.data?.average_score ?? null
+  const activeReportDuration = latestCompletedSession?.duration ?? null
+
+  return (
+    <WorkspaceShell
+      title="面试工作区"
+      subtitle="生成面试题目，进行 AI 对练"
+      statusRail={feedback ? (
+        <div className="rounded-[22px] bg-[var(--color-panel)] px-4 py-3 text-sm text-[var(--color-ink)]">
+          {feedback}
+        </div>
       ) : null}
-            <FormField label="岗位上下文" helper="描述岗位方向、技术栈、业务背景等。">
-              <Textarea value={jobContext} onChange={(event) => setJobContext(event.target.value)} className="min-h-32" />
-            </FormField>
-            <div className="grid gap-4 md:grid-cols-2">
+    >
+      <div className="flex flex-col gap-8">
+        {/* 第一屏：左侧题集卡+题目预览，右侧教练入口卡 */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* 左侧：当前题集卡 */}
+          <ResultFrame
+            status={currentQuestionSet ? 'success' : 'loading'}
+            title="当前题集"
+            summary="当前训练材料决定你接下来练什么题，先确认题集，再进入面试教练。"
+            headerMeta={
+              currentQuestionSet ? (
+                <div className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-ink)]">
+                  {currentQuestionSet.questions.length} 道题
+                </div>
+              ) : null
+            }
+            notice={!currentQuestionSet ? '暂无题集，请先生成题目。' : undefined}
+          >
+            {currentQuestionSet ? (
+              <>
+                <div className="rounded-xl bg-[var(--color-surface)] p-4">
+                  <p className="text-sm font-medium text-[var(--color-ink)]">{currentQuestionSet.title}</p>
+                  <p className="mt-1 text-xs text-[var(--color-muted)]">
+                    题集已准备完成，可直接进入训练。
+                  </p>
+                </div>
+                <div className="max-h-32 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4">
+                  <p className="text-xs leading-6 text-[var(--color-ink-tertiary)] line-clamp-4">
+                    {currentQuestionSet.questions.slice(0, 2).map((q, i) => (
+                      <span key={i}>Q{i + 1}: {q.question_text.slice(0, 50)}... {'\n'}</span>
+                    ))}
+                    {currentQuestionSet.questions.length > 2 && `...等 ${currentQuestionSet.questions.length} 道题`}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted)]">
+                当前还没有可练习的题集。
+              </div>
+            )}
+          </ResultFrame>
+
+          {/* 右侧：教练入口卡 */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">🎯</span>
+              <h3 className="text-base font-semibold text-[var(--color-ink-primary)]">面试教练</h3>
+            </div>
+            <div className="space-y-3">
               <FormField label="简历">
                 <Select value={selectedResumeId ?? ''} onChange={(event) => setSelectedResumeId(Number(event.target.value))}>
                   {resumesQuery.data?.map((resume) => (
                     <option key={resume.id} value={resume.id}>
-                      #{resume.id} - {resume.title}
+                      {resume.title}
                     </option>
                   ))}
                 </Select>
               </FormField>
-              <FormField label="题目数量">
-                <Input type="number" min={1} max={20} value={questionCount} onChange={(event) => setQuestionCount(Number(event.target.value))} />
-              </FormField>
-            </div>
-            <PrimaryButton type="button" onClick={() => generateQuestionsMutation.mutate()}>
-              生成题目
-            </PrimaryButton>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="面试教练" subtitle="选择简历和岗位后开始 AI 面试对练。">
-          {coachActive ? (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
-                {coachMessages.map((msg, i) => (
-                  <ChatBubble key={i} role={msg.role} message={msg.message} score={msg.score} />
-                ))}
-              </div>
-              {coachFeedback ? (
-                <div className="rounded-[22px] bg-[var(--color-surface-sunken)] px-4 py-3 text-sm">
-                  {coachFeedback}
-                </div>
-              ) : null}
-              <div className="flex gap-3">
-                <Textarea
-                  value={coachAnswer}
-                  onChange={(e) => setCoachAnswer(e.target.value)}
-                  placeholder="输入你的回答..."
-                  className="flex-1"
-                />
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <SecondaryButton
-                  type="button"
-                  onClick={() => submitAnswerMutation.mutate({ sessionId: coachSessionId!, answer: coachAnswer })}
-                  disabled={!coachAnswer.trim()}
-                >
-                  提交回答
-                </SecondaryButton>
-                <PrimaryButton
-                  type="button"
-                  onClick={() => endCoachMutation.mutate({ sessionId: coachSessionId!, followupSkipped: inFollowup })}
-                >
-                  结束面试
-                </PrimaryButton>
-              </div>
-            </div>
-          ) : coachReport ? (
-            <div className="space-y-4">
-              <CoachReviewReportCard report={coachReport.review_report} averageScore={coachReport.average_score} />
-              <SecondaryButton type="button" onClick={() => { setCoachReport(null); setCoachMessages([]) }}>
-                重新开始
-              </SecondaryButton>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <EmptyHint>选择简历和岗位后点击开始，进入 AI 面试教练对练。</EmptyHint>
               <FormField label="目标岗位">
                 <Select value={selectedJobId ?? ''} onChange={(event) => setSelectedJobId(Number(event.target.value))}>
                   {jobsQuery.data?.map((job) => (
                     <option key={job.id} value={job.id}>
-                      #{job.id} - {job.title} @ {job.company}
+                      {job.title} @ {job.company}
                     </option>
                   ))}
                 </Select>
               </FormField>
               <PrimaryButton
                 type="button"
-                onClick={() => startCoachMutation.mutate()}
-                disabled={!selectedResumeId || !selectedJobId}
+                onClick={() => {
+                  if (selectedQuestionSetId) {
+                    startCoachFromSetMutation.mutate(selectedQuestionSetId)
+                    return
+                  }
+                  startCoachMutation.mutate()
+                }}
+                disabled={
+                  startCoachMutation.isPending ||
+                  startCoachFromSetMutation.isPending ||
+                  (!selectedQuestionSetId && (!selectedResumeId || !selectedJobId))
+                }
+                className="w-full"
               >
-                开始面试教练
+                {startCoachMutation.isPending || startCoachFromSetMutation.isPending ? '启动中...' : '开始练习'}
               </PrimaryButton>
             </div>
-          )}
-        </SectionCard>
+          </div>
+        </div>
+
+        {/* 第二屏：左侧最近训练结果摘要卡，右侧历史训练入口 */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* 左侧：最近训练结果摘要卡 */}
+          <ResultFrame
+            status={activeReport ? 'success' : 'loading'}
+            title="最近训练结果"
+            summary="最近一次训练结果保留为主结果，方便你快速判断是否继续练习或回看历史。"
+            headerMeta={
+              activeReportAverageScore != null ? (
+                <div className="rounded-full bg-[var(--color-surface)] px-3 py-1 text-xs font-medium text-[var(--color-ink)]">
+                  平均 {activeReportAverageScore} 分
+                </div>
+              ) : null
+            }
+            notice={!activeReport ? '暂无训练记录，请开始练习。' : undefined}
+            actions={
+              activeReport ? (
+                <SecondaryButton type="button" onClick={() => { setCoachReport(null); setCoachMessages([]) }}>
+                  重新开始
+                </SecondaryButton>
+              ) : undefined
+            }
+          >
+            {activeReport ? (
+              <>
+                <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface)] px-4 py-4">
+                  <span className="text-sm text-[var(--color-ink)]">平均得分</span>
+                  <span className="text-lg font-bold text-[var(--color-accent)]">{activeReportAverageScore}分</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-[var(--color-surface)] px-4 py-4">
+                  <span className="text-sm text-[var(--color-ink)]">练习时间</span>
+                  <span className="text-sm font-medium text-[var(--color-ink)]">
+                    {activeReportDuration ? `${activeReportDuration} 分钟` : `约 ${Math.max(coachMessages.length * 2, 2)} 分钟`}
+                  </span>
+                </div>
+                <div className="rounded-xl bg-[var(--color-surface)] p-4">
+                  <p className="text-xs text-[var(--color-muted)]">简短反馈</p>
+                  <p className="text-sm text-[var(--color-ink)] line-clamp-2">
+                    {activeReport.review_report.overall_comment || '继续加油练习！'}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl bg-[var(--color-surface)] p-4 text-sm text-[var(--color-muted)]">
+                当前还没有训练结果。
+              </div>
+            )}
+          </ResultFrame>
+
+          {/* 右侧：历史训练入口 */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-xl">📚</span>
+              <h3 className="text-base font-semibold text-[var(--color-ink-primary)]">历史题集</h3>
+            </div>
+            <div className="space-y-3">
+              {questionSetsQuery.data && questionSetsQuery.data.length > 0 ? (
+                <div className="space-y-2">
+                  {questionSetsQuery.data.slice(0, 3).map((qs: InterviewQuestionSet) => (
+                    <button
+                      key={qs.id}
+                      onClick={() => setSelectedQuestionSetId(qs.id)}
+                      className={`flex w-full items-center justify-between rounded-xl border bg-white px-3 py-2 text-left transition-colors hover:border-[var(--color-accent)]/30 ${
+                        selectedQuestionSetId === qs.id
+                          ? 'border-[var(--color-accent)]/40 bg-[var(--color-surface)]'
+                          : 'border-[var(--color-border)]'
+                      }`}
+                    >
+                      <span className="text-sm text-[var(--color-ink)] truncate">{qs.title}</span>
+                      <span className="text-xs text-[var(--color-muted)]">{qs.questions.length}题</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-[var(--color-muted)]">暂无历史题集</div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Priority: show error feedback first, then questions, then empty hint */}
-      {feedback ? (
-        <SectionCard title="生成的题目" subtitle="选择一道题目保存到题库。">
-          <div className="rounded-[22px] border border-[rgba(199,107,79,0.24)] bg-[rgba(199,107,79,0.08)] px-4 py-3 text-sm text-[var(--color-accent)]">
-            {feedback}
-          </div>
-        </SectionCard>
-      ) : generatedQuestions.length > 0 ? (
-        <SectionCard title="生成的题目" subtitle="选择一道题目保存到题库。">
-          <div className="space-y-4">
-            <FormField label="选择题目">
-              <Select
-                value={selectedGeneratedQuestionIndex}
-                onChange={(event) => setSelectedGeneratedQuestionIndex(Number(event.target.value))}
+      {/* Active coach view */}
+      {coachActive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-[var(--color-ink)]">面试练习中</h3>
+              <PrimaryButton type="button" onClick={() => endCoachMutation.mutate({ sessionId: coachSessionId!, followupSkipped: inFollowup })}>
+                结束面试
+              </PrimaryButton>
+            </div>
+            <div className="flex max-h-96 flex-col gap-2 overflow-y-auto">
+              {coachMessages.map((msg, i) => (
+                <ChatBubble key={i} role={msg.role} message={msg.message} score={msg.score} />
+              ))}
+            </div>
+            {coachFeedback && (
+              <div className="rounded-xl bg-[var(--color-surface-sunken)] px-4 py-2 text-sm">
+                {coachFeedback}
+              </div>
+            )}
+            <Textarea
+              value={coachAnswer}
+              onChange={(e) => setCoachAnswer(e.target.value)}
+              placeholder="输入你的回答..."
+              className="mt-4"
+            />
+            <div className="mt-4 flex gap-3">
+              <PrimaryButton
+                type="button"
+                onClick={() => submitAnswerMutation.mutate({ sessionId: coachSessionId!, answer: coachAnswer })}
+                disabled={!coachAnswer.trim()}
               >
-                {generatedQuestions.map((question, index) => (
-                  <option key={`${question.question_number}-${question.question_text}`} value={index}>
-                    题目 {question.question_number} - {question.question_text.slice(0, 60)}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
-            {selectedGeneratedQuestion && (
-              <ResultPanel
-                label={`题目 ${selectedGeneratedQuestion.question_number}`}
-                content={selectedGeneratedQuestion.question_text}
-                meta={`${selectedGeneratedQuestion.question_type} - ${selectedGeneratedQuestion.difficulty}`}
-              />
-            )}
-            <SecondaryButton type="button" onClick={() => saveGeneratedQuestionMutation.mutate()}>
-              保存到题库
-            </SecondaryButton>
-            {feedback && (
-              <div className="rounded-[22px] bg-[var(--color-surface-sunken)] px-4 py-3 text-sm">{feedback}</div>
-            )}
+                提交回答
+              </PrimaryButton>
+            </div>
           </div>
-        </SectionCard>
-      ) : (
-        <EmptyHint>暂无生成的题目，请先导入上下文并生成题目。</EmptyHint>
+        </div>
       )}
-    </div>
+    </WorkspaceShell>
   )
 }

@@ -9,6 +9,8 @@ import pytest
 from src.business_logic.interview.service import InterviewService
 from src.presentation.schemas.interview import (
     InterviewRecordCreate,
+    InterviewQuestionSetCreate,
+    InterviewQuestionSetUpdate,
     InterviewQuestionUpdate,
     InterviewSessionCreate,
     InterviewRecordUpdate,
@@ -517,3 +519,71 @@ class TestInterviewService:
         # 验证返回的 provider 和 model 来自用户配置
         assert result["provider"] == "zhipu"
         assert result["model"] == "glm-4.5-air"
+
+    @pytest.mark.asyncio
+    async def test_create_question_set_serializes_questions(self):
+        persisted = SimpleNamespace(id=1, user_id=55, title="题集")
+        payload = InterviewQuestionSetCreate(
+            title="后端题集",
+            job_id=9,
+            resume_id=7,
+            questions=[
+                {
+                    "question_number": 1,
+                    "question_text": "介绍 FastAPI 经验",
+                    "question_type": "technical",
+                    "difficulty": "medium",
+                    "category": "backend",
+                }
+            ],
+        )
+
+        with patch("src.business_logic.interview.service.interview_question_set_repository") as mock_repo:
+            mock_repo.create.return_value = persisted
+            result = await self.service.create_question_set(self.mock_db, payload, current_user_id=55)
+
+        assert result is persisted
+        create_payload = mock_repo.create.call_args.args[1]
+        assert create_payload["user_id"] == 55
+        assert "questions_json" in create_payload
+        assert "FastAPI" in create_payload["questions_json"]
+
+    @pytest.mark.asyncio
+    async def test_update_question_set_requires_owner(self):
+        with patch.object(self.service, "get_question_set", new=AsyncMock(return_value=None)):
+            result = await self.service.update_question_set(
+                self.mock_db,
+                question_set_id=1,
+                question_set_data=InterviewQuestionSetUpdate(title="新题集"),
+                current_user_id=55,
+            )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_start_coach_from_question_set_uses_bound_job_resume(self):
+        question_set = SimpleNamespace(
+            id=3,
+            user_id=55,
+            job_id=9,
+            resume_id=7,
+            questions_json='[{"question_number": 1}, {"question_number": 2}]',
+        )
+
+        with patch.object(self.service, "get_question_set", new=AsyncMock(return_value=question_set)):
+            with patch("src.business_logic.interview.coach_service.coach_service") as mock_coach:
+                mock_coach.start_session = AsyncMock(return_value={"session_id": 22, "total_questions": 2})
+
+                result = await self.service.start_coach_from_question_set(
+                    self.mock_db,
+                    question_set_id=3,
+                    current_user=SimpleNamespace(id=55),
+                )
+
+        assert result["session_id"] == 22
+        mock_coach.start_session.assert_called_once_with(
+            db=self.mock_db,
+            user=SimpleNamespace(id=55),
+            jd_id=9,
+            resume_id=7,
+            question_count=2,
+        )

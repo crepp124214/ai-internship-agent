@@ -1,7 +1,7 @@
 """add status and fallback_used fields to entities
 
 Revision ID: 007_add_status_fallback_fields
-Revises: 006_tracker_advice_mode
+Revises: 006_refresh_token
 Create Date: 2026-04-10
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "007_add_status_fallback_fields"
-down_revision = "006_tracker_advice_mode"
+down_revision = "006_refresh_token"
 branch_labels = None
 depends_on = None
 

@@ -230,6 +230,9 @@ class TestImportJDsAPI:
         assert payload["total"] == 2
         assert payload["imported"] == 2
         assert payload["failed"] == 0
+        assert "job_ids" in payload
+        assert len(payload["job_ids"]) == 2
+        assert all(isinstance(jid, int) for jid in payload["job_ids"])
 
     def test_import_jds_excel_success(self, db_session, client):
         """Test successful Excel JD import."""
@@ -270,6 +273,8 @@ class TestImportJDsAPI:
         assert payload["success"] is True
         assert payload["total"] == 1
         assert payload["imported"] == 1
+        assert "job_ids" in payload
+        assert len(payload["job_ids"]) == 1
 
     def test_import_jds_partial_failure(self, db_session, client):
         """Test partial failure during JD import."""
@@ -329,6 +334,11 @@ class TestImportJDsAPI:
         assert payload["success"] is True
         assert payload["total"] == 2
         assert payload["imported"] == 1
+        assert payload["failed"] == 1
+        assert "job_ids" in payload
+        assert len(payload["job_ids"]) == 1
+        assert len(payload["errors"]) == 1
+        assert "Invalid Job" in payload["errors"][0]
         assert payload["failed"] == 1
         assert len(payload["errors"]) == 1
 

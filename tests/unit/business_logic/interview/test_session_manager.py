@@ -119,10 +119,11 @@ class TestInterviewSessionManager:
         assert "review_report" in result
         assert result["average_score"] == 77.5
 
-    def test_generate_opening_and_questions_falls_back_without_agent(self):
+    @pytest.mark.asyncio
+    async def test_generate_opening_and_questions_falls_back_without_agent(self):
         """Test fallback when no agent is provided"""
         manager = InterviewSessionManager(interview_agent=None)
-        opening, questions = manager._generate_opening_and_questions(
+        opening, questions = await manager._generate_opening_and_questions(
             job_title="Python后端",
             jd_text="熟悉FastAPI",
             count=3,

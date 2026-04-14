@@ -229,6 +229,8 @@ def test_jobs_match_endpoint_returns_structured_result(db_session, client):
                 raw_content="Score: 88\nFeedback: Strong fit.",
                 provider="mock",
                 model="mock-model",
+                status="fallback",
+                fallback_used=True,
             )
         ),
         create=True,
@@ -248,6 +250,8 @@ def test_jobs_match_endpoint_returns_structured_result(db_session, client):
     assert payload["raw_content"] == "Score: 88\nFeedback: Strong fit."
     assert payload["provider"] == "mock"
     assert payload["model"] == "mock-model"
+    assert payload["status"] == "fallback"
+    assert payload["fallback_used"] is True
 
 
 def test_jobs_match_endpoint_returns_404_for_missing_job(db_session, client):
@@ -677,3 +681,326 @@ def test_save_external_job_trims_whitespace(db_session, client):
     assert payload["title"] == "Backend Intern"
     assert payload["company"] == "Example Corp"
     assert payload["location"] == "Beijing"
+
+
+def test_recommended_jobs_returns_structured_results(db_session, client):
+    """Test GET /jobs/recommended/ returns structured RecommendedJob list."""
+    # Clear any existing jobs from previous tests
+    for job in job_repository.get_all(db_session):
+        job_repository.delete(db_session, job.id)
+    db_session.commit()
+
+    job1 = job_repository.create(
+        db_session,
+        {
+            "title": "Backend Intern",
+            "company": "TechCorp",
+            "location": "Beijing",
+            "description": "Build APIs with FastAPI",
+            "requirements": "Python",
+            "salary": "10k-15k",
+            "work_type": "internship",
+            "experience": "0-1 year",
+            "education": "Bachelor",
+            "welfare": "Remote",
+            "tags": "python,fastapi",
+            "source": "test",
+            "source_url": "https://techcorp.com/jobs/1",
+            "source_id": "tc-1",
+            "is_active": True,
+        },
+    )
+    job2 = job_repository.create(
+        db_session,
+        {
+            "title": "Frontend Intern",
+            "company": "WebStudio",
+            "location": "Shanghai",
+            "description": "Build React components",
+            "requirements": "JavaScript, React",
+            "salary": "8k-12k",
+            "work_type": "internship",
+            "experience": "0-1 year",
+            "education": "Bachelor",
+            "welfare": "Hybrid",
+            "tags": "react,javascript",
+            "source": "test",
+            "source_url": "https://webstudio.com/jobs/2",
+            "source_id": "ws-2",
+            "is_active": True,
+        },
+    )
+
+    response = client.get("/api/v1/jobs/recommended/", params={"goal_summary": "backend intern"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert len(payload) == 2
+
+    # Verify structure
+    job = payload[0]
+    assert "id" in job
+    assert "title" in job
+    assert "company" in job
+    assert "location" in job
+    assert "work_type" in job
+    assert "tags" in job
+    assert "recommendation_score" in job
+    assert "official_url" in job  # mapped from source_url
+    assert "summary" in job
+
+    # Verify official_url is mapped from source_url
+    assert job["official_url"] == "https://techcorp.com/jobs/1"
+    assert job["tags"] == ["python", "fastapi"]
+
+    # Verify recommendation_score is present and valid
+    assert isinstance(job["recommendation_score"], int)
+    assert 0 <= job["recommendation_score"] <= 100
+
+
+def test_recommended_jobs_returns_up_to_5_results(db_session, client):
+    """Test GET /jobs/recommended/ returns at most 5 jobs."""
+    # Clear any existing jobs from previous tests
+    for job in job_repository.get_all(db_session):
+        job_repository.delete(db_session, job.id)
+    db_session.commit()
+
+    # Create 7 jobs
+    for i in range(7):
+        job_repository.create(
+            db_session,
+            {
+                "title": f"Job {i}",
+                "company": f"Company {i}",
+                "location": "Beijing",
+                "description": f"Description for job {i}",
+                "requirements": "Python",
+                "salary": "10k",
+                "work_type": "internship",
+                "experience": "0-1 year",
+                "education": "Bachelor",
+                "welfare": "Remote",
+                "tags": "python",
+                "source": "test",
+                "source_url": f"https://example.com/jobs/{i}",
+                "source_id": f"job-{i}",
+                "is_active": True,
+            },
+        )
+
+    response = client.get("/api/v1/jobs/recommended/")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) <= 5
+
+
+def test_recommended_jobs_returns_empty_when_no_jobs(db_session, client):
+    """Test GET /jobs/recommended/ returns empty list when no jobs exist."""
+    # Clear any existing jobs from previous tests
+    for job in job_repository.get_all(db_session):
+        job_repository.delete(db_session, job.id)
+    db_session.commit()
+
+    response = client.get("/api/v1/jobs/recommended/", params={"goal_summary": "backend"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == []
+
+
+def test_recommended_jobs_passes_goal_summary_to_service(client):
+    with patch(
+        "src.presentation.api.v1.jobs.job_service.get_recommended_jobs",
+        new=AsyncMock(return_value=[]),
+    ) as mock_service:
+        response = client.get(
+            "/api/v1/jobs/recommended/",
+            params={"goal_summary": "DevOps engineer Hangzhou"},
+        )
+
+    assert response.status_code == 200
+    _, kwargs = mock_service.await_args
+    assert kwargs["goal_summary"] == "DevOps engineer Hangzhou"
+    assert kwargs["limit"] == 5
+
+
+def test_jobs_update_job_is_active_toggle(db_session, client):
+    """Integration test: update is_active field to mark job as ended."""
+    user = _seed_user(db_session, "job_updater", "job_updater@example.com")
+    job = _seed_job(db_session)
+    _set_current_user(user.id)
+
+    # Initially active
+    assert job.is_active is True
+
+    # Update to inactive (ended)
+    response = client.put(
+        f"/api/v1/jobs/{job.id}",
+        json={"is_active": False},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == job.id
+    assert payload["is_active"] is False
+
+
+def test_jobs_update_job_title(db_session, client):
+    """Integration test: update job title."""
+    user = _seed_user(db_session, "job_title_updater", "job_title_updater@example.com")
+    job = _seed_job(db_session)
+    _set_current_user(user.id)
+
+    response = client.put(
+        f"/api/v1/jobs/{job.id}",
+        json={"title": "Frontend Intern Updated"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Frontend Intern Updated"
+    assert payload["company"] == "Test Co"  # unchanged
+
+
+def test_jobs_delete_job_succeeds(db_session, client):
+    """Integration test: delete an existing job."""
+    user = _seed_user(db_session, "job_deleter", "job_deleter@example.com")
+    job = _seed_job(db_session)
+    _set_current_user(user.id)
+
+    response = client.delete(f"/api/v1/jobs/{job.id}")
+    assert response.status_code == 204
+
+    # Verify job is gone
+    get_response = client.get(f"/api/v1/jobs/{job.id}")
+    assert get_response.status_code == 404
+
+
+def test_jobs_delete_job_returns_404_for_nonexistent(db_session, client):
+    """Delete returns 404 for non-existent job ID."""
+    user = _seed_user(db_session, "job_deleter2", "job_deleter2@example.com")
+    _set_current_user(user.id)
+
+    response = client.delete("/api/v1/jobs/99999")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+
+
+def test_create_application_requires_authentication(db_session, client):
+    job = _seed_job(db_session)
+    user = _seed_user(db_session, "applicant_auth", "applicant_auth@example.com")
+    resume = _seed_resume(db_session, user.id)
+
+    response = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": job.id, "resume_id": resume.id, "notes": "submitted"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_create_application_succeeds_for_owned_resume(db_session, client):
+    user = _seed_user(db_session, "applicant_ok", "applicant_ok@example.com")
+    job = _seed_job(db_session)
+    resume = _seed_resume(db_session, user.id)
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": job.id, "resume_id": resume.id, "notes": "already applied"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["user_id"] == user.id
+    assert payload["job_id"] == job.id
+    assert payload["resume_id"] == resume.id
+    assert payload["status"] == "applied"
+    assert payload["notes"] == "already applied"
+
+
+def test_create_application_returns_404_for_missing_job(db_session, client):
+    user = _seed_user(db_session, "applicant_missing_job", "applicant_missing_job@example.com")
+    resume = _seed_resume(db_session, user.id)
+    _set_current_user(user.id)
+
+    response = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": 999, "resume_id": resume.id},
+    )
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "job not found" in body["message"]
+
+
+def test_create_application_returns_404_for_unowned_resume(db_session, client):
+    owner = _seed_user(db_session, "applicant_owner", "applicant_owner@example.com")
+    other = _seed_user(db_session, "applicant_other", "applicant_other@example.com")
+    job = _seed_job(db_session)
+    resume = _seed_resume(db_session, other.id)
+    _set_current_user(owner.id)
+
+    response = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": job.id, "resume_id": resume.id},
+    )
+
+    assert response.status_code == 404
+    body = response.json()
+    assert body["code"] == "RESOURCE_NOT_FOUND"
+    assert "resume not found" in body["message"]
+
+
+def test_list_applications_returns_current_user_records_only(db_session, client):
+    owner = _seed_user(db_session, "applicant_list_owner", "applicant_list_owner@example.com")
+    other = _seed_user(db_session, "applicant_list_other", "applicant_list_other@example.com")
+    job1 = _seed_job(db_session)
+    job2 = job_repository.create(
+        db_session,
+        {
+            "title": "Platform Intern",
+            "company": "Infra Co",
+            "location": "Shanghai",
+            "description": "Work on infra",
+            "requirements": "Python, Linux",
+            "salary": "12k-18k",
+            "work_type": "internship",
+            "experience": "0-1 year",
+            "education": "Bachelor",
+            "welfare": "Hybrid",
+            "tags": "python,linux",
+            "source": "test",
+            "source_url": "https://example.com/job/2",
+            "source_id": "job-2",
+            "is_active": True,
+        },
+    )
+    resume1 = _seed_resume(db_session, owner.id)
+    resume2 = _seed_resume(db_session, other.id)
+
+    _set_current_user(owner.id)
+    first = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": job1.id, "resume_id": resume1.id, "notes": "owner"},
+    )
+    assert first.status_code == 200
+
+    _set_current_user(other.id)
+    second = client.post(
+        "/api/v1/jobs/applications/",
+        json={"job_id": job2.id, "resume_id": resume2.id, "notes": "other"},
+    )
+    assert second.status_code == 200
+
+    _set_current_user(owner.id)
+    response = client.get("/api/v1/jobs/applications/")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload) == 1
+    assert payload[0]["user_id"] == owner.id
+    assert payload[0]["job_id"] == job1.id
+    assert payload[0]["notes"] == "owner"

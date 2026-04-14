@@ -348,6 +348,63 @@ class TestOpenAIAdapterRuntime:
         assert sleep_mock.await_count == 2
 
     @pytest.mark.asyncio
+    async def test_chat_disables_zhipu_thinking_by_default(self):
+        chat_response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="usable content"))]
+        )
+        client = MagicMock()
+        client.chat.completions.create = AsyncMock(return_value=chat_response)
+        client.responses.create = AsyncMock(
+            side_effect=openai.NotFoundError(
+                "not found",
+                response=MagicMock(request=MagicMock(), status_code=404),
+                body={},
+            )
+        )
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter(
+                {
+                    "provider": "zhipu",
+                    "api_key": "test-key",
+                    "model": "glm-4.7",
+                    "base_url": "https://open.bigmodel.cn/api/paas/v4",
+                }
+            )
+
+            result = await adapter.generate("Generate a short summary")
+
+        assert result == "usable content"
+        chat_kwargs = client.chat.completions.create.await_args.kwargs
+        assert chat_kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+        client.responses.create.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_generate_skips_responses_api_for_minimax_profile(self):
+        chat_response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="minimax content"))]
+        )
+        client = MagicMock()
+        client.chat.completions.create = AsyncMock(return_value=chat_response)
+        client.responses.create = AsyncMock()
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter(
+                {
+                    "provider": "minimax",
+                    "api_key": "test-key",
+                    "model": "abab6.5s-chat",
+                    "base_url": "https://api.minimax.chat/v1",
+                }
+            )
+
+            result = await adapter.generate("Generate a short summary")
+
+        assert result == "minimax content"
+        client.responses.create.assert_not_awaited()
+        client.chat.completions.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_generate_retries_transient_openai_errors(self):
         """验证 retry_async 在真正的可重试错误（如 RateLimitError）上重试。
 
@@ -409,3 +466,110 @@ class TestOpenAIAdapterRuntime:
         assert result == [0.4, 0.5, 0.6]
         assert client.embeddings.create.await_count == 2
         assert sleep_mock.await_count == 1
+
+    def test_deepseek_uses_chat_completion_not_responses_api(self, monkeypatch):
+        """DeepSeek does not support responses API; verify model/env var resolution."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "deepseek-test-key")
+
+        client = MagicMock()
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter(
+                {
+                    "provider": "deepseek",
+                    "model": "deepseek-chat",
+                }
+            )
+
+        assert adapter.provider_name == "deepseek"
+        assert adapter.api_key == "deepseek-test-key"
+        assert adapter.model == "deepseek-chat"
+
+    def test_qwen_resolves_correct_env_vars(self, monkeypatch):
+        """Qwen should use QWEN_MODEL and QWEN_API_KEY env vars."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("QWEN_API_KEY", raising=False)
+        monkeypatch.setenv("QWEN_API_KEY", "qwen-test-key")
+        monkeypatch.setenv("QWEN_MODEL", "qwen-plus")
+
+        client = MagicMock()
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"provider": "qwen"})
+
+        assert adapter.provider_name == "qwen"
+        assert adapter.api_key == "qwen-test-key"
+        assert adapter.model == "qwen-plus"
+
+    def test_moonshot_resolves_correct_env_vars(self, monkeypatch):
+        """Moonshot should use MOONSHOT_MODEL and MOONSHOT_API_KEY env vars."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("MOONSHOT_API_KEY", "moonshot-test-key")
+        monkeypatch.setenv("MOONSHOT_MODEL", "moonshot-v1-8k")
+
+        client = MagicMock()
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"provider": "moonshot"})
+
+        assert adapter.provider_name == "moonshot"
+        assert adapter.api_key == "moonshot-test-key"
+        assert adapter.model == "moonshot-v1-8k"
+
+    def test_siliconflow_resolves_correct_env_vars(self, monkeypatch):
+        """SiliconFlow should use SILICONFLOW_MODEL and SILICONFLOW_API_KEY env vars."""
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setenv("SILICONFLOW_API_KEY", "sf-test-key")
+        monkeypatch.setenv("SILICONFLOW_MODEL", "deepseek-chat")
+
+        client = MagicMock()
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter({"provider": "siliconflow"})
+
+        assert adapter.provider_name == "siliconflow"
+        assert adapter.api_key == "sf-test-key"
+        assert adapter.model == "deepseek-chat"
+
+    @pytest.mark.asyncio
+    async def test_generate_uses_responses_api_for_openai(self):
+        """OpenAI (the provider) should try responses API first."""
+        response = SimpleNamespace(output_text="hello from openai")
+        client = MagicMock()
+        client.responses.create = AsyncMock(return_value=response)
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter(
+                {
+                    "provider": "openai",
+                    "api_key": "test-key",
+                    "model": "gpt-4o-mini",
+                }
+            )
+            result = await adapter.generate("Say hello")
+
+        assert result == "hello from openai"
+        client.responses.create.assert_awaited_once()
+        client.chat.completions.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_generate_uses_chat_for_deepseek(self):
+        """DeepSeek should skip responses API and go straight to chat completions."""
+        chat_response = SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="deepseek reply"))]
+        )
+        client = MagicMock()
+        client.chat.completions.create = AsyncMock(return_value=chat_response)
+        client.responses.create = AsyncMock()
+
+        with patch("src.core.llm.openai_adapter.AsyncOpenAI", return_value=client):
+            adapter = OpenAIAdapter(
+                {
+                    "provider": "deepseek",
+                    "api_key": "test-key",
+                    "model": "deepseek-chat",
+                }
+            )
+            result = await adapter.generate("Say hello")
+
+        assert result == "deepseek reply"
+        client.responses.create.assert_not_called()
+        client.chat.completions.create.assert_awaited_once()

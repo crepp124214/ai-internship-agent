@@ -1,108 +1,13 @@
-import type { ChangeEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import { AgentAssistantPanel } from '../components/agent/AgentAssistantPanel'
-import { jobsApi, readApiError, resumeApi } from '../lib/api'
+import { jobsApi, resumeApi } from '../lib/api'
 import {
-  EmptyHint,
-  FormField,
-  Input,
-  PageHeader,
   PrimaryButton,
-  ResultPanel,
-  SectionCard,
-  SecondaryButton,
-  Select,
-  Textarea,
+  WorkspaceShell,
 } from './page-primitives'
-
-type JobFormState = {
-  title: string
-  company: string
-  location: string
-  description: string
-  requirements: string
-  sourceUrl: string
-  source: string
-}
-
-type ImportStatus = {
-  kind: 'success' | 'error'
-  message: string
-}
-
-const initialJobForm: JobFormState = {
-  title: '',
-  company: '',
-  location: '',
-  description: '',
-  requirements: '',
-  sourceUrl: '',
-  source: 'manual',
-}
-
-function deriveJobTitleFromFileName(fileName: string) {
-  const baseName = fileName.replace(/\.[^.]+$/, '')
-  const normalized = baseName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
-  return normalized || '导入岗位'
-}
-
-async function readFileText(file: File) {
-  if ('text' in file) {
-    return file.text()
-  }
-  return await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      resolve(typeof reader.result === 'string' ? reader.result : '')
-    }
-    reader.onerror = () => {
-      reject(reader.error ?? new Error('Failed to read file'))
-    }
-    reader.readAsText(file)
-  })
-}
-
-function parseImportedJobFile(text: string, fileName: string): Partial<JobFormState> {
-  const trimmedText = text.trim()
-  const title = deriveJobTitleFromFileName(fileName)
-  const fileExtension = fileName.split('.').pop()?.toLowerCase() ?? ''
-
-  if (fileExtension === 'json') {
-    try {
-      const parsed = JSON.parse(trimmedText)
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const record = parsed as Record<string, unknown>
-        return {
-          title:
-            typeof record.title === 'string' && record.title.trim() ? record.title.trim() : title,
-          company:
-            typeof record.company === 'string' && record.company.trim() ? record.company.trim() : '',
-          location:
-            typeof record.location === 'string' && record.location.trim() ? record.location.trim() : '',
-          description:
-            typeof record.description === 'string' && record.description.trim()
-              ? record.description.trim()
-              : trimmedText,
-          requirements:
-            typeof record.requirements === 'string' && record.requirements.trim()
-              ? record.requirements.trim()
-              : '',
-          sourceUrl:
-            typeof record.source_url === 'string' && record.source_url.trim()
-              ? record.source_url.trim()
-              : '',
-          source: 'local_file',
-        }
-      }
-    } catch {
-      return { title, description: trimmedText, source: 'local_file' }
-    }
-  }
-  return { title, description: trimmedText, source: 'local_file' }
-}
 
 // Validate AI response - detect mock/prompt artifacts or invalid content
 export function validateAiResponse(content: string | null | undefined): boolean {
@@ -136,16 +41,14 @@ export function validateAiResponse(content: string | null | undefined): boolean 
 }
 
 export function JobsPage() {
-  const queryClient = useQueryClient()
   const navigate = useNavigate()
+
+  // 原始数据查询
   const jobsQuery = useQuery({ queryKey: ['jobs', 'list'], queryFn: jobsApi.list })
   const resumesQuery = useQuery({ queryKey: ['resume', 'list'], queryFn: resumeApi.list })
   const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
   const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null)
-  const [matchPreview, setMatchPreview] = useState<string | null>(null)
-  const [jobForm, setJobForm] = useState<JobFormState>(initialJobForm)
 
   const selectedJob = useMemo(
     () => jobsQuery.data?.find((job) => job.id === selectedJobId) ?? null,
@@ -164,107 +67,9 @@ export function JobsPage() {
     }
   }, [resumesQuery.data, selectedResumeId])
 
-  const createJobMutation = useMutation({
-    mutationFn: jobsApi.create,
-    onSuccess: async (job) => {
-      await queryClient.invalidateQueries({ queryKey: ['jobs', 'list'] })
-      setSelectedJobId(job.id)
-      setFeedback('岗位创建成功。')
-      setJobForm(initialJobForm)
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
-
-  const saveExternalJobMutation = useMutation({
-    mutationFn: () =>
-      jobsApi.saveExternal({
-        title: jobForm.title,
-        company: jobForm.company,
-        location: jobForm.location,
-        description: jobForm.description,
-        requirements: jobForm.requirements || null,
-        source_url: jobForm.sourceUrl || null,
-      }),
-    onSuccess: async (job) => {
-      await queryClient.invalidateQueries({ queryKey: ['jobs', 'list'] })
-      setSelectedJobId(job.id)
-      setFeedback('岗位已收藏到岗位库。')
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
-
-  const matchPreviewMutation = useMutation({
-    mutationFn: () => {
-      const jobId = selectedJobId
-      const resumeId = selectedResumeId
-      if (!jobId || !resumeId) {
-        throw new Error('请先选择岗位和简历')
-      }
-      return jobsApi.previewMatch(jobId, { resume_id: resumeId })
-    },
-    onSuccess: (data) => {
-      // Validate response - check for mock/prompt artifacts
-      const isValid = validateAiResponse(data.feedback)
-      if (!isValid) {
-        setFeedback('匹配分析服务返回了无效内容，请重试或稍后再试。')
-        setMatchPreview(null)
-        return
-      }
-      setMatchPreview(`Score ${data.score}\n\n${data.feedback}`)
-      setFeedback(null)
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
-
-  const persistMatchMutation = useMutation({
-    mutationFn: () => {
-      const jobId = selectedJobId
-      const resumeId = selectedResumeId
-      if (!jobId || !resumeId) {
-        throw new Error('请先选择岗位和简历')
-      }
-      return jobsApi.persistMatch(jobId, { resume_id: resumeId })
-    },
-    onSuccess: async () => {
-      setFeedback('匹配结果已保存。')
-    },
-    onError: (error) => setFeedback(readApiError(error)),
-  })
-
-  const handleJobFileImport = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-
-    try {
-      const text = await readFileText(file)
-      const trimmedText = text.trim()
-      if (!trimmedText) throw new Error('empty')
-
-      const importedValues = parseImportedJobFile(text, file.name)
-      setJobForm((current) => ({
-        ...current,
-        ...importedValues,
-        title: importedValues.title?.trim() || deriveJobTitleFromFileName(file.name),
-        description: importedValues.description?.trim() || trimmedText,
-        source: importedValues.source ?? 'local_file',
-      }))
-      setImportStatus({
-        kind: 'success',
-        message: `已导入 ${file.name}，岗位标题和描述已填入表单。`,
-      })
-      setFeedback(null)
-    } catch {
-      setImportStatus({
-        kind: 'error',
-        message: '文件导入失败，请选择有效的 txt、md 或 json 文本文件。',
-      })
-    }
-  }
-
   const goToResumeOptimize = () => {
     if (!selectedJob) {
-      setFeedback('请先在右侧选择一个岗位，再执行一键流转。')
+      setFeedback('请先选择一个岗位，再执行一键流转。')
       return
     }
 
@@ -284,198 +89,31 @@ export function JobsPage() {
   }
 
   return (
-    <div className="flex h-full">
-      <div className="flex-1 space-y-6 overflow-y-auto pr-6">
-        <PageHeader
-          eyebrow="岗位探索"
-          title="探索公司岗位并分析匹配"
-          description="导入或录入岗位后，可收藏岗位、匹配简历，并一键流转到简历优化。"
-        />
-
-        <div className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
-          <SectionCard title="岗位探索与收藏" subtitle="先录入岗位信息，再执行收藏与匹配。">
-            <div className="space-y-4">
-              <FormField label="导入本地岗位文件" helper="支持 txt、md 和 json 文件。">
-                <Input
-                  type="file"
-                  accept=".txt,.md,.json,text/plain,text/markdown,application/json"
-                  onChange={handleJobFileImport}
-                />
-              </FormField>
-               {importStatus ? (
-                 <div
-                   className={
-                     importStatus.kind === 'success'
-                       ? 'rounded-[22px] bg-[rgba(86,128,99,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
-                       : importStatus.kind === 'error'
-                         ? 'rounded-[22px] bg-[rgba(199,107,79,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]'
-                         : 'rounded-[22px] bg-[rgba(199,107,79,0.12)] px-4 py-3 text-sm text-[var(--color-ink)]/50'
-                   }
-                 >
-                   {importStatus.message}
-                 </div>
-               ) : null}
-              <FormField label="岗位标题">
-                <Input
-                  value={jobForm.title}
-                  onChange={(event) => setJobForm((value) => ({ ...value, title: event.target.value }))}
-                />
-              </FormField>
-              <div className="grid gap-4 md:grid-cols-2">
-                <FormField label="公司">
-                  <Input
-                    value={jobForm.company}
-                    onChange={(event) =>
-                      setJobForm((value) => ({ ...value, company: event.target.value }))
-                    }
-                  />
-                </FormField>
-                <FormField label="地点">
-                  <Input
-                    value={jobForm.location}
-                    onChange={(event) =>
-                      setJobForm((value) => ({ ...value, location: event.target.value }))
-                    }
-                  />
-                </FormField>
-              </div>
-              <FormField label="招聘链接（可选）">
-                <Input
-                  value={jobForm.sourceUrl}
-                  onChange={(event) => setJobForm((value) => ({ ...value, sourceUrl: event.target.value }))}
-                  placeholder="https://company.com/careers/..."
-                />
-              </FormField>
-              <FormField label="岗位描述">
-                <Textarea
-                  value={jobForm.description}
-                  onChange={(event) =>
-                    setJobForm((value) => ({ ...value, description: event.target.value }))
-                  }
-                />
-              </FormField>
-              <FormField label="岗位要求">
-                <Textarea
-                  value={jobForm.requirements}
-                  onChange={(event) =>
-                    setJobForm((value) => ({ ...value, requirements: event.target.value }))
-                  }
-                />
-              </FormField>
-              <div className="flex flex-wrap gap-3">
-                <PrimaryButton
-                  type="button"
-                  onClick={() => createJobMutation.mutate(jobForm)}
-                  disabled={
-                    !jobForm.title.trim() ||
-                    !jobForm.company.trim() ||
-                    !jobForm.location.trim() ||
-                    !jobForm.description.trim()
-                  }
-                >
-                  创建岗位
-                </PrimaryButton>
-                <SecondaryButton
-                  type="button"
-                  onClick={() => saveExternalJobMutation.mutate()}
-                  disabled={
-                    !jobForm.title.trim() ||
-                    !jobForm.company.trim() ||
-                    !jobForm.location.trim() ||
-                    !jobForm.description.trim()
-                  }
-                >
-                  收藏到岗位库
-                </SecondaryButton>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="匹配分析与流转" subtitle="选择岗位和简历，预览/保存匹配，并跳转简历优化。">
-            <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-               <FormField label="岗位">
-                 {jobsQuery.isLoading ? (
-                   <div className="text-sm text-[var(--color-ink-tertiary)]">加载中...</div>
-                 ) : jobsQuery.data?.length === 0 ? (
-                   <EmptyHint>暂无岗位数据，请先导入或创建岗位。</EmptyHint>
-                 ) : (
-                   <Select
-                     value={selectedJobId ?? ''}
-                     onChange={(event) => setSelectedJobId(Number(event.target.value))}
-                   >
-                     {jobsQuery.data?.map((job) => (
-                       <option key={job.id} value={job.id}>
-                         #{job.id} - {job.title} ({job.company})
-                       </option>
-                     ))}
-                   </Select>
-                 )}
-               </FormField>
-               <FormField label="简历">
-                 {resumesQuery.isLoading ? (
-                   <div className="text-sm text-[var(--color-ink-tertiary)]">加载中...</div>
-                 ) : resumesQuery.data?.length === 0 ? (
-                   <EmptyHint>暂无简历数据，请先导入或创建简历。</EmptyHint>
-                 ) : (
-                   <Select
-                     value={selectedResumeId ?? ''}
-                     onChange={(event) => setSelectedResumeId(Number(event.target.value))}
-                   >
-                     {resumesQuery.data?.map((resume) => (
-                       <option key={resume.id} value={resume.id}>
-                         #{resume.id} - {resume.title}
-                       </option>
-                     ))}
-                   </Select>
-                 )}
-               </FormField>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <SecondaryButton
-                  type="button"
-                  onClick={() => matchPreviewMutation.mutate()}
-                  disabled={!selectedJobId || !selectedResumeId}
-                >
-                  预览匹配结果
-                </SecondaryButton>
-                <PrimaryButton
-                  type="button"
-                  onClick={() => persistMatchMutation.mutate()}
-                  disabled={!selectedJobId || !selectedResumeId}
-                >
-                  保存匹配结果
-                </PrimaryButton>
-                <PrimaryButton type="button" onClick={goToResumeOptimize} disabled={!selectedJobId}>
-                  带着岗位去优化简历
-                </PrimaryButton>
-              </div>
-              {feedback ? (
-                <div className="rounded-[22px] bg-[var(--color-panel)] px-4 py-3 text-sm text-[var(--color-ink)]">
-                  {feedback}
-                </div>
-              ) : null}
-              {matchPreview ? (
-                <ResultPanel label="匹配结果" content={matchPreview} />
-              ) : (
-                <EmptyHint>先预览或保存匹配结果，这里才会显示内容。</EmptyHint>
-              )}
-            </div>
-          </SectionCard>
+    <WorkspaceShell
+      title="岗位工作区"
+      subtitle="搜索岗位、分析 JD、匹配简历"
+      statusRail={feedback ? <div className="rounded-[22px] bg-[var(--color-panel)] px-4 py-3 text-sm text-[var(--color-ink)]">{feedback}</div> : null}
+      actions={
+        <PrimaryButton type="button" onClick={goToResumeOptimize} disabled={!selectedJobId}>
+          带着岗位去优化简历
+        </PrimaryButton>
+      }
+    >
+      <div className="flex h-full flex-col gap-8">
+        {/* Agent 助手面板 - 唯一主工作台，内部承载判断、推荐结果和后续动作 */}
+        <div className="flex-1" data-testid="agent-assistant-panel">
+          <AgentAssistantPanel
+            page="job"
+            resourceId={selectedJobId ?? undefined}
+            resourceIds={selectedResumeId ? [selectedResumeId] : []}
+            quickActions={[
+              { label: '🔍 搜索岗位', message: '帮我搜索公司招聘官网' },
+              { label: '分析 JD', message: '请分析这个岗位的 JD 要求' },
+              { label: '与简历匹配', message: '这个岗位和我的简历匹配吗？' },
+            ]}
+          />
         </div>
       </div>
-
-      <div className="w-[400px] flex-shrink-0">
-        <AgentAssistantPanel
-          page="job"
-          resourceId={selectedJobId ?? undefined}
-          quickActions={[
-            { label: '🔍 搜索岗位', message: '帮我搜索公司招聘官网' },
-            { label: '分析 JD', message: '请分析这个岗位的 JD 要求' },
-            { label: '与简历匹配', message: '这个岗位和我的简历匹配吗？' },
-          ]}
-        />
-      </div>
-    </div>
+    </WorkspaceShell>
   )
 }

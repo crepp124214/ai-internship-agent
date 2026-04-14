@@ -4,8 +4,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from src.data_access.database import Base, get_db
-from src.main import app
+from backend.infrastructure.database.session import Base, get_db
+from backend.main import app
 # 仅当环境变量明确开启时才运行
 ENABLE_REAL_LLM = os.getenv("ENABLE_REAL_LLM", "").lower() == "true"
 HAS_API_KEY = bool(os.getenv("MINIMAX_API_KEY", "").strip())

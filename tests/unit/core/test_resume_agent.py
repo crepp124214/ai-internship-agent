@@ -53,6 +53,20 @@ class TestResumeAgent:
         assert "Built APIs and test suites" in prompt
 
     @pytest.mark.asyncio
+    async def test_suggest_resume_improvements_uses_concrete_rewrite_prompt(self):
+        self.llm.generate = AsyncMock(return_value="mock improvements")
+
+        await self.agent.suggest_resume_improvements(
+            "Built APIs and test suites",
+            target_role="fullstack engineer",
+        )
+
+        system_prompt = self.llm.generate.await_args.kwargs["system_prompt"]
+        assert "rewrite the resume" in system_prompt
+        assert "strengthen impact" in system_prompt
+        assert "target role" in system_prompt.lower()
+
+    @pytest.mark.asyncio
     async def test_empty_resume_text_raises_stable_error(self):
         with pytest.raises(EmptyResumeTextError, match="resume text is empty"):
             await self.agent.extract_resume_summary("")
@@ -160,7 +174,7 @@ class TestResumeAgent:
     async def test_resume_agent_fallback_response_has_mock_provider(self):
         """
         fallback 发生后，extract_resume_summary 响应的 provider 必须是 'mock'。
-        raw_content 不得包含 'mock-generate' 标记。
+        raw_content 应为可消费的 mock 内容。
         """
         agent = ResumeAgent(
             config={"provider": "openai", "api_key": ""},
@@ -175,10 +189,9 @@ class TestResumeAgent:
         assert result["provider"] == "mock", (
             f"响应 provider 应为 'mock'，实际为 '{result['provider']}'。"
         )
-        # fallback 到 mock 后，raw_content 包含 'mock-generate:' 前缀是正常的（mock LLM 输出格式）
-        assert "mock-generate" in result["raw_content"], (
-            "fallback 到 mock 后，raw_content 应包含 'mock-generate:' 前缀"
-        )
+        assert result["raw_content"]
+        assert result["status"] == "fallback"
+        assert result["fallback_used"] is True
 
     def test_resume_agent_openai_adapter_disables_http_client_retries(self):
         """

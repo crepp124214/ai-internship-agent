@@ -58,7 +58,12 @@ data/vectors/*
 *.log
 *.err.log
 *.out.log
+*.pid
 logs/
+tmp-*.log
+backend-*.log
+frontend-*.log
+debug_*.txt
 
 # Testing
 .pytest_cache/
@@ -84,3 +89,37 @@ msg2.txt
 opencode.json
 phase_c_results.json
 run_main_chain.py
+
+# Backup directories
+src_backup_*/
+*_backup_*/
+
+# Temporary test and development files
+test_*.py
+test_assistant*.py
+test_results.txt
+test_resume.txt
+verify_task*.py
+endpoint_called.txt
+tmp/
+tmp_*
+*.json.bak
+opencode.json
+phase_c_results.json
+run_main_chain.py
+msg2.txt
+sisyphus/
+
+# Docs archive and reports (not part of main repo)
+docs/archive/
+docs/reports/
+
+# Backend refactor work-in-progress (duplicate structure)
+backend/
+
+# Migration scripts (one-time use)
+scripts/migrate_structure.py
+scripts/refactor_structure.py
+
+# Ralph loop local state
+.claude/ralph-loop.local.md
